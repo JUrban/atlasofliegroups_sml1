@@ -26,27 +26,31 @@ static atlas::int_Matrix identity_matrix(unsigned int n)
 }
 
 namespace {
-struct F4SplitHandle
+struct GroupHandle
 {
   atlas::lietype::LieType lt;
+  atlas::lietype::InnerClassType ict;
   atlas::prerootdata::PreRootDatum prd;
-  atlas::rootdata::RootDatum rd;
-  atlas::rootdata::RootDatum drd;
   atlas::WeightInvolution di;
   atlas::innerclass::InnerClass ic;
   atlas::realredgp::RealReductiveGroup G;
 
-  F4SplitHandle()
+  GroupHandle(char type_letter,
+              unsigned int rank,
+              char inner_class_letter,
+              atlas::RealFormNbr rf)
     : lt()
+    , ict()
     , prd([&] {
-        lt.push_back(atlas::lietype::SimpleLieType('F', 4));
+        lt.push_back(atlas::lietype::SimpleLieType(type_letter, rank));
         return atlas::prerootdata::PreRootDatum(lt, /*prefer_co=*/false);
       }())
-    , rd(prd)
-    , drd(rd, atlas::tags::DualTag{})
-    , di(identity_matrix(lt.rank()))
-    , ic(rd, drd, di)
-    , G(ic, ic.quasisplit())
+    , di([&] {
+        ict.push_back(inner_class_letter);
+        return atlas::lietype::involution(lt, ict);
+      }())
+    , ic(prd, di)
+    , G(ic, rf)
   {}
 };
 } // namespace
@@ -55,7 +59,7 @@ extern "C" void* atlas_group_new_F4_s()
 {
   try
   {
-    auto* h = new F4SplitHandle();
+    auto* h = new GroupHandle('F', 4, 's', atlas::RealFormNbr(0));
     return static_cast<void*>(h);
   }
   catch (const std::exception& e)
@@ -74,7 +78,7 @@ extern "C" void atlas_group_free(void* handle)
 {
   try
   {
-    delete static_cast<F4SplitHandle*>(handle);
+    delete static_cast<GroupHandle*>(handle);
   }
   catch (const std::exception& e)
   {
@@ -95,7 +99,7 @@ extern "C" long atlas_group_kgb_size(void* handle)
       g_last_error = "atlas_group_kgb_size: null handle";
       return -1;
     }
-    auto* h = static_cast<F4SplitHandle*>(handle);
+    auto* h = static_cast<GroupHandle*>(handle);
     return static_cast<long>(h->G.KGB_size());
   }
   catch (const std::exception& e)
@@ -116,8 +120,68 @@ extern "C" long atlas_kgb_size_F4_s()
   {
     using namespace atlas;
 
-    F4SplitHandle h;
+    GroupHandle h('F', 4, 's', atlas::RealFormNbr(0));
     return static_cast<long>(h.G.KGB_size());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" void* atlas_group_new_simple(char type_letter,
+                                       int rank,
+                                       char inner_class_letter,
+                                       int rf)
+{
+  try
+  {
+    if (rank <= 0)
+    {
+      g_last_error = "atlas_group_new_simple: rank must be positive";
+      return nullptr;
+    }
+    if (rf < 0)
+    {
+      g_last_error = "atlas_group_new_simple: real form number must be >= 0";
+      return nullptr;
+    }
+
+    auto* h = new GroupHandle(type_letter,
+                              static_cast<unsigned int>(rank),
+                              inner_class_letter,
+                              atlas::RealFormNbr(static_cast<unsigned short>(rf)));
+    return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" long atlas_group_num_real_forms(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_num_real_forms: null handle";
+      return -1;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    return static_cast<long>(h->ic.numRealForms());
   }
   catch (const std::exception& e)
   {
