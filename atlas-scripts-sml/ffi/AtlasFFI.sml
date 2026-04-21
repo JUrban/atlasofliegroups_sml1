@@ -15,6 +15,10 @@ structure AtlasFFI = struct
   val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
   val atlas_param_height_sym = Foreign.getSymbol lib "atlas_param_height"
   val atlas_param_x_sym = Foreign.getSymbol lib "atlas_param_x"
+  val atlas_param_lambda_text_sym = Foreign.getSymbol lib "atlas_param_lambda_text"
+  val atlas_param_nu_text_sym = Foreign.getSymbol lib "atlas_param_nu_text"
+  val atlas_param_is_standard_sym = Foreign.getSymbol lib "atlas_param_is_standard"
+  val atlas_param_is_final_sym = Foreign.getSymbol lib "atlas_param_is_final"
   val atlas_param_new_from_lambda_nu_sym =
     Foreign.getSymbol lib "atlas_param_new_from_lambda_nu"
   val atlas_param_new_from_lambda_nu_text_sym =
@@ -22,6 +26,10 @@ structure AtlasFFI = struct
   val atlas_param_equal_sym = Foreign.getSymbol lib "atlas_param_equal"
   val atlas_param_hash_sym = Foreign.getSymbol lib "atlas_param_hash"
   val atlas_param_contragredient_sym = Foreign.getSymbol lib "atlas_param_contragredient"
+  val atlas_param_full_deform_sym = Foreign.getSymbol lib "atlas_param_full_deform"
+  val atlas_ktypepol_free_sym = Foreign.getSymbol lib "atlas_ktypepol_free"
+  val atlas_ktypepol_num_terms_sym = Foreign.getSymbol lib "atlas_ktypepol_num_terms"
+  val atlas_ktypepol_term_text_sym = Foreign.getSymbol lib "atlas_ktypepol_term_text"
 
   val atlas_last_error =
     Foreign.buildCall0 (atlas_last_error_sym, (), Foreign.cString)
@@ -71,6 +79,18 @@ structure AtlasFFI = struct
   val atlas_param_x =
     Foreign.buildCall1 (atlas_param_x_sym, Foreign.cPointer, Foreign.cLong)
 
+  val atlas_param_lambda_text =
+    Foreign.buildCall1 (atlas_param_lambda_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_param_nu_text =
+    Foreign.buildCall1 (atlas_param_nu_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_param_is_standard =
+    Foreign.buildCall1 (atlas_param_is_standard_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_param_is_final =
+    Foreign.buildCall1 (atlas_param_is_final_sym, Foreign.cPointer, Foreign.cInt)
+
   val atlas_param_new_from_lambda_nu =
     Foreign.buildCall6
       ( atlas_param_new_from_lambda_nu_sym
@@ -101,4 +121,18 @@ structure AtlasFFI = struct
 
   val atlas_param_contragredient =
     Foreign.buildCall1 (atlas_param_contragredient_sym, Foreign.cPointer, Foreign.cPointer)
+
+  type ktypepol = Foreign.Memory.voidStar
+
+  val atlas_param_full_deform =
+    Foreign.buildCall1 (atlas_param_full_deform_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_ktypepol_free =
+    Foreign.buildCall1 (atlas_ktypepol_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_ktypepol_num_terms =
+    Foreign.buildCall1 (atlas_ktypepol_num_terms_sym, Foreign.cPointer, Foreign.cLong)
+
+  val atlas_ktypepol_term_text =
+    Foreign.buildCall2 (atlas_ktypepol_term_text_sym, (Foreign.cPointer, Foreign.cLong), Foreign.cString)
 end

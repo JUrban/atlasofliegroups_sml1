@@ -13,12 +13,26 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "repr.h"
+#include "K_repr.h"
 
 static thread_local std::string g_last_error;
+static thread_local std::string g_last_result;
+
+namespace atlas {
+namespace interpreter {
+void check_interrupt() {}
+} // namespace interpreter
+} // namespace atlas
 
 extern "C" const char* atlas_last_error()
 {
   return g_last_error.c_str();
+}
+
+static const char* store_result(std::string s)
+{
+  g_last_result = std::move(s);
+  return g_last_result.c_str();
 }
 
 static atlas::int_Matrix identity_matrix(unsigned int n)
@@ -39,6 +53,7 @@ struct GroupHandle
   atlas::WeightInvolution di;
   atlas::innerclass::InnerClass ic;
   atlas::realredgp::RealReductiveGroup G;
+  std::unique_ptr<atlas::repr::Rep_table> rt;
 
   GroupHandle(char type_letter,
               unsigned int rank,
@@ -56,7 +71,10 @@ struct GroupHandle
       }())
     , ic(prd, di)
     , G(ic, rf)
-  {}
+    , rt()
+  {
+    rt = std::make_unique<atlas::repr::Rep_table>(G);
+  }
 };
 
 struct ParamHandle
@@ -66,6 +84,16 @@ struct ParamHandle
 
   ParamHandle(GroupHandle* group, atlas::repr::StandardRepr&& sr)
     : group(group), sr(std::move(sr))
+  {}
+};
+
+struct KTypePolHandle
+{
+  GroupHandle* group; // non-owning
+  atlas::K_repr::K_type_pol poly;
+
+  KTypePolHandle(GroupHandle* group, atlas::K_repr::K_type_pol&& poly)
+    : group(group), poly(std::move(poly))
   {}
 };
 } // namespace
@@ -301,6 +329,89 @@ extern "C" void atlas_param_free(void* param_handle)
   }
 }
 
+extern "C" const char* atlas_param_lambda_text(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_lambda_text: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_lambda_text: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    const auto& rd = rc.root_datum();
+    const auto rank = rc.rank();
+    atlas::RatWeight rho = atlas::rootdata::rho(rd);
+
+    const atlas::Weight lambda_rho = rc.lambda_rho(p->sr);
+    atlas::RatWeight lambda(lambda_rho, 1);
+    lambda += rho;
+    lambda.normalize();
+
+    std::ostringstream out;
+    out << lambda.denominator();
+    const auto& num = lambda.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_param_nu_text(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_nu_text: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_nu_text: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    const auto rank = rc.rank();
+    atlas::RatWeight nu = rc.nu(p->sr);
+    nu.normalize();
+
+    std::ostringstream out;
+    out << nu.denominator();
+    const auto& num = nu.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_param_height(void* param_handle)
 {
   try
@@ -325,6 +436,66 @@ extern "C" long atlas_param_height(void* param_handle)
   }
 }
 
+extern "C" int atlas_param_is_standard(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_is_standard: null param handle";
+      return 0;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_is_standard: null group pointer in param";
+      return 0;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    return rc.is_standard(p->sr) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" int atlas_param_is_final(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_is_final: null param handle";
+      return 0;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_is_final: null group pointer in param";
+      return 0;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    return rc.is_final(p->sr) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
 extern "C" long atlas_param_x(void* param_handle)
 {
   try
@@ -346,6 +517,148 @@ extern "C" long atlas_param_x(void* param_handle)
   {
     g_last_error = "unknown C++ exception";
     return -1;
+  }
+}
+
+extern "C" void* atlas_param_full_deform(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_full_deform: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_full_deform: null group/Rep_table";
+      return nullptr;
+    }
+    auto& rt = *p->group->rt;
+
+    atlas::repr::K_type_nr_poly result;
+    auto finals = rt.finals_for(p->sr);
+    for (auto it = finals.begin(); not finals.at_end(it); ++it)
+    {
+      atlas::repr::StandardRepr sr = it->first;
+      const int mult = it->second;
+      for (auto&& term : rt.full_deformation(sr))
+      {
+        atlas::Split_integer c = term.second;
+        c *= mult;
+        result.add_term(term.first, c);
+      }
+    }
+
+    atlas::K_repr::K_type_pol poly = atlas::repr::export_K_type_pol(rt, result);
+    return static_cast<void*>(new KTypePolHandle(p->group, std::move(poly)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void atlas_ktypepol_free(void* kt_handle)
+{
+  try
+  {
+    delete static_cast<KTypePolHandle*>(kt_handle);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+  }
+}
+
+extern "C" long atlas_ktypepol_num_terms(void* kt_handle)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_num_terms: null handle";
+      return -1;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    return static_cast<long>(kt->poly.size());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_term_text: null handle";
+      return nullptr;
+    }
+    if (index < 0)
+    {
+      g_last_error = "atlas_ktypepol_term_text: negative index";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    const std::size_t i = static_cast<std::size_t>(index);
+    if (i >= kt->poly.size())
+    {
+      g_last_error = "atlas_ktypepol_term_text: index out of range";
+      return nullptr;
+    }
+
+    std::size_t cur = 0;
+    for (const auto& term : kt->poly)
+    {
+      if (cur == i)
+      {
+        const auto& t = term.first;
+        const auto& c = term.second;
+        std::ostringstream out;
+        out << c.e() << ' ' << c.s();
+        out << ' ' << static_cast<long>(t.x());
+        out << ' ' << static_cast<long>(t.height());
+        const auto& lam = t.lambda_rho();
+        for (std::size_t j = 0; j < lam.size(); ++j)
+          out << ' ' << lam[j];
+        return store_result(out.str());
+      }
+      ++cur;
+    }
+
+    g_last_error = "atlas_ktypepol_term_text: internal iteration failure";
+    return nullptr;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
   }
 }
 
