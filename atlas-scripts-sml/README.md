@@ -18,7 +18,9 @@ Files:
 - C++ wrapper: `atlas-scripts-sml/ffi/atlas_smlffi.cpp`
 - Build script: `atlas-scripts-sml/ffi/build.sh`
 - SML bindings: `atlas-scripts-sml/ffi/AtlasFFI.sml`
-- Script port: `atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml`
+- Script port (Poly/ML runner): `atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml`
+- Script port (Poly/ML compiled `main`): `atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual_main.sml`
+- Shared logic: `atlas-scripts-sml/VerifyF4FPP.sml`
 - FPP point loader: `atlas-scripts-sml/F4_FPP_points.sml`
 - Hash/set: `atlas-scripts-sml/BigUnitaryHash.sml`
 - Tests: `atlas-scripts-sml/ffi/test_kgb_size_F4_s.sml`, `atlas-scripts-sml/ffi/test_param_trivial.sml`, `atlas-scripts-sml/ffi/test_param_from_points.sml`
@@ -62,6 +64,19 @@ Notes:
 - The build script excludes `sources/io/interactive*.cpp` to avoid dependencies on the readline/input UI layer; the FFI layer should not depend on the interactive front-end.
 - The `Param` constructor used by the F4 point loader passes numerator vectors as **text** (space-separated ints) because pointer/array arguments over Poly/ML FFI were not reliable in this environment.
 - `atlas-scripts-sml/data/F4_FPP_barycenters.txt` and `atlas-scripts-sml/data/F4_FPP_lambdas.txt` are currently generated from Atlas `.at` helpers via `atlas-scripts-sml/data/gen_F4_FPP_aux_data.sh`, but the SML scripts only consume the `.txt` at runtime.
+
+Run the F4 verifier script directly with the Poly/ML REPL:
+
+```sh
+poly -q < atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml
+```
+
+Build a standalone executable with `polyc`:
+
+```sh
+polyc -o verify_f4_fpp atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual_main.sml
+./verify_f4_fpp
+```
 
 ## What still needs to happen (plan)
 
