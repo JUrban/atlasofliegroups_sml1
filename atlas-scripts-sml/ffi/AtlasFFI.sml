@@ -30,9 +30,11 @@ structure AtlasFFI = struct
   val atlas_param_hash_sym = Foreign.getSymbol lib "atlas_param_hash"
   val atlas_param_contragredient_sym = Foreign.getSymbol lib "atlas_param_contragredient"
   val atlas_param_full_deform_sym = Foreign.getSymbol lib "atlas_param_full_deform"
+  val atlas_param_c_form_irreducible_sym = Foreign.getSymbol lib "atlas_param_c_form_irreducible"
   val atlas_ktypepol_free_sym = Foreign.getSymbol lib "atlas_ktypepol_free"
   val atlas_ktypepol_num_terms_sym = Foreign.getSymbol lib "atlas_ktypepol_num_terms"
   val atlas_ktypepol_term_text_sym = Foreign.getSymbol lib "atlas_ktypepol_term_text"
+  val atlas_ktypepol_is_typewise_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_typewise_pure"
 
   val atlas_last_error =
     Foreign.buildCall0 (atlas_last_error_sym, (), Foreign.cString)
@@ -139,6 +141,9 @@ structure AtlasFFI = struct
   val atlas_param_full_deform =
     Foreign.buildCall1 (atlas_param_full_deform_sym, Foreign.cPointer, Foreign.cPointer)
 
+  val atlas_param_c_form_irreducible =
+    Foreign.buildCall1 (atlas_param_c_form_irreducible_sym, Foreign.cPointer, Foreign.cPointer)
+
   val atlas_ktypepol_free =
     Foreign.buildCall1 (atlas_ktypepol_free_sym, Foreign.cPointer, Foreign.cVoid)
 
@@ -147,4 +152,7 @@ structure AtlasFFI = struct
 
   val atlas_ktypepol_term_text =
     Foreign.buildCall2 (atlas_ktypepol_term_text_sym, (Foreign.cPointer, Foreign.cLong), Foreign.cString)
+
+  val atlas_ktypepol_is_typewise_pure =
+    Foreign.buildCall1 (atlas_ktypepol_is_typewise_pure_sym, Foreign.cPointer, Foreign.cInt)
 end

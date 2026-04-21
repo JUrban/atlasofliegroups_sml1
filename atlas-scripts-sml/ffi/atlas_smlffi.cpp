@@ -14,6 +14,7 @@
 #include "realredgp.h"
 #include "repr.h"
 #include "K_repr.h"
+#include "alcoves.h"
 
 static thread_local std::string g_last_error;
 static thread_local std::string g_last_result;
@@ -412,6 +413,25 @@ extern "C" const char* atlas_param_nu_text(void* p_handle)
   }
 }
 
+static atlas::K_repr::K_type_pol full_deform_stdrep(atlas::repr::Rep_table& rt,
+                                                    const atlas::repr::StandardRepr& sr_in)
+{
+  atlas::repr::K_type_nr_poly result;
+  auto finals = rt.finals_for(sr_in);
+  for (auto it = finals.begin(); not finals.at_end(it); ++it)
+  {
+    atlas::repr::StandardRepr sr = it->first;
+    const int mult = it->second;
+    for (auto&& term : rt.full_deformation(sr))
+    {
+      atlas::Split_integer c = term.second;
+      c *= mult;
+      result.add_term(term.first, c);
+    }
+  }
+  return atlas::repr::export_K_type_pol(rt, result);
+}
+
 extern "C" long atlas_param_height(void* param_handle)
 {
   try
@@ -635,21 +655,7 @@ extern "C" void* atlas_param_full_deform(void* p_handle)
     }
     auto& rt = *p->group->rt;
 
-    atlas::repr::K_type_nr_poly result;
-    auto finals = rt.finals_for(p->sr);
-    for (auto it = finals.begin(); not finals.at_end(it); ++it)
-    {
-      atlas::repr::StandardRepr sr = it->first;
-      const int mult = it->second;
-      for (auto&& term : rt.full_deformation(sr))
-      {
-        atlas::Split_integer c = term.second;
-        c *= mult;
-        result.add_term(term.first, c);
-      }
-    }
-
-    atlas::K_repr::K_type_pol poly = atlas::repr::export_K_type_pol(rt, result);
+    atlas::K_repr::K_type_pol poly = full_deform_stdrep(rt, p->sr);
     return static_cast<void*>(new KTypePolHandle(p->group, std::move(poly)));
   }
   catch (const std::exception& e)
@@ -661,6 +667,101 @@ extern "C" void* atlas_param_full_deform(void* p_handle)
   {
     g_last_error = "unknown C++ exception";
     return nullptr;
+  }
+}
+
+extern "C" void* atlas_param_c_form_irreducible(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_c_form_irreducible: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_c_form_irreducible: null group/Rep_table";
+      return nullptr;
+    }
+    auto& rt = *p->group->rt;
+
+    if (!rt.is_standard(p->sr))
+    {
+      g_last_error = "atlas_param_c_form_irreducible: parameter not standard";
+      return nullptr;
+    }
+    if (!rt.is_final(p->sr))
+    {
+      g_last_error = "atlas_param_c_form_irreducible: parameter not final (needed for KL_sum_at_s)";
+      return nullptr;
+    }
+
+    const unsigned int ori_p = rt.orientation_number(p->sr);
+    atlas::repr::SR_poly kl = rt.KL_column_at_s(p->sr);
+
+    atlas::K_repr::K_type_pol result;
+    for (const auto& term : kl)
+    {
+      atlas::Split_integer c = term.second;
+      const auto& q = term.first;
+      const unsigned int ori_q = rt.orientation_number(q);
+      const unsigned int d = (ori_p - ori_q) & 3u;
+      if (d == 2u)
+        c = c.times_s();
+      else if (d != 0u)
+      {
+        g_last_error = "atlas_param_c_form_irreducible: odd orientation difference";
+        return nullptr;
+      }
+
+      atlas::repr::StandardRepr qc = atlas::weyl::alcove_center(rt, q);
+      atlas::K_repr::K_type_pol cfq = full_deform_stdrep(rt, qc);
+      result.add_multiple(std::move(cfq), c);
+    }
+
+    return static_cast<void*>(new KTypePolHandle(p->group, std::move(result)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" int atlas_ktypepol_is_typewise_pure(void* kt_handle)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_is_typewise_pure: null handle";
+      return 0;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    for (const auto& term : kt->poly)
+    {
+      const auto& c = term.second;
+      if (!(c.e() == 0 || c.s() == 0))
+        return 0;
+    }
+    return 1;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
   }
 }
 
