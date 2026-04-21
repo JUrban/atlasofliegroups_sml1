@@ -21,6 +21,18 @@ structure BigUnitaryHash = struct
   fun memberInBucket (p: param) (ps: param list) =
     List.exists (fn q => AtlasFFI.atlas_param_equal (p, q) = 1) ps
 
+  fun contains ({buckets, ...}: t) (p: param) =
+    let
+      val bs = !buckets
+      val m = Array.length bs
+      val h = AtlasFFI.atlas_param_hash (p, m)
+      val idx =
+        if h < 0 then raise Fail ("BigUnitaryHash.contains: hash failed: " ^ AtlasFFI.atlas_last_error ())
+        else h
+    in
+      memberInBucket p (Array.sub (bs, idx))
+    end
+
   fun insert ({buckets, count}: t) (p: param) =
     let
       val bs = !buckets
@@ -47,4 +59,3 @@ structure BigUnitaryHash = struct
       clear t
     end
 end
-

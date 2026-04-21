@@ -21,6 +21,7 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_param_new_from_lambda_nu_text"
   val atlas_param_equal_sym = Foreign.getSymbol lib "atlas_param_equal"
   val atlas_param_hash_sym = Foreign.getSymbol lib "atlas_param_hash"
+  val atlas_param_contragredient_sym = Foreign.getSymbol lib "atlas_param_contragredient"
 
   val atlas_last_error =
     Foreign.buildCall0 (atlas_last_error_sym, (), Foreign.cString)
@@ -97,4 +98,7 @@ structure AtlasFFI = struct
       , (Foreign.cPointer, Foreign.cLong)
       , Foreign.cLong
       )
+
+  val atlas_param_contragredient =
+    Foreign.buildCall1 (atlas_param_contragredient_sym, Foreign.cPointer, Foreign.cPointer)
 end

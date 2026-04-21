@@ -493,6 +493,81 @@ extern "C" long atlas_param_hash(void* p_handle, long modulus)
   }
 }
 
+extern "C" void* atlas_param_contragredient(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_contragredient: null param handle";
+      return nullptr;
+    }
+
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_contragredient: null group pointer in param";
+      return nullptr;
+    }
+
+    auto* g = p->group;
+    atlas::repr::Rep_context rc(g->G);
+    const auto& rd = rc.root_datum();
+    const auto& W = rc.Weyl_group();
+    const auto w0 = W.longest();
+    const auto ww = W.word(w0);
+
+    atlas::RatWeight rho = atlas::rootdata::rho(rd);
+
+    const atlas::Weight lambda_rho = rc.lambda_rho(p->sr);
+    atlas::RatWeight lambda(lambda_rho, 1);
+    lambda += rho;
+
+    atlas::RatWeight nu = rc.nu(p->sr);
+
+    rd.act(ww, lambda);
+    rd.act(ww, nu);
+    lambda.negate();
+    nu.negate();
+
+    atlas::RatWeight lam_minus_rho = lambda - rho;
+    lam_minus_rho.normalize();
+    if (lam_minus_rho.denominator() != 1)
+    {
+      g_last_error = "atlas_param_contragredient: lambda-rho not integral";
+      return nullptr;
+    }
+
+    const auto& num = lam_minus_rho.numerator();
+    const auto rank = rc.rank();
+    atlas::Weight lambda_rho2(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const auto v = num[i];
+      if (v < std::numeric_limits<int>::min() || v > std::numeric_limits<int>::max())
+      {
+        g_last_error = "atlas_param_contragredient: lambda-rho entry out of int range";
+        return nullptr;
+      }
+      lambda_rho2[i] = static_cast<int>(v);
+    }
+
+    const atlas::KGBElt x2 = rc.kgb().cross(ww, p->sr.x());
+    atlas::repr::StandardRepr sr2 = rc.sr(x2, lambda_rho2, nu);
+    return static_cast<void*>(new ParamHandle(g, std::move(sr2)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 static bool parse_int32_list(const char* text, std::size_t n, std::vector<int32_t>& out)
 {
   if (text == nullptr)
