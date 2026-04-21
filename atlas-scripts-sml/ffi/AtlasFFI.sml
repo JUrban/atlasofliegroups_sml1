@@ -19,6 +19,9 @@ structure AtlasFFI = struct
   val atlas_param_nu_text_sym = Foreign.getSymbol lib "atlas_param_nu_text"
   val atlas_param_is_standard_sym = Foreign.getSymbol lib "atlas_param_is_standard"
   val atlas_param_is_final_sym = Foreign.getSymbol lib "atlas_param_is_final"
+  val atlas_param_twist_sym = Foreign.getSymbol lib "atlas_param_twist"
+  val atlas_param_equivalent_sym = Foreign.getSymbol lib "atlas_param_equivalent"
+  val atlas_param_is_hermitian_sym = Foreign.getSymbol lib "atlas_param_is_hermitian"
   val atlas_param_new_from_lambda_nu_sym =
     Foreign.getSymbol lib "atlas_param_new_from_lambda_nu"
   val atlas_param_new_from_lambda_nu_text_sym =
@@ -90,6 +93,15 @@ structure AtlasFFI = struct
 
   val atlas_param_is_final =
     Foreign.buildCall1 (atlas_param_is_final_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_param_twist =
+    Foreign.buildCall1 (atlas_param_twist_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_param_equivalent =
+    Foreign.buildCall2 (atlas_param_equivalent_sym, (Foreign.cPointer, Foreign.cPointer), Foreign.cInt)
+
+  val atlas_param_is_hermitian =
+    Foreign.buildCall1 (atlas_param_is_hermitian_sym, Foreign.cPointer, Foreign.cInt)
 
   val atlas_param_new_from_lambda_nu =
     Foreign.buildCall6

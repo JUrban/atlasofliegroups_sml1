@@ -3,6 +3,17 @@ use "atlas-scripts-sml/BigUnitaryHash.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 
 structure FPP_globalDirac = struct
+  fun verify_all_hermitian (hash: BigUnitaryHash.t) : unit =
+    let
+      val ps = BigUnitaryHash.list hash
+      val bad = List.filter (fn p => AtlasFFI.atlas_param_is_hermitian p <> 1) ps
+    in
+      if null bad then
+        if !FPPFlags.final_verbose then TextIO.print "hermitian check: OK\n" else ()
+      else
+        raise Fail ("hermitian check: non-hermitian params: " ^ Int.toString (length bad))
+    end
+
   fun verify_unitary_dual (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
@@ -35,6 +46,7 @@ structure FPP_globalDirac = struct
           TextIO.print "FPP_unitary_hash_bottom_layer: starting\n"
         else
           ()
+      val () = verify_all_hermitian hash
       val () = verify_unitary_dual hash
       val () =
         if !FPPFlags.final_verbose then

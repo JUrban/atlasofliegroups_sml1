@@ -496,6 +496,104 @@ extern "C" int atlas_param_is_final(void* p_handle)
   }
 }
 
+extern "C" void* atlas_param_twist(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_twist: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_twist: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    atlas::repr::StandardRepr sr2 = rc.inner_twisted(p->sr);
+    return static_cast<void*>(new ParamHandle(p->group, std::move(sr2)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" int atlas_param_equivalent(void* a_handle, void* b_handle)
+{
+  try
+  {
+    if (a_handle == nullptr || b_handle == nullptr)
+    {
+      g_last_error = "atlas_param_equivalent: null param handle";
+      return 0;
+    }
+    const auto* a = static_cast<const ParamHandle*>(a_handle);
+    const auto* b = static_cast<const ParamHandle*>(b_handle);
+    if (a->group == nullptr || b->group == nullptr)
+    {
+      g_last_error = "atlas_param_equivalent: null group pointer in param";
+      return 0;
+    }
+    if (a->group != b->group)
+    {
+      g_last_error = "atlas_param_equivalent: params belong to different groups";
+      return 0;
+    }
+    atlas::repr::Rep_context rc(a->group->G);
+    return rc.equivalent(a->sr, b->sr) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" int atlas_param_is_hermitian(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_is_hermitian: null param handle";
+      return 0;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_is_hermitian: null group pointer in param";
+      return 0;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    atlas::repr::StandardRepr tw = rc.inner_twisted(p->sr);
+    return rc.equivalent(tw, p->sr) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
 extern "C" long atlas_param_x(void* param_handle)
 {
   try
