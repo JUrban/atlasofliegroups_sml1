@@ -1,6 +1,8 @@
 #include <exception>
 #include <memory>
 #include <string>
+#include <cstdint>
+#include <limits>
 
 #include "Atlas.h"
 #include "lietype.h"
@@ -277,5 +279,118 @@ extern "C" long atlas_param_height(void* param_handle)
   {
     g_last_error = "unknown C++ exception";
     return -1;
+  }
+}
+
+extern "C" long atlas_param_x(void* param_handle)
+{
+  try
+  {
+    if (param_handle == nullptr)
+    {
+      g_last_error = "atlas_param_x: null param handle";
+      return -1;
+    }
+    auto* p = static_cast<ParamHandle*>(param_handle);
+    return static_cast<long>(p->sr.x());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+static atlas::RatWeight ratweight_from_int32(const int32_t* nums,
+                                             std::size_t n,
+                                             int denom)
+{
+  using Numer = atlas::arithmetic::Numer_t;
+  atlas::matrix::Vector<Numer> v(n);
+  for (std::size_t i = 0; i < n; ++i)
+    v[i] = static_cast<Numer>(nums[i]);
+  return atlas::RatWeight(v, static_cast<Numer>(denom));
+}
+
+extern "C" void* atlas_param_new_from_lambda_nu(void* group_handle,
+                                               int x,
+                                               int lambda_denom,
+                                               const int32_t* lambda_nums,
+                                               int nu_denom,
+                                               const int32_t* nu_nums)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu: null group handle";
+      return nullptr;
+    }
+    if (lambda_nums == nullptr || nu_nums == nullptr)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu: null vector pointer";
+      return nullptr;
+    }
+    if (lambda_denom == 0 || nu_denom == 0)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu: zero denominator";
+      return nullptr;
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+
+    if (x < 0 || static_cast<unsigned int>(x) >= g->G.KGB_size())
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu: invalid KGB index";
+      return nullptr;
+    }
+
+    atlas::RatWeight lambda = ratweight_from_int32(lambda_nums, rank, lambda_denom);
+    atlas::RatWeight nu = ratweight_from_int32(nu_nums, rank, nu_denom);
+
+    atlas::RatWeight rho = atlas::rootdata::rho(rc.root_datum());
+    atlas::RatWeight lam_minus_rho = lambda - rho;
+    lam_minus_rho.normalize();
+
+    if (lam_minus_rho.denominator() != 1)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu: lambda-rho not integral";
+      return nullptr;
+    }
+
+    const auto& num = lam_minus_rho.numerator();
+    atlas::Weight lambda_rho(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const auto v = num[i];
+      if (v < std::numeric_limits<int>::min() || v > std::numeric_limits<int>::max())
+      {
+        g_last_error = "atlas_param_new_from_lambda_nu: lambda-rho entry out of int range";
+        return nullptr;
+      }
+      lambda_rho[i] = static_cast<int>(v);
+    }
+
+    atlas::repr::StandardRepr sr =
+      rc.sr(static_cast<atlas::KGBElt>(x), lambda_rho, nu);
+
+    return static_cast<void*>(new ParamHandle(g, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
   }
 }
