@@ -8,14 +8,20 @@ As a first step, there is now a working Poly/ML FFI proof-of-concept that:
 
 - Builds a small C ABI wrapper as a shared library (`.so`) linked against Atlas C++ object code.
 - Calls into that shared library from SML using Poly/ML’s `Foreign` interface.
-- Constructs Atlas groups from SML (currently “single simple factor” only) and computes `KGB_size(F4_s) = 229`, matching the `atlas` interpreter.
+- Constructs Atlas groups from SML (currently “single simple factor” only).
+- Constructs Atlas parameters from SML (from `(x,lambda,nu)` data).
+- Loads `atlas-scripts-sml/data/F4_FPP_points.txt` and reproduces the expected `1864` “big unitary hash” size for `F4_s`.
+- Verifies the set is closed under contragredient (unitary dual) via a C++ helper.
 
 Files:
 
 - C++ wrapper: `atlas-scripts-sml/ffi/atlas_smlffi.cpp`
 - Build script: `atlas-scripts-sml/ffi/build.sh`
 - SML bindings: `atlas-scripts-sml/ffi/AtlasFFI.sml`
-- Test: `atlas-scripts-sml/ffi/test_kgb_size_F4_s.sml`
+- Script port: `atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml`
+- FPP point loader: `atlas-scripts-sml/F4_FPP_points.sml`
+- Hash/set: `atlas-scripts-sml/BigUnitaryHash.sml`
+- Tests: `atlas-scripts-sml/ffi/test_kgb_size_F4_s.sml`, `atlas-scripts-sml/ffi/test_param_trivial.sml`, `atlas-scripts-sml/ffi/test_param_from_points.sml`
 
 ## How it works
 
@@ -54,6 +60,7 @@ Notes:
 - The build uses `-fPIC` and links a `.so`.
 - The build uses `-std=gnu++14` because this codebase currently fails to compile cleanly under newer language modes with newer libstdc++ in this environment.
 - The build script excludes `sources/io/interactive*.cpp` to avoid dependencies on the readline/input UI layer; the FFI layer should not depend on the interactive front-end.
+- The `Param` constructor used by the F4 point loader passes numerator vectors as **text** (space-separated ints) because pointer/array arguments over Poly/ML FFI were not reliable in this environment.
 
 ## What still needs to happen (plan)
 
@@ -61,16 +68,11 @@ The `.at` scripts you care about (e.g. `script_to_verify_F4_FPP_unitary_dual.at`
 
 Next steps:
 
-1. **General group construction**
-   - Replace the hardcoded `F4_s` constructor with an API that can construct groups by name/type (at least the cases used by the scripts being ported).
-2. **Value representation API**
-   - Add C ABI constructors/accessors for the core objects the scripts manipulate (e.g. rational vectors, parameters, KGB elements) using opaque handles.
-3. **Minimal computational surface for the F4 FPP verifier**
-   - Expose enough C++ operations to:
-     - enumerate `KGB(G)` (or at least index into it)
-     - construct parameters from `(x, lambda, nu)`
-     - run whatever “unitarity test” corresponds to `is_unitary` / Dirac machinery in the script library (if there is a C++ equivalent; otherwise port the algorithm).
-4. **Port the `.at` library pieces that don’t exist in C++**
-   - Re-implement the needed `big_unitary_hash`/FPP workflows in SML (data structures + algorithms), backed by the C++ primitives above.
+1. **Translate more `.at` library code into SML**
+   - Port the minimum subset of `FPP_globalDirac.at`/friends needed beyond the current contragredient check.
+2. **Replace remaining script-level primitives**
+   - Implement or bind enough operations for `FPP_barycenters`, `FPP_lambdas`, and an `is_unitary` test so we can run the full verifier logic without `.at`.
+3. **Stabilise the FFI surface**
+   - Keep the C ABI small: prefer “one high-level operation” wrappers (e.g. contragredient) to large low-level APIs, and keep avoiding pointer/array args unless we can make them reliable.
 
 The intent is to keep the C ABI small and stable, and do the bulk of “script logic” in SML.
