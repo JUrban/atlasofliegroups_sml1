@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/BigUnitaryHash.sml";
+use "atlas-scripts-sml/F4_FPP_lambdas.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 
 structure FPP_globalDirac = struct
@@ -17,6 +18,52 @@ structure FPP_globalDirac = struct
            ^ Int.toString (length nonStandard)
            ^ " nonFinal="
            ^ Int.toString (length nonFinal))
+    end
+
+  fun verify_F4_points_lambdas_ok (g: AtlasFFI.group, hash: BigUnitaryHash.t) : unit =
+    let
+      val kgbSize = AtlasFFI.atlas_group_kgb_size g
+    in
+      if kgbSize <> 229 then
+        ()
+      else
+        let
+          fun rvText ({numsText, denom}: {numsText: string, denom: int}) = Int.toString denom ^ " " ^ numsText
+
+          val lambdasByX = F4_FPP_lambdas.load kgbSize
+          val lambdaTextsByX =
+            Array.tabulate
+              ( kgbSize
+              , fn x => List.map rvText (Array.sub (lambdasByX, x))
+              )
+
+          val ps = BigUnitaryHash.list hash
+
+          fun checkOne p =
+            let
+              val x = AtlasFFI.atlas_param_x p
+              val lam = AtlasFFI.atlas_param_lambda_text p
+              val () =
+                if x < 0 orelse x >= kgbSize then
+                  raise Fail ("F4 aux check: x out of range: " ^ Int.toString x)
+                else
+                  ()
+              val okLam = List.exists (fn s => s = lam) (Array.sub (lambdaTextsByX, x))
+            in
+              if okLam then
+                ()
+              else
+                raise Fail
+                  ("F4 aux check failed: x="
+                   ^ Int.toString x
+                   ^ " lambda not in FPP_lambdas table: "
+                   ^ lam)
+            end
+
+          val () = List.app checkOne ps
+        in
+          if !FPPFlags.final_verbose then TextIO.print "F4 lambda-table check: OK\n" else ()
+        end
     end
 
   fun verify_all_twist_equivalent (hash: BigUnitaryHash.t) : unit =
@@ -109,7 +156,7 @@ structure FPP_globalDirac = struct
         raise Fail ("unitary_dual check: missing contragredients: " ^ Int.toString (length missing))
     end
 
-  fun FPP_unitary_hash_bottom_layer (_: AtlasFFI.group, hash: BigUnitaryHash.t) : unit =
+  fun FPP_unitary_hash_bottom_layer (g: AtlasFFI.group, hash: BigUnitaryHash.t) : unit =
     let
       val () =
         if !FPPFlags.final_verbose then
@@ -117,6 +164,7 @@ structure FPP_globalDirac = struct
         else
           ()
       val () = verify_all_standard_final hash
+      val () = verify_F4_points_lambdas_ok (g, hash)
       val () = verify_all_twist_equivalent hash
       val () = verify_all_hermitian hash
       val () =

@@ -26,6 +26,31 @@ CXXFLAGS=(
   "${INCLUDES[@]}"
 )
 
+ensure_cweb_sources() {
+  local io_dir="$ROOT_DIR/sources/io"
+  local w="$io_dir/filekl.w"
+  local need=0
+  for f in filekl.cpp filekl.h filekl_in.cpp filekl_in.h; do
+    if [[ ! -f "$io_dir/$f" ]]; then
+      need=1
+    fi
+  done
+  if [[ $need -eq 1 ]]; then
+    if [[ ! -f "$w" ]]; then
+      echo "Missing $w; cannot generate filekl sources." >&2
+      exit 1
+    fi
+    if ! command -v ctangle >/dev/null 2>&1; then
+      echo "ctangle not found; cannot generate filekl sources." >&2
+      exit 1
+    fi
+    echo "Generating sources/io/filekl*.{cpp,h} from filekl.w via ctangle..."
+    (cd "$io_dir" && ctangle filekl.w >/dev/null)
+  fi
+}
+
+ensure_cweb_sources
+
 echo "Compiling Atlas core (utilities/structure/error) as PIC objects..."
 
 compile_dir() {
