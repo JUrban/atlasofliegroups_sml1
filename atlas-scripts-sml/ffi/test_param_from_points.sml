@@ -11,7 +11,14 @@ fun parseInts s =
   end
 
 fun intToCText n =
-  if n < 0 then "-" ^ Int.toString (~n) else Int.toString n
+  let
+    val s = Int.toString n
+  in
+    if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+      "-" ^ String.extract (s, 1, NONE)
+    else
+      s
+  end
 
 fun intsToText xs =
   String.concatWith " " (List.map intToCText xs)

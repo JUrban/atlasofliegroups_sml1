@@ -19,7 +19,6 @@ Files:
 - Build script: `atlas-scripts-sml/ffi/build.sh`
 - SML bindings: `atlas-scripts-sml/ffi/AtlasFFI.sml`
 - Script port: `atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml`
-- Partial/simple port: `atlas-scripts-sml/simpler_script_to_verify_F4_FPP_unitary_dual.sml` (defaults to not running the full sweep)
 - FPP point loader: `atlas-scripts-sml/F4_FPP_points.sml`
 - Hash/set: `atlas-scripts-sml/BigUnitaryHash.sml`
 - Tests: `atlas-scripts-sml/ffi/test_kgb_size_F4_s.sml`, `atlas-scripts-sml/ffi/test_param_trivial.sml`, `atlas-scripts-sml/ffi/test_param_from_points.sml`

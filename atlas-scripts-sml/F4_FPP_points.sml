@@ -24,7 +24,14 @@ structure F4_FPP_points = struct
     end
 
   fun intToCText n =
-    if n < 0 then "-" ^ Int.toString (~n) else Int.toString n
+    let
+      val s = Int.toString n
+    in
+      if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+        "-" ^ String.extract (s, 1, NONE)
+      else
+        s
+    end
 
   fun intsToText xs =
     String.concatWith " " (List.map intToCText xs)
@@ -37,6 +44,8 @@ structure F4_FPP_points = struct
         (case ns of
            [x, lamDen, l1, l2, l3, l4, nuDen, n1, n2, n3, n4] =>
              let
+               val expectedLam = Int.toString lamDen ^ " " ^ intsToText [l1, l2, l3, l4]
+               val expectedNu = Int.toString nuDen ^ " " ^ intsToText [n1, n2, n3, n4]
                val p =
                  AtlasFFI.atlas_param_new_from_lambda_nu_text
                    ( g
@@ -50,9 +59,28 @@ structure F4_FPP_points = struct
                if p = Foreign.Memory.null then
                  raise Fail ("F4_FPP_points: param construction failed: " ^ AtlasFFI.atlas_last_error ())
                else
-                 (if BigUnitaryHash.insert hash p
-                  then ()
-                  else AtlasFFI.atlas_param_free p)
+                 let
+                   val gotX = AtlasFFI.atlas_param_x p
+                   val gotLam = AtlasFFI.atlas_param_lambda_text p
+                   val gotNu = AtlasFFI.atlas_param_nu_text p
+                   val () =
+                     if gotX <> x then
+                       raise Fail ("F4_FPP_points: x mismatch: expected=" ^ Int.toString x ^ " got=" ^ Int.toString gotX)
+                     else
+                       ()
+                   val () =
+                     if gotLam <> expectedLam then
+                       raise Fail ("F4_FPP_points: lambda mismatch: expected=" ^ expectedLam ^ " got=" ^ gotLam)
+                     else
+                       ()
+                   val () =
+                     if gotNu <> expectedNu then
+                       raise Fail ("F4_FPP_points: nu mismatch: expected=" ^ expectedNu ^ " got=" ^ gotNu)
+                     else
+                       ()
+                 in
+                   if BigUnitaryHash.insert hash p then () else AtlasFFI.atlas_param_free p
+                 end
              end
          | _ => raise Fail "F4_FPP_points: unexpected row length")
 
