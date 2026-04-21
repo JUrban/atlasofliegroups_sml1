@@ -8,7 +8,7 @@ As a first step, there is now a working Poly/ML FFI proof-of-concept that:
 
 - Builds a small C ABI wrapper as a shared library (`.so`) linked against Atlas C++ object code.
 - Calls into that shared library from SML using Poly/ML’s `Foreign` interface.
-- Computes `KGB_size(F4_s) = 229`, matching the `atlas` interpreter.
+- Constructs Atlas groups from SML (currently “single simple factor” only) and computes `KGB_size(F4_s) = 229`, matching the `atlas` interpreter.
 
 Files:
 
@@ -25,7 +25,9 @@ Poly/ML can call C functions from shared libraries. Atlas is C++ and exposes C++
 - Hide C++ objects behind opaque `void*` handles (allocated/freed in C++).
 - Provide `atlas_last_error()` to return a thread-local error string when C++ throws.
 
-The initial handle type is a hardcoded “`F4_s` group” (`atlas_group_new_F4_s`), just to validate the end-to-end toolchain.
+The initial handle type started out as a hardcoded “`F4_s` group”, but it is now generalized to:
+
+- `atlas_group_new_simple(typeLetter, rank, innerClassLetter, realFormNbr)`
 
 ## Build & run
 
@@ -72,4 +74,3 @@ Next steps:
    - Re-implement the needed `big_unitary_hash`/FPP workflows in SML (data structures + algorithms), backed by the C++ primitives above.
 
 The intent is to keep the C ABI small and stable, and do the bulk of “script logic” in SML.
-
