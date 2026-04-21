@@ -39,6 +39,7 @@ structure F4_FPP_points = struct
   fun loadInto (g: AtlasFFI.group, (hash: BigUnitaryHash.t)) =
     let
       val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_points.txt"
+      val rows = ref 0
 
       fun handleRow ns =
         (case ns of
@@ -60,6 +61,7 @@ structure F4_FPP_points = struct
                  raise Fail ("F4_FPP_points: param construction failed: " ^ AtlasFFI.atlas_last_error ())
                else
                  let
+                   val () = rows := !rows + 1
                    val gotX = AtlasFFI.atlas_param_x p
                    val gotLam = AtlasFFI.atlas_param_lambda_text p
                    val gotNu = AtlasFFI.atlas_param_nu_text p
@@ -79,7 +81,11 @@ structure F4_FPP_points = struct
                      else
                        ()
                  in
-                   if BigUnitaryHash.insert hash p then () else AtlasFFI.atlas_param_free p
+                   if BigUnitaryHash.insert hash p then
+                     ()
+                   else
+                     (AtlasFFI.atlas_param_free p;
+                      raise Fail ("F4_FPP_points: duplicate parameter in data file at row " ^ Int.toString (!rows)))
                  end
              end
          | _ => raise Fail "F4_FPP_points: unexpected row length")

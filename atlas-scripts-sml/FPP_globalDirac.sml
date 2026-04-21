@@ -62,7 +62,10 @@ structure FPP_globalDirac = struct
 
           val () = List.app checkOne ps
         in
-          if !FPPFlags.final_verbose then TextIO.print "F4 lambda-table check: OK\n" else ()
+          if !FPPFlags.final_verbose then
+            TextIO.print "F4 lambda-table check: OK\n"
+          else
+            ()
         end
     end
 
