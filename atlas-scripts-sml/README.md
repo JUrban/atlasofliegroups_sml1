@@ -11,7 +11,7 @@ As a first step, there is now a working Poly/ML FFI proof-of-concept that:
 - Constructs Atlas groups from SML (currently “single simple factor” only).
 - Constructs Atlas parameters from SML (from `(x,lambda,nu)` data).
 - Loads `atlas-scripts-sml/data/F4_FPP_points.txt` and reproduces the expected `1864` “big unitary hash” size for `F4_s`.
-- Verifies the set is closed under contragredient (unitary dual) via a C++ helper.
+- Verifies the set is hermitian, twist-equivalent, unitary (equal-rank c-form), and closed under contragredient (unitary dual).
 
 Files:
 
