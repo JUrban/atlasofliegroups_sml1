@@ -765,6 +765,11 @@ extern "C" int atlas_ktypepol_is_typewise_pure(void* kt_handle)
   }
 }
 
+extern "C" int atlas_ktypepol_is_pure(void* kt_handle)
+{
+  return atlas_ktypepol_is_typewise_pure(kt_handle);
+}
+
 extern "C" void atlas_ktypepol_free(void* kt_handle)
 {
   try
@@ -858,6 +863,82 @@ extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
   {
     g_last_error = "unknown C++ exception";
     return nullptr;
+  }
+}
+
+extern "C" int atlas_param_is_unitary_c_form(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_is_unitary_c_form: null param handle";
+      return 0;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_is_unitary_c_form: null group/Rep_table";
+      return 0;
+    }
+
+    auto& rt = *p->group->rt;
+
+    atlas::repr::StandardRepr tw = rt.inner_twisted(p->sr);
+    if (!rt.equivalent(tw, p->sr))
+      return 0; // not hermitian => not unitary
+
+    if (!rt.is_standard(p->sr))
+    {
+      g_last_error = "atlas_param_is_unitary_c_form: parameter not standard";
+      return 0;
+    }
+    if (!rt.is_final(p->sr))
+    {
+      g_last_error = "atlas_param_is_unitary_c_form: parameter not final";
+      return 0;
+    }
+
+    const unsigned int ori_p = rt.orientation_number(p->sr);
+    atlas::repr::SR_poly kl = rt.KL_column_at_s(p->sr);
+
+    atlas::K_repr::K_type_pol result;
+    for (const auto& term : kl)
+    {
+      atlas::Split_integer c = term.second;
+      const auto& q = term.first;
+      const unsigned int ori_q = rt.orientation_number(q);
+      const unsigned int d = (ori_p - ori_q) & 3u;
+      if (d == 2u)
+        c = c.times_s();
+      else if (d != 0u)
+      {
+        g_last_error = "atlas_param_is_unitary_c_form: odd orientation difference";
+        return 0;
+      }
+
+      atlas::repr::StandardRepr qc = atlas::weyl::alcove_center(rt, q);
+      atlas::K_repr::K_type_pol cfq = full_deform_stdrep(rt, qc);
+      result.add_multiple(std::move(cfq), c);
+    }
+
+    for (const auto& t : result)
+    {
+      const auto& c = t.second;
+      if (!(c.e() == 0 || c.s() == 0))
+        return 0;
+    }
+    return 1;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
   }
 }
 
