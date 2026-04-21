@@ -8,6 +8,7 @@
 #include "rootdata.h"
 #include "innerclass.h"
 #include "realredgp.h"
+#include "repr.h"
 
 static thread_local std::string g_last_error;
 
@@ -51,6 +52,16 @@ struct GroupHandle
       }())
     , ic(prd, di)
     , G(ic, rf)
+  {}
+};
+
+struct ParamHandle
+{
+  GroupHandle* group; // non-owning; user must keep group alive
+  atlas::repr::StandardRepr sr;
+
+  ParamHandle(GroupHandle* group, atlas::repr::StandardRepr&& sr)
+    : group(group), sr(std::move(sr))
   {}
 };
 } // namespace
@@ -182,6 +193,80 @@ extern "C" long atlas_group_num_real_forms(void* handle)
     }
     auto* h = static_cast<GroupHandle*>(handle);
     return static_cast<long>(h->ic.numRealForms());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" void* atlas_param_trivial(void* group_handle)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_param_trivial: null group handle";
+      return nullptr;
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+
+    const auto rank = rc.rank();
+    atlas::Weight lambda_rho(rank, 0);
+    atlas::RatWeight nu = atlas::rootdata::rho(rc.root_datum());
+
+    const atlas::KGBElt x_open = static_cast<atlas::KGBElt>(g->G.KGB_size() - 1);
+    atlas::repr::StandardRepr sr = rc.sr(x_open, lambda_rho, nu);
+
+    return static_cast<void*>(new ParamHandle(g, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void atlas_param_free(void* param_handle)
+{
+  try
+  {
+    delete static_cast<ParamHandle*>(param_handle);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+  }
+}
+
+extern "C" long atlas_param_height(void* param_handle)
+{
+  try
+  {
+    if (param_handle == nullptr)
+    {
+      g_last_error = "atlas_param_height: null param handle";
+      return -1;
+    }
+    auto* p = static_cast<ParamHandle*>(param_handle);
+    return static_cast<long>(p->sr.height());
   }
   catch (const std::exception& e)
   {

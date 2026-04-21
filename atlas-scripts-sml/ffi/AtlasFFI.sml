@@ -9,6 +9,10 @@ structure AtlasFFI = struct
   val atlas_group_kgb_size_sym = Foreign.getSymbol lib "atlas_group_kgb_size"
   val atlas_group_num_real_forms_sym = Foreign.getSymbol lib "atlas_group_num_real_forms"
 
+  val atlas_param_trivial_sym = Foreign.getSymbol lib "atlas_param_trivial"
+  val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
+  val atlas_param_height_sym = Foreign.getSymbol lib "atlas_param_height"
+
   val atlas_last_error =
     Foreign.buildCall0 (atlas_last_error_sym, (), Foreign.cString)
 
@@ -35,4 +39,15 @@ structure AtlasFFI = struct
 
   val atlas_group_num_real_forms =
     Foreign.buildCall1 (atlas_group_num_real_forms_sym, Foreign.cPointer, Foreign.cLong)
+
+  type param = Foreign.Memory.voidStar
+
+  val atlas_param_trivial =
+    Foreign.buildCall1 (atlas_param_trivial_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_param_free =
+    Foreign.buildCall1 (atlas_param_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_param_height =
+    Foreign.buildCall1 (atlas_param_height_sym, Foreign.cPointer, Foreign.cLong)
 end
