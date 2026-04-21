@@ -1,8 +1,10 @@
 #include <exception>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 #include "Atlas.h"
 #include "lietype.h"
@@ -208,6 +210,47 @@ extern "C" long atlas_group_num_real_forms(void* handle)
   }
 }
 
+extern "C" int atlas_group_kgb_involution_is_minus_identity(void* group_handle, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_group_kgb_involution_is_minus_identity: null group handle";
+      return 0;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    if (x < 0 || static_cast<unsigned int>(x) >= g->G.KGB_size())
+    {
+      g_last_error = "atlas_group_kgb_involution_is_minus_identity: invalid KGB index";
+      return 0;
+    }
+    const auto& kgb = g->G.kgb();
+    const auto& m = kgb.involution_matrix(static_cast<atlas::KGBElt>(x));
+    const auto r = m.n_rows();
+    if (r != m.n_columns())
+      return 0;
+    for (unsigned int i = 0; i < r; ++i)
+      for (unsigned int j = 0; j < r; ++j)
+      {
+        const int expected = (i == j) ? -1 : 0;
+        if (m(i, j) != expected)
+          return 0;
+      }
+    return 1;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
 extern "C" void* atlas_param_trivial(void* group_handle)
 {
   try
@@ -373,6 +416,177 @@ extern "C" void* atlas_param_new_from_lambda_nu(void* group_handle,
       if (v < std::numeric_limits<int>::min() || v > std::numeric_limits<int>::max())
       {
         g_last_error = "atlas_param_new_from_lambda_nu: lambda-rho entry out of int range";
+        return nullptr;
+      }
+      lambda_rho[i] = static_cast<int>(v);
+    }
+
+    atlas::repr::StandardRepr sr =
+      rc.sr(static_cast<atlas::KGBElt>(x), lambda_rho, nu);
+
+    return static_cast<void*>(new ParamHandle(g, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" int atlas_param_equal(void* a_handle, void* b_handle)
+{
+  try
+  {
+    if (a_handle == nullptr || b_handle == nullptr)
+    {
+      g_last_error = "atlas_param_equal: null param handle";
+      return 0;
+    }
+    const auto* a = static_cast<const ParamHandle*>(a_handle);
+    const auto* b = static_cast<const ParamHandle*>(b_handle);
+    return a->sr == b->sr ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" long atlas_param_hash(void* p_handle, long modulus)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_hash: null param handle";
+      return -1;
+    }
+    if (modulus <= 0)
+    {
+      g_last_error = "atlas_param_hash: modulus must be positive";
+      return -1;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    const auto m = static_cast<std::size_t>(modulus);
+    return static_cast<long>(p->sr.hashCode(m));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+static bool parse_int32_list(const char* text, std::size_t n, std::vector<int32_t>& out)
+{
+  if (text == nullptr)
+  {
+    g_last_error = "parse_int32_list: null text";
+    return false;
+  }
+
+  std::istringstream in(text);
+  out.clear();
+  out.reserve(n);
+  for (std::size_t i = 0; i < n; ++i)
+  {
+    long long v = 0;
+    if (!(in >> v))
+    {
+      g_last_error = "parse_int32_list: too few integers";
+      return false;
+    }
+    if (v < std::numeric_limits<int32_t>::min() || v > std::numeric_limits<int32_t>::max())
+    {
+      g_last_error = "parse_int32_list: integer out of int32 range";
+      return false;
+    }
+    out.push_back(static_cast<int32_t>(v));
+  }
+  // ensure there are no extra tokens (beyond whitespace)
+  long long extra = 0;
+  if (in >> extra)
+  {
+    g_last_error = "parse_int32_list: too many integers";
+    return false;
+  }
+  return true;
+}
+
+extern "C" void* atlas_param_new_from_lambda_nu_text(void* group_handle,
+                                                    int x,
+                                                    const char* lambda_nums_text,
+                                                    int lambda_denom,
+                                                    const char* nu_nums_text,
+                                                    int nu_denom)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu_text: null group handle";
+      return nullptr;
+    }
+    if (lambda_denom == 0 || nu_denom == 0)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu_text: zero denominator";
+      return nullptr;
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+
+    if (x < 0 || static_cast<unsigned int>(x) >= g->G.KGB_size())
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu_text: invalid KGB index";
+      return nullptr;
+    }
+
+    std::vector<int32_t> lambda_nums;
+    std::vector<int32_t> nu_nums;
+    if (!parse_int32_list(lambda_nums_text, rank, lambda_nums))
+      return nullptr;
+    if (!parse_int32_list(nu_nums_text, rank, nu_nums))
+      return nullptr;
+
+    atlas::RatWeight lambda = ratweight_from_int32(lambda_nums.data(), rank, lambda_denom);
+    atlas::RatWeight nu = ratweight_from_int32(nu_nums.data(), rank, nu_denom);
+
+    atlas::RatWeight rho = atlas::rootdata::rho(rc.root_datum());
+    atlas::RatWeight lam_minus_rho = lambda - rho;
+    lam_minus_rho.normalize();
+
+    if (lam_minus_rho.denominator() != 1)
+    {
+      g_last_error = "atlas_param_new_from_lambda_nu_text: lambda-rho not integral";
+      return nullptr;
+    }
+
+    const auto& num = lam_minus_rho.numerator();
+    atlas::Weight lambda_rho(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const auto v = num[i];
+      if (v < std::numeric_limits<int>::min() || v > std::numeric_limits<int>::max())
+      {
+        g_last_error = "atlas_param_new_from_lambda_nu_text: lambda-rho entry out of int range";
         return nullptr;
       }
       lambda_rho[i] = static_cast<int>(v);

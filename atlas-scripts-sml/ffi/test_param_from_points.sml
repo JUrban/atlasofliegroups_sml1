@@ -1,5 +1,4 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
-use "atlas-scripts-sml/ffi/Util.sml";
 
 fun parseInts s =
   let
@@ -10,6 +9,12 @@ fun parseInts s =
   in
     List.map toInt (String.tokens Char.isSpace s)
   end
+
+fun intToCText n =
+  if n < 0 then "-" ^ Int.toString (~n) else Int.toString n
+
+fun intsToText xs =
+  String.concatWith " " (List.map intToCText xs)
 
 fun firstNonEmptyLine path =
   let
@@ -52,9 +57,8 @@ val (x, lamDen, l1, l2, l3, l4, nuDen, n1, n2, n3, n4) =
 val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0);
 
 val p =
-  FFIUtil.withInt32Array [l1, l2, l3, l4] (fn lamPtr =>
-    FFIUtil.withInt32Array [n1, n2, n3, n4] (fn nuPtr =>
-      AtlasFFI.atlas_param_new_from_lambda_nu (g, x, lamDen, lamPtr, nuDen, nuPtr)));
+  AtlasFFI.atlas_param_new_from_lambda_nu_text
+    (g, x, intsToText [l1, l2, l3, l4], lamDen, intsToText [n1, n2, n3, n4], nuDen);
 
 val hx = AtlasFFI.atlas_param_x p;
 val hh = AtlasFFI.atlas_param_height p;
@@ -67,4 +71,3 @@ val _ =
   if hx < 0 orelse hh < 0
   then print ("C++ error: " ^ AtlasFFI.atlas_last_error () ^ "\n")
   else ();
-
