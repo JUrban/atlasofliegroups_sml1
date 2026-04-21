@@ -1,0 +1,16 @@
+set G=F4_s
+
+set barys = FPP_barycenters(G,-1).##
+prints("BARY_COUNT ", #barys)
+for nu in barys do
+  prints("B ", denom(nu), " ", numer(nu)[0], " ", numer(nu)[1], " ", numer(nu)[2], " ", numer(nu)[3])
+od
+
+prints("LAMBDA_START")
+for x in KGB(G) do
+  let xn = x.number in
+  for lam in FPP_lambdas(x) do
+    prints("L ", xn, " ", denom(lam), " ", numer(lam)[0], " ", numer(lam)[1], " ", numer(lam)[2], " ", numer(lam)[3])
+  od
+od
+
