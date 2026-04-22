@@ -1066,6 +1066,31 @@ extern "C" void atlas_rootdatum_free(void* handle)
   }
 }
 
+extern "C" void* atlas_rootdatum_dual(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_dual: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    atlas::prerootdata::PreRootDatum prd_dual(h->prd, atlas::tags::DualTag{});
+    return static_cast<void*>(new RootDatumHandle(std::move(prd_dual)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_rootdatum_rank(void* handle)
 {
   try

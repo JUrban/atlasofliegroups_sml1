@@ -5,6 +5,16 @@ use "atlas-scripts-sml/Lattice.sml";
 structure RootDatum = struct
   type t = AtlasFFI.rootdatum
 
+  fun dual (h: t) : t =
+    let
+      val d = AtlasFFI.atlas_rootdatum_dual h
+    in
+      if d = Foreign.Memory.null then
+        raise Fail ("RootDatum.dual: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        d
+    end
+
   fun newSimple (typeLetter: char, rank: int, preferCoroots: bool) : t =
     let
       val h = AtlasFFI.atlas_rootdatum_new_simple (typeLetter, rank, if preferCoroots then 1 else 0)
@@ -139,5 +149,20 @@ structure RootDatum = struct
       case pos of
         [] => raise Fail "RootDatum.highestRoot: no posroots"
       | x :: xs => List.foldl pick x xs
+    end
+
+  fun highestShortRoot (h: t) : int list =
+    let
+      val d = dual h
+      val cr = highestRoot d
+      val () = free d
+      val rs = rootsCols h
+      val cs = corootsCols h
+      val () = if length rs = length cs then () else raise Fail "RootDatum.highestShortRoot: mismatch"
+      fun loop ([], [], _) = raise Fail "RootDatum.highestShortRoot: not found"
+        | loop (r :: rs, c :: cs, i) = if c = cr then r else loop (rs, cs, i + 1)
+        | loop _ = raise Fail "RootDatum.highestShortRoot: mismatch"
+    in
+      loop (rs, cs, 0)
     end
 end
