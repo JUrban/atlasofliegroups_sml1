@@ -81,6 +81,8 @@ structure AtlasFFI = struct
   val atlas_group_rho_text_sym = Foreign.getSymbol lib "atlas_group_rho_text"
   val atlas_group_make_dominant_ratweight_text_sym =
     Foreign.getSymbol lib "atlas_group_make_dominant_ratweight_text"
+  val atlas_group_from_dominant_ratweight_text_sym =
+    Foreign.getSymbol lib "atlas_group_from_dominant_ratweight_text"
   val atlas_group_simple_coroots_text_sym =
     Foreign.getSymbol lib "atlas_group_simple_coroots_text"
   val atlas_group_posroots_text_sym = Foreign.getSymbol lib "atlas_group_posroots_text"
@@ -96,6 +98,7 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_kgb_all_lambda_differential_0_text"
   val atlas_kgb_status_sym = Foreign.getSymbol lib "atlas_kgb_status"
   val atlas_kgb_cross_sym = Foreign.getSymbol lib "atlas_kgb_cross"
+  val atlas_kgb_cross_word_text_sym = Foreign.getSymbol lib "atlas_kgb_cross_word_text"
   val atlas_kgb_cayley_sym = Foreign.getSymbol lib "atlas_kgb_cayley"
   val atlas_kgb_length_sym = Foreign.getSymbol lib "atlas_kgb_length"
   val atlas_kgb_torus_factor_text_sym =
@@ -325,6 +328,13 @@ structure AtlasFFI = struct
       , Foreign.cString
       )
 
+  val atlas_group_from_dominant_ratweight_text =
+    Foreign.buildCall2
+      ( atlas_group_from_dominant_ratweight_text_sym
+      , (Foreign.cPointer, Foreign.cString)
+      , Foreign.cString
+      )
+
   val atlas_group_simple_coroots_text =
     Foreign.buildCall1 (atlas_group_simple_coroots_text_sym, Foreign.cPointer, Foreign.cString)
 
@@ -372,6 +382,13 @@ structure AtlasFFI = struct
     Foreign.buildCall3
       ( atlas_kgb_cross_sym
       , (Foreign.cPointer, Foreign.cInt, Foreign.cInt)
+      , Foreign.cInt
+      )
+
+  val atlas_kgb_cross_word_text =
+    Foreign.buildCall3
+      ( atlas_kgb_cross_word_text_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cString)
       , Foreign.cInt
       )
 

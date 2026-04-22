@@ -1338,6 +1338,80 @@ extern "C" int atlas_kgb_cross(void* group_handle, int s, int x)
   }
 }
 
+extern "C" int atlas_kgb_cross_word_text(void* group_handle, int x, const char* word_text)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_cross_word_text: null group handle";
+      return -1;
+    }
+    if (word_text == nullptr)
+    {
+      g_last_error = "atlas_kgb_cross_word_text: null word_text";
+      return -1;
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& kgb = g->G.kgb();
+    const auto& rd = g->G.root_datum();
+    if (x < 0 || static_cast<unsigned int>(x) >= kgb.size())
+    {
+      g_last_error = "atlas_kgb_cross_word_text: invalid KGB index";
+      return -1;
+    }
+
+    std::vector<int> xs;
+    if (!parse_int_list(word_text, xs))
+      return -1;
+    if (xs.empty())
+    {
+      g_last_error = "atlas_kgb_cross_word_text: empty word";
+      return -1;
+    }
+    const int k = xs[0];
+    if (k < 0)
+    {
+      g_last_error = "atlas_kgb_cross_word_text: negative length";
+      return -1;
+    }
+    if (xs.size() != static_cast<std::size_t>(1 + k))
+    {
+      g_last_error = "atlas_kgb_cross_word_text: wrong arity";
+      return -1;
+    }
+
+    atlas::WeylWord ww;
+    ww.reserve(static_cast<std::size_t>(k));
+    for (int i = 0; i < k; ++i)
+    {
+      const int s = xs[1 + i];
+      if (s < 0 || static_cast<unsigned int>(s) >= rd.semisimple_rank())
+      {
+        g_last_error = "atlas_kgb_cross_word_text: invalid generator index";
+        return -1;
+      }
+      ww.push_back(static_cast<atlas::weyl::Generator>(s));
+    }
+
+    const atlas::KGBElt xv = static_cast<atlas::KGBElt>(x);
+    // Match `basic.at`: `cross(WeylElt w, KGBElt x)` applies the word in
+    // reverse order (`w.word ~`).
+    return static_cast<int>(kgb.cross(ww, xv));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 extern "C" int atlas_kgb_cayley(void* group_handle, int s, int x)
 {
   try
@@ -2058,6 +2132,79 @@ extern "C" const char* atlas_group_make_dominant_ratweight_text(void* group_hand
     const auto& num = w.numerator();
     for (std::size_t i = 0; i < rank; ++i)
       out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_group_from_dominant_ratweight_text(void* group_handle, const char* ratweight_text)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_group_from_dominant_ratweight_text: null group handle";
+      return store_result("-1");
+    }
+    if (ratweight_text == nullptr)
+    {
+      g_last_error = "atlas_group_from_dominant_ratweight_text: null input";
+      return store_result("-1");
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+    const auto& rd = rc.root_datum();
+
+    std::vector<int> xs;
+    if (!parse_int_list(ratweight_text, xs))
+      return store_result("-1");
+    if (xs.size() != static_cast<std::size_t>(1 + rank))
+    {
+      g_last_error = "atlas_group_from_dominant_ratweight_text: wrong arity";
+      return store_result("-1");
+    }
+    const int denom = xs[0];
+    if (denom == 0)
+    {
+      g_last_error = "atlas_group_from_dominant_ratweight_text: zero denominator";
+      return store_result("-1");
+    }
+
+    atlas::matrix::Vector<atlas::arithmetic::Numer_t> num(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const int v = xs[1 + i];
+      num[i] = static_cast<atlas::arithmetic::Numer_t>(v);
+    }
+
+    // factor_dominant modifies `num` in-place and returns a WeylWord that
+    // converts the dominant representative back to the original weight.
+    atlas::WeylWord witness = rd.factor_dominant(num);
+
+    // Rebuild dominant RatWeight with the original denominator.
+    atlas::RatWeight dom(num, denom);
+    dom.normalize();
+
+    std::ostringstream out;
+    out << witness.size();
+    for (auto s : witness)
+      out << ' ' << static_cast<int>(s);
+    out << '\n';
+    out << dom.denominator();
+    const auto& domNum = dom.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << domNum[i];
     return store_result(out.str());
   }
   catch (const std::exception& e)

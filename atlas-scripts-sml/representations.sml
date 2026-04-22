@@ -3,6 +3,8 @@ use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/Dominant.sml";
 use "atlas-scripts-sml/RootDatum.sml";
+use "atlas-scripts-sml/WeylWord.sml";
+use "atlas-scripts-sml/FromDominant.sml";
 
 (*
   File: atlas-scripts-sml/representations.sml
@@ -45,6 +47,7 @@ structure Representations = struct
   type group = AtlasFFI.group
   type param = AtlasFFI.param
   type ratvec = Lattice.ratvec
+  type weyl_word = WeylWord.t
 
   (* Parse `atlas_group_rho_text` output. *)
   fun rho (g: group) : ratvec =
@@ -52,6 +55,9 @@ structure Representations = struct
 
   fun ratvecNeg (u: ratvec) : ratvec = Lattice.ratvecScale (u, ~1, 1)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, ratvecNeg v)
+
+  (* Zero rational vector of length `n`. *)
+  fun ratvecZero (n: int) : ratvec = {den = 1, nums = List.tabulate (n, fn _ => 0)}
 
   (* Construct a parameter `parameter(G,x,lambda,nu)` in `.at`-style where
      `lambda`/`nu` are the usual “ratweight text” inputs (same as `p.lambda` /
@@ -187,6 +193,39 @@ structure Representations = struct
 
   (* Build `x_open(G)` from `basic.at`: `KGB(G,G.KGB_size-1)`. *)
   fun x_open (g: group) : int = AtlasFFI.atlas_group_kgb_size g - 1
+
+  (* Discrete series parameter with given Harish-Chandra parameter `lambda`,
+     with respect to a chosen KGB element `x`.
+
+     Atlas correspondence
+     - Mirrors `representations.at`:
+         `discrete_series (KGBElt x,ratvec lambda)`
+       which (after dominance normalization) returns:
+         `parameter(cross(inverse(w),x),lambda_dom,null(rank(ic)))`
+       where `(w,lambda_dom) = from_dominant(rd,lambda)` and `w*lambda_dom=lambda`.
+
+     Notes
+     - We currently perform only the minimal equal-rank sanity check; the `.at`
+       assertions about integrality/regularity are not reimplemented here.
+     - The returned parameter is *not* automatically normalized (to match `.at`).
+
+     Ownership: returns an owned `AtlasFFI.param` handle; caller must free it. *)
+  fun discrete_series_at_x (g: group, x: int, lambda: ratvec) : param =
+    let
+      val () = assertEqualRank g
+      val rank = AtlasFFI.atlas_group_rank g
+      val (witness, lambdaDom) = FromDominant.fromDominantRatvec (g, lambda)
+      val invWitness : weyl_word = WeylWord.inverse witness
+      val x2 = WeylWord.kgbCrossLeft (g, invWitness, x)
+      val nu0 = ratvecZero rank
+    in
+      parameter (g, x2, lambdaDom, nu0)
+    end
+
+  (* Discrete series parameter with given Harish-Chandra parameter `lambda`,
+     with respect to `KGB(G,0)` (mirrors the `.at` overload). *)
+  fun discrete_series (g: group, lambda: ratvec) : param =
+    discrete_series_at_x (g, 0, lambda)
 
   (* Make a rational weight dominant for `g`. *)
   fun dominant (g: group) (v: ratvec) : ratvec =
