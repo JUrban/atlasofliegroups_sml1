@@ -8,6 +8,7 @@ use "atlas-scripts-sml/ParamHash.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/basic.sml";
+use "atlas-scripts-sml/sort.sml";
 
 (*
   File: atlas-scripts-sml/FPP_localDirac.sml
@@ -51,6 +52,21 @@ structure FPP_localDirac = struct
   type mat = Lattice.mat
   type face_key = int list
 
+  (* ---------------------------------------------------------------------- *)
+  (* Small ratvec helpers.                                                   *)
+  (* ---------------------------------------------------------------------- *)
+
+  fun ratvecNeg (u: ratvec) : ratvec = Lattice.ratvecScale (u, ~1, 1)
+  fun ratvecAdd (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, ratvecNeg v)
+
+  (* Stable key `[den, nums...]` after normalization (for fast equality tests). *)
+  fun ratvecKey (u: ratvec) : int list =
+    let
+      val u = Lattice.ratvecNormalize u
+    in
+      #den u :: #nums u
+    end
+
   (*
     Group-level context
 
@@ -65,13 +81,38 @@ structure FPP_localDirac = struct
     { g: group
     , faceCtx: FPPFaceKey.t
     , barycenters: ratvec list
+    , gammaFaceTable: (int list * face_key) array
     }
 
   fun create_ctx (g: group) : ctx =
-    { g = g
-    , faceCtx = FPPFaceKey.create g
-    , barycenters = FPP_barycenters_fold.barycenters_all g
-    }
+    let
+      val faceCtx = FPPFaceKey.create g
+      val barycenters = FPP_barycenters_fold.barycenters_all g
+
+      fun toEntry gamma =
+        (case FPPFaceKey.faceKeyOfGamma (faceCtx, gamma) of
+           NONE => raise Fail "FPP_localDirac.create_ctx: missing face key for barycenter"
+         | SOME fk => (ratvecKey gamma, fk))
+
+      val entries = List.map toEntry barycenters
+      val entriesSorted = Basic.sort_by (fn (k, _) => k, Sort.rlex_leq) entries
+      val gammaFaceTable = Array.fromList entriesSorted
+    in
+      { g = g, faceCtx = faceCtx, barycenters = barycenters, gammaFaceTable = gammaFaceTable }
+    end
+
+  fun global_face_of_gamma_ctx (c: ctx, gamma: ratvec) : face_key =
+    let
+      val key = ratvecKey gamma
+      val tab = #gammaFaceTable c
+      val n = Array.length tab
+      fun keyAt i = #1 (Array.sub (tab, i))
+      fun faceAt i = #2 (Array.sub (tab, i))
+      fun keyEq (a: int list, b: int list) : bool = Sort.rlex_leq (a, b) andalso Sort.rlex_leq (b, a)
+      val i = Basic.binary_search_first (fn j => Sort.rlex_leq (key, keyAt j), 0, n)
+    in
+      if i < n andalso keyEq (keyAt i, key) then faceAt i else raise Fail "global_face_of_gamma_ctx: missing key"
+    end
 
   (* ---------------------------------------------------------------------- *)
   (* Configuration flags (mirrors top-level `.at` globals; not yet used).    *)
@@ -94,21 +135,6 @@ structure FPP_localDirac = struct
   val unip_flag : bool ref = ref true
   val more_after_flag : bool ref = ref false
   val min_after_flag : bool ref = ref false
-
-  (* ---------------------------------------------------------------------- *)
-  (* Small ratvec helpers.                                                   *)
-  (* ---------------------------------------------------------------------- *)
-
-  fun ratvecNeg (u: ratvec) : ratvec = Lattice.ratvecScale (u, ~1, 1)
-  fun ratvecAdd (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, ratvecNeg v)
-
-  (* Stable key `[den, nums...]` after normalization (for fast equality tests). *)
-  fun ratvecKey (u: ratvec) : int list =
-    let
-      val u = Lattice.ratvecNormalize u
-    in
-      #den u :: #nums u
-    end
 
   (* ---------------------------------------------------------------------- *)
   (* `.at`-style parameter constructor from gamma (infinitesimal character). *)
@@ -404,15 +430,16 @@ structure FPP_localDirac = struct
       val {perm, mapAct, ...} = localFD_Lvd_simple (g, x, lambda, vd)
 
       fun one gamma =
-        (case FPPFaceKey.faceKeyOfGamma (faceCtx, gamma) of
-           NONE => NONE
-         | SOME gf =>
-             if not (faceStableUnderPerm (perm, gf)) then
-               NONE
-             else
-               (case mapFaceKey (mapAct, gf) of
-                  NONE => NONE
-                | SOME lf => SOME {gamma = gamma, global_face = gf, local_face = lf}))
+        let
+          val gf = global_face_of_gamma_ctx (c, gamma)
+        in
+          if not (faceStableUnderPerm (perm, gf)) then
+            NONE
+          else
+            (case mapFaceKey (mapAct, gf) of
+               NONE => NONE
+             | SOME lf => SOME {gamma = gamma, global_face = gf, local_face = lf})
+        end
     in
       List.mapPartial one (gammas_for_x_lambda_ctx (c, x, lambda))
     end

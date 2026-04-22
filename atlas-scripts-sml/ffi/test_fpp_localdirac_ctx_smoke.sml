@@ -35,6 +35,8 @@ val added = FPP_localDirac.local_test_GEO_simple_into_hash_limit_ctx (c, x, lamb
 val () = if added >= 0 then () else raise Fail "unexpected negative added";
 val () = ParamHash.freeAll uhash;
 
+val gf = FPP_localDirac.global_face_of_gamma_ctx (c, hd (FPP_localDirac.gammas_for_x_lambda_ctx (c, x, lambda)));
+val () = if length gf >= 1 andalso length gf <= 5 then () else raise Fail "unexpected face key arity";
+
 val () = AtlasFFI.atlas_group_free g;
 val () = print "OK\n";
-
