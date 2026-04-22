@@ -17,7 +17,8 @@ use "atlas-scripts-sml/RootDatum.sml";
       - weakly-good range test (`is_weakly_good`)
       - theta-stable parabolic enumeration for a given parameter (via
         `Parabolics.theta_stable_parabolics_with`)
-      - a “first witness” search for good-range induction (`good_range_induced_from_first_text`)
+      - good-range induction witness search (`good_range_induced_from_witnesses`)
+      - formatted “first witness” output (`good_range_induced_from_first_text`)
 
   Design and scope notes
   - The Atlas interpreter’s induction code is large; this port is intentionally
@@ -30,14 +31,38 @@ use "atlas-scripts-sml/RootDatum.sml";
   Ownership
   - Any `AtlasFFI.group` returned from `Levi` must be freed with
     `AtlasFFI.atlas_group_free`.
-  - Any `AtlasFFI.param` created here is freed internally unless explicitly
-    returned (currently, no function returns parameters; only formatted text).
+  - Any `AtlasFFI.group`/`AtlasFFI.param` stored in a `good_range_witness`
+    returned by `good_range_induced_from_witnesses` must be freed by the caller
+    (use `free_good_range_witness`). The convenience function
+    `good_range_induced_from_texts` frees all witnesses internally.
 *)
 structure Induction = struct
   type group = AtlasFFI.group
   type param = AtlasFFI.param
   type ratvec = Lattice.ratvec
   type parabolic = Parabolics.parabolic
+
+  (* A successful “good-range induction” witness: a theta-stable parabolic `P`
+     and a final Levi parameter `pL` in the weakly good range whose induction
+     contains the original parameter.
+
+     Ownership: `L` and `pL` are owned by the witness and must be freed by the
+     caller (use `free_good_range_witness`), unless you obtained the witness via
+     a helper that documents it frees them for you. *)
+  type good_range_witness =
+    { P: parabolic
+    , L: group
+    , xL: int
+    , pL: param
+    , same_semisimple_rank: bool
+    , unitary: bool
+    , typeStr: string
+    , rf: int
+    }
+
+  (* Free the heap-allocated Atlas handles contained in a witness. *)
+  fun free_good_range_witness (w: good_range_witness) : unit =
+    (AtlasFFI.atlas_param_free (#pL w); AtlasFFI.atlas_group_free (#L w))
 
   (* Negate a rational vector. *)
   fun ratvecNeg (u: ratvec) : ratvec =
@@ -176,13 +201,12 @@ structure Induction = struct
       end
     end
 
-  (* Atlas-style `is_good_range_induced_from(p)` but only returns the first witness (if any),
-     formatted like the old C++ probe: "1|same|unitary|type=... rf=... S=[...]". *)
-  (* Search for a theta-stable parabolic `P=(S,y)` determined by `x(p)` such that:
-       - the corresponding Levi parameter `p_L` is final and weakly good for `G`
-       - `theta_induce_irreducible(p_L,G)` contains `p` (checked by `finals_for`)
-     Returns a compact, stable string for tests and script output. *)
-  fun good_range_induced_from_texts (p: param, G: group) : string list =
+  (* Search for theta-stable parabolics `P` attached to the KGB element of `p`,
+     and return all successful “good-range induction” witnesses.
+
+     Ownership: the returned witnesses own heap handles; callers must free each
+     witness with `free_good_range_witness`. *)
+  fun good_range_induced_from_witnesses (p: param, G: group) : good_range_witness list =
     let
       val x = AtlasFFI.atlas_param_x p
       val thetaText = AtlasFFI.atlas_group_kgb_involution_matrix_text (G, x)
@@ -191,7 +215,10 @@ structure Induction = struct
       val lambdaP = parseRatWeightText (AtlasFFI.atlas_param_lambda_text p)
       val nuP = parseRatWeightText (AtlasFFI.atlas_param_nu_text p)
 
-      fun tryOne ((S, y): parabolic) : string option =
+      val tspAll = Parabolics.theta_stable_parabolics G
+      val tsp = Parabolics.theta_stable_parabolics_with_precomputed G tspAll x
+
+      fun tryOne ((S, y): parabolic) : good_range_witness option =
         let
           val P = (S, y)
         in
@@ -227,15 +254,15 @@ structure Induction = struct
                          ()
                      val okFinal = AtlasFFI.atlas_param_is_final pL1 = 1
                      val okGood = if okFinal then is_weakly_good (pL1, G, L) else false
-                     val same = if AtlasFFI.atlas_group_semisimple_rank L = AtlasFFI.atlas_group_semisimple_rank G then "1" else "0"
+                     val same = AtlasFFI.atlas_group_semisimple_rank L = AtlasFFI.atlas_group_semisimple_rank G
                    in
                      if not okGood then
                        (AtlasFFI.atlas_param_free pL1; AtlasFFI.atlas_group_free L; NONE)
                      else
                        let
-                         val unitary = if AtlasFFI.atlas_param_is_unitary pL1 = 1 then "1" else "0"
+                         val unitary = AtlasFFI.atlas_param_is_unitary pL1 = 1
                          val rf = AtlasFFI.atlas_group_real_form_number L
-                         val desc = "type=" ^ groupTypeString L ^ " rf=" ^ Int.toString rf ^ " S=" ^ subsetString S
+                         val typeStr = groupTypeString L
 
                          val xGopt =
                            findKGBByInvolutionAndTorusFactorText
@@ -248,16 +275,48 @@ structure Induction = struct
                              NONE => false
                            | SOME xG => induced_matches (p, G, xG)
                        in
-                         AtlasFFI.atlas_param_free pL1;
-                         AtlasFFI.atlas_group_free L;
-                         if matches then SOME ("1|" ^ same ^ "|" ^ unitary ^ "|" ^ desc) else NONE
+                         if matches then
+                           SOME
+                             { P = P
+                             , L = L
+                             , xL = xL
+                             , pL = pL1
+                             , same_semisimple_rank = same
+                             , unitary = unitary
+                             , typeStr = typeStr
+                             , rf = rf
+                             }
+                         else
+                           (AtlasFFI.atlas_param_free pL1; AtlasFFI.atlas_group_free L; NONE)
                        end
                    end)
         end
 
-      val tsp = Parabolics.theta_stable_parabolics_with G x
     in
       List.mapPartial tryOne tsp
+    end
+
+  (* Format a witness in the stable text form used by older C++ probes:
+     "1|same|unitary|type=... rf=... S=[...]". *)
+  fun witnessText (w: good_range_witness) : string =
+    let
+      val (S, _) = #P w
+      val same = if #same_semisimple_rank w then "1" else "0"
+      val unitary = if #unitary w then "1" else "0"
+      val desc =
+        "type=" ^ #typeStr w ^ " rf=" ^ Int.toString (#rf w) ^ " S=" ^ subsetString S
+    in
+      "1|" ^ same ^ "|" ^ unitary ^ "|" ^ desc
+    end
+
+  (* Atlas-style `is_good_range_induced_from(p)` but returning formatted witnesses. *)
+  fun good_range_induced_from_texts (p: param, G: group) : string list =
+    let
+      val ws = good_range_induced_from_witnesses (p, G)
+      val txts = List.map witnessText ws
+      val () = List.app free_good_range_witness ws
+    in
+      txts
     end
 
   fun good_range_induced_from_first_text (p: param, G: group) : string =

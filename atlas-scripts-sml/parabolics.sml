@@ -23,6 +23,8 @@ use "atlas-scripts-sml/sort.sml";
     distinguished involution acting on simple roots.
   - `theta_stable_parabolics_*` mirror `parabolics.at`’s theta-stable parabolic
     generation, using `distinguished_fiber` (the length-0 KGB elements).
+  - `theta_stable_parabolics_with_precomputed` is a small performance helper
+    for callers that need to filter the same precomputed list many times.
 
   Performance notes
   - For the small ranks used so far (F4, G2), brute-force enumeration of
@@ -221,13 +223,21 @@ structure Parabolics = struct
   fun theta_stable_parabolics (g: group) : parabolic list =
     List.concat (List.map (theta_stable_parabolics_of_type g) (twist_stable_subsets g))
 
-  (* `theta_stable_parabolics_with(x)` analog from `induction.at`, but computed directly.
-     Returns those theta-stable parabolics `P` for which `(S,x)=(S,representative(P))`. *)
-  fun theta_stable_parabolics_with (g: group) (x: kgbelt) : parabolic list =
+  (* `theta_stable_parabolics_with(tsp,x)` from `induction.at`:
+     given a precomputed `tsp = theta_stable_parabolics(g)`, filter it by
+     requiring `(S,x)` to be equivalent to the parabolic orbit representative.
+
+     This is useful when repeatedly filtering by many different `x` values
+     (avoid recomputing `theta_stable_parabolics(g)` each time). *)
+  fun theta_stable_parabolics_with_precomputed (g: group) (tsp: parabolic list) (x: kgbelt) : parabolic list =
     let
-      val tsp = theta_stable_parabolics g
-      fun keep (P as (S, y)) = eq g ((S, x), P)
+      fun keep (P as (S, _)) = eq g ((S, x), P)
     in
       List.filter keep tsp
     end
+
+  (* `theta_stable_parabolics_with(x)` analog from `induction.at`, but computed directly.
+     Returns those theta-stable parabolics `P` for which `(S,x)=(S,representative(P))`. *)
+  fun theta_stable_parabolics_with (g: group) (x: kgbelt) : parabolic list =
+    theta_stable_parabolics_with_precomputed g (theta_stable_parabolics g) x
 end
