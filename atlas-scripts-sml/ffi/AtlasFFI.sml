@@ -10,6 +10,15 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_intmat_smith_basis_text"
   val atlas_intmat_smith_diag_text_sym =
     Foreign.getSymbol lib "atlas_intmat_smith_diag_text"
+  val atlas_intmat_diagonalize_sym = Foreign.getSymbol lib "atlas_intmat_diagonalize"
+  val atlas_intmat_diagonalize_diag_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_diagonalize_diag_text"
+  val atlas_intmat_diagonalize_row_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_diagonalize_row_text"
+  val atlas_intmat_diagonalize_col_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_diagonalize_col_text"
+  val atlas_intmat_diagonalize_free_sym =
+    Foreign.getSymbol lib "atlas_intmat_diagonalize_free"
   val atlas_intmat_echelon_sym = Foreign.getSymbol lib "atlas_intmat_echelon"
   val atlas_intmat_echelon_M_text_sym = Foreign.getSymbol lib "atlas_intmat_echelon_M_text"
   val atlas_intmat_echelon_C_text_sym = Foreign.getSymbol lib "atlas_intmat_echelon_C_text"
@@ -121,6 +130,23 @@ structure AtlasFFI = struct
 
   val atlas_intmat_smith_diag_text =
     Foreign.buildCall1 (atlas_intmat_smith_diag_text_sym, Foreign.cString, Foreign.cString)
+
+  type diagonalize = Foreign.Memory.voidStar
+
+  val atlas_intmat_diagonalize =
+    Foreign.buildCall1 (atlas_intmat_diagonalize_sym, Foreign.cString, Foreign.cPointer)
+
+  val atlas_intmat_diagonalize_diag_text =
+    Foreign.buildCall1 (atlas_intmat_diagonalize_diag_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_diagonalize_row_text =
+    Foreign.buildCall1 (atlas_intmat_diagonalize_row_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_diagonalize_col_text =
+    Foreign.buildCall1 (atlas_intmat_diagonalize_col_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_diagonalize_free =
+    Foreign.buildCall1 (atlas_intmat_diagonalize_free_sym, Foreign.cPointer, Foreign.cVoid)
 
   type echelon = Foreign.Memory.voidStar
 

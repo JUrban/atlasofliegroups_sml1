@@ -197,6 +197,13 @@ struct EchelonHandle
   std::vector<int> pivots;
   int eps;
 };
+
+struct DiagonalizeHandle
+{
+  std::vector<int> diagonal;
+  atlas::int_Matrix row;
+  atlas::int_Matrix col;
+};
 } // namespace
 
 extern "C" void* atlas_param_finals(void* p_handle)
@@ -506,6 +513,116 @@ extern "C" const char* atlas_intmat_smith_diag_text(const char* mat_text)
   {
     g_last_error = "unknown C++ exception";
     return store_result("-1");
+  }
+}
+
+extern "C" void* atlas_intmat_diagonalize(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return nullptr;
+    auto* h = new DiagonalizeHandle();
+    h->diagonal = atlas::matreduc::diagonalise(m, h->row, h->col);
+    return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_intmat_diagonalize_diag_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_diagonalize_diag_text: null handle";
+      return store_result("-1");
+    }
+    const auto* h = static_cast<const DiagonalizeHandle*>(handle);
+    std::ostringstream out;
+    out << h->diagonal.size();
+    for (int d : h->diagonal)
+      out << ' ' << d;
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_diagonalize_row_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_diagonalize_row_text: null handle";
+      return store_result("-1");
+    }
+    const auto* h = static_cast<const DiagonalizeHandle*>(handle);
+    return store_result(int_matrix_to_text(h->row));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_diagonalize_col_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_diagonalize_col_text: null handle";
+      return store_result("-1");
+    }
+    const auto* h = static_cast<const DiagonalizeHandle*>(handle);
+    return store_result(int_matrix_to_text(h->col));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" void atlas_intmat_diagonalize_free(void* handle)
+{
+  try
+  {
+    delete static_cast<DiagonalizeHandle*>(handle);
+  }
+  catch (...)
+  {
   }
 }
 

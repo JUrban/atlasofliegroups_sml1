@@ -162,8 +162,36 @@ structure IntMatrix = struct
       | _ => raise Fail "IntMatrix.smithBasis: bad diag header"
     end
 
+  fun diagonalize (a: mat) : int list * mat * mat =
+    let
+      val h = AtlasFFI.atlas_intmat_diagonalize (matToText a)
+      val () =
+        if h = Foreign.Memory.null then
+          raise Fail ("IntMatrix.diagonalize: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val dText = AtlasFFI.atlas_intmat_diagonalize_diag_text h
+      val rText = AtlasFFI.atlas_intmat_diagonalize_row_text h
+      val cText = AtlasFFI.atlas_intmat_diagonalize_col_text h
+      val () = AtlasFFI.atlas_intmat_diagonalize_free h
+      val () =
+        if dText = "-1" orelse rText = "-1" orelse cText = "-1" then
+          raise Fail ("IntMatrix.diagonalize: C++ error: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val ds =
+        (case parseInts dText of
+           k :: rest =>
+             if k < 0 orelse length rest <> k then raise Fail "IntMatrix.diagonalize: bad diag length" else rest
+         | _ => raise Fail "IntMatrix.diagonalize: bad diag header")
+      val row = parseMatText rText
+      val col = parseMatText cText
+    in
+      (ds, row, col)
+    end
+ 
   type echelon = AtlasFFI.echelon
-
+ 
   fun echelon (a: mat) : mat * mat * int list * int =
     let
       val h = AtlasFFI.atlas_intmat_echelon (matToText a)
