@@ -606,4 +606,152 @@ structure WOrbit = struct
 
   fun W_iterator (rd: rootdatum) : word iterator =
     W_parabolic_iterator (rd, allSimples rd)
+
+  (* Compute the representation matrix of a word, given generator matrices for
+     a specific generator list `gens` (same order as `gens_rep`).
+
+     The matrix returned satisfies: `mat * v = act_word_rtl(rd,word,v)` when
+     `gens_rep` are the matrices for the simple reflections acting on the same
+     vector space as `v`.
+  *)
+  fun action_matrix_of_word (gens: int list, gens_rep: mat list, dim: int) (w: word) : mat =
+    let
+      fun indexOf i =
+        let
+          fun loop ([], _) = NONE
+            | loop (j :: js, k) = if j = i then SOME k else loop (js, k + 1)
+        in
+          loop (gens, 0)
+        end
+      fun matOf i =
+        (case indexOf i of
+           NONE => raise Fail "WOrbit.action_matrix_of_word: generator index not in gens"
+         | SOME k => List.nth (gens_rep, k))
+      fun step (i, acc) = IntMatrix.matMul (matOf i, acc)
+    in
+      List.foldl step (MatrixAT.id_mat dim) w
+    end
+
+  (* Iterator variant that also returns accumulated representation matrices.
+
+     Input:
+       - `gens_rep` is a list of `dim x dim` integer matrices, aligned with `gens`
+         (i.e. `gens_rep[j]` is the matrix for the generator `gens[j]`).
+
+     Output elements are `(word, act)` where `act` is the matrix for the word.
+  *)
+  fun W_parabolic_iterator_with_action
+    ( rd: rootdatum
+    , gens: int list
+    , dim: int
+    , gens_rep: mat list
+    ) : (word * mat) iterator =
+    let
+      val ng = length gens
+      val () = if length gens_rep = ng then () else raise Fail "WOrbit.W_parabolic_iterator_with_action: gens_rep arity"
+      val r = RootDatum.rank rd
+
+      fun prefix k = List.take (gens, k + 1)
+      fun prefixMats k = List.take (gens_rep, k + 1)
+
+      fun buildA (para: int list) : mat =
+        let
+          val corootRows = List.map (fn i => simpleCoroot (rd, i)) para
+          val rootCols = List.map (fn i => simpleRoot (rd, i)) para
+          val rootMat = matFromColumns (r, rootCols)
+          val cok = IntMatrix.cokernel rootMat
+          val a = corootRows @ cok
+          val (ar, ac) = IntMatrix.matShape a
+          val () =
+            if ar = r andalso ac = r then
+              ()
+            else
+              raise Fail "WOrbit.W_parabolic_iterator_with_action: A is not square"
+        in
+          a
+        end
+
+      fun stabiliser_quotient_with_action (para: int list, mats: mat list, v: vec) : (word * mat) list =
+        let
+          val (chamber, domv) = from_dominant_vec_gens (rd, para, v)
+          val to_dom = List.rev chamber
+          val act_to_dom = action_matrix_of_word (para, mats, dim) to_dom
+
+          val orbit = generate_action_from_dom_simples (rd, para, domv, dim, mats)
+          fun term (_, w_dom, act_dom) =
+            let
+              val w = w_dom @ to_dom
+              val act = IntMatrix.matMul (act_dom, act_to_dom)
+            in
+              (w, act)
+            end
+        in
+          List.map term orbit
+        end
+
+      val stack : (word * mat) list list =
+        List.tabulate
+          ( ng
+          , fn k =>
+              let
+                val para = prefix k
+                val mats = prefixMats k
+                val a = buildA para
+                val rhs = identity_row (r, k)
+                val v = required_solution_numer (a, rhs)
+              in
+                stabiliser_quotient_with_action (para, mats, v)
+              end
+          )
+
+      val m = Array.fromList (List.map length stack)
+      val state = Array.array (ng, 0)
+
+      fun done () : bool = ng = 0 orelse Array.sub (state, 0) = Array.sub (m, 0)
+
+      fun pick (i: int) : word * mat =
+        let
+          val n = Array.sub (state, i)
+          val ws = List.nth (stack, i)
+        in
+          List.nth (ws, n)
+        end
+
+      fun current () : word * mat =
+        let
+          val partsDesc = List.tabulate (ng, fn j => pick (ng - 1 - j))
+          val w = List.concat (List.map #1 partsDesc)
+          val matsDesc = List.map #2 partsDesc
+          val act = List.foldr (fn (mm, acc) => IntMatrix.matMul (mm, acc)) (MatrixAT.id_mat dim) matsDesc
+        in
+          (w, act)
+        end
+
+      fun peek () = if done () then NONE else SOME (current ())
+
+      fun advance () =
+        if done () then
+          ()
+        else if ng = 1 then
+          Array.update (state, 0, Array.sub (state, 0) + 1)
+        else
+          let
+            fun loop i =
+              if i <= 0 then
+                Array.update (state, 0, Array.sub (state, 0) + 1)
+              else
+                let
+                  val ni = Array.sub (state, i) + 1
+                in
+                  if ni < Array.sub (m, i) then
+                    Array.update (state, i, ni)
+                  else
+                    (Array.update (state, i, 0); loop (i - 1))
+                end
+          in
+            loop (ng - 1)
+          end
+    in
+      {peek = peek, advance = advance}
+    end
 end
