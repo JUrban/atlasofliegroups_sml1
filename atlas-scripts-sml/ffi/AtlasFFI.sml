@@ -3,6 +3,9 @@ structure AtlasFFI = struct
 
   val atlas_intmat_find_solution_text_sym =
     Foreign.getSymbol lib "atlas_intmat_find_solution_text"
+  val atlas_intmat_kernel_text_sym = Foreign.getSymbol lib "atlas_intmat_kernel_text"
+  val atlas_intmat_eigen_lattice_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_eigen_lattice_text"
 
   val atlas_last_error_sym = Foreign.getSymbol lib "atlas_last_error"
   val atlas_kgb_size_F4_s_sym = Foreign.getSymbol lib "atlas_kgb_size_F4_s"
@@ -70,6 +73,16 @@ structure AtlasFFI = struct
     Foreign.buildCall2
       ( atlas_intmat_find_solution_text_sym
       , (Foreign.cString, Foreign.cString)
+      , Foreign.cString
+      )
+
+  val atlas_intmat_kernel_text =
+    Foreign.buildCall1 (atlas_intmat_kernel_text_sym, Foreign.cString, Foreign.cString)
+
+  val atlas_intmat_eigen_lattice_text =
+    Foreign.buildCall2
+      ( atlas_intmat_eigen_lattice_text_sym
+      , (Foreign.cString, Foreign.cInt)
       , Foreign.cString
       )
 

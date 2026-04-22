@@ -69,6 +69,47 @@ static bool parse_int_list(const char* text, std::vector<int>& out)
   return true;
 }
 
+static bool parse_int_matrix_text(const char* text, atlas::int_Matrix& out)
+{
+  std::vector<int> xs;
+  if (!parse_int_list(text, xs))
+    return false;
+  if (xs.size() < 2)
+  {
+    g_last_error = "parse_int_matrix_text: truncated header";
+    return false;
+  }
+  const int n_rows = xs[0];
+  const int n_cols = xs[1];
+  if (n_rows < 0 || n_cols < 0)
+  {
+    g_last_error = "parse_int_matrix_text: negative dimensions";
+    return false;
+  }
+  const std::size_t need = static_cast<std::size_t>(2 + n_rows * n_cols);
+  if (xs.size() != need)
+  {
+    g_last_error = "parse_int_matrix_text: entry count mismatch";
+    return false;
+  }
+  out = atlas::int_Matrix(static_cast<unsigned int>(n_rows), static_cast<unsigned int>(n_cols));
+  std::size_t k = 2;
+  for (int i = 0; i < n_rows; ++i)
+    for (int j = 0; j < n_cols; ++j)
+      out(i, j) = xs[k++];
+  return true;
+}
+
+static std::string int_matrix_to_text(const atlas::int_Matrix& m)
+{
+  std::ostringstream out;
+  out << m.n_rows() << ' ' << m.n_columns();
+  for (unsigned int i = 0; i < m.n_rows(); ++i)
+    for (unsigned int j = 0; j < m.n_columns(); ++j)
+      out << ' ' << m(i, j);
+  return out.str();
+}
+
 namespace {
 struct GroupHandle
 {
@@ -336,6 +377,50 @@ extern "C" const char* atlas_intmat_find_solution_text(const char* mat_text, con
     for (int j = 0; j < n_cols; ++j)
       out << ' ' << x[j];
     return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_kernel_text(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return store_result("-1");
+    atlas::int_Matrix k = atlas::lattice::kernel(std::move(m));
+    return store_result(int_matrix_to_text(k));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_eigen_lattice_text(const char* mat_text, int eigen_value)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return store_result("-1");
+    atlas::int_Matrix k = atlas::lattice::eigen_lattice(std::move(m), eigen_value);
+    return store_result(int_matrix_to_text(k));
   }
   catch (const std::exception& e)
   {
