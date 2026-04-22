@@ -6,11 +6,34 @@ use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/Coordinates.sml";
 use "atlas-scripts-sml/induction.sml";
 
+(*
+  File: atlas-scripts-sml/G2_unitary_dual.sml
+
+  Purpose
+  - SML translation of `atlas-scripts/G2_unitary_dual.at`.
+  - Explores families of parameters for split real `G2` and prints a table
+    including unitary/hermitian data and “good-range induction” witnesses.
+
+  What this file is (and isn’t)
+  - This is an executable SML script/module, not a general-purpose library.
+    It uses a small amount of local arithmetic to mimic the `.at` script’s
+    computations and calls into the Atlas C++ library via `AtlasFFI`.
+  - The “induced/conj/L” column is computed by `Induction.good_range_induced_from_first_text`.
+
+  Ownership notes
+  - Most helper functions here allocate temporary `AtlasFFI.param` handles; they
+    are freed before returning from the higher-level routines.
+  - If you call `p_s`/`p_l` directly, you own the returned parameter list and
+    must free it (see `ParamFinals.freeTerms` and `AtlasFFI.atlas_param_free`).
+*)
 structure G2_unitary_dual = struct
+  (* Minimal rational type used for the scan lines in the original `.at` script. *)
   type rat = {num: int, den: int}
 
+  (* Inject an integer into `rat`. *)
   fun ratOfInt n : rat = {num = n, den = 1}
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -21,14 +44,17 @@ structure G2_unitary_dual = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Parse a rational weight in Atlas text form: `den n1 ... nk`. *)
   fun parseRatWeightText s : {den: int, nums: int list} =
     (case parseInts s of
        den :: rest => {den = den, nums = rest}
      | _ => raise Fail ("G2_unitary_dual: bad ratweight text: " ^ s))
 
+  (* Serialize an int list using SML `Int.toString` (keeps `~` negatives). *)
   fun intsToText xs =
     String.concatWith " " (List.map Int.toString xs)
 
+  (* Convert SML negative `~n` to C-style `-n` as expected by Atlas parsers. *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -39,12 +65,15 @@ structure G2_unitary_dual = struct
         s
     end
 
+  (* Serialize an int list in the Atlas C++ whitespace-separated format. *)
   fun intsToCText xs =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Serialize a `{den,nums}` rational weight as `den n1 ... nk`. *)
   fun ratWeightToText {den, nums} =
     Int.toString den ^ " " ^ intsToText nums
 
+  (* Add two integer vectors (componentwise). *)
   fun addIntVec (xs: int list, ys: int list) =
     let
       fun loop ([], [], acc) = List.rev acc
@@ -54,6 +83,7 @@ structure G2_unitary_dual = struct
       loop (xs, ys, [])
     end
 
+  (* Dot product of integer vectors. *)
   fun dot (xs: int list, ys: int list) : int =
     let
       fun loop ([], [], acc) = acc
@@ -63,8 +93,10 @@ structure G2_unitary_dual = struct
       loop (xs, ys, 0)
     end
 
+  (* FPP membership test on rational coordinate lists (delegates to Coordinates). *)
   fun in_fpp_rat (xs: rat list) : bool = Coordinates.in_fpp_rat xs
 
+  (* FPP membership test for a parameter via its `gamma` coordinate vector. *)
   fun in_fpp_param (g: AtlasFFI.group) (p: AtlasFFI.param) : bool =
     let
       val gamma = Coordinates.parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
@@ -73,6 +105,7 @@ structure G2_unitary_dual = struct
       Coordinates.in_fpp_rat coords
     end
 
+  (* Greatest common divisor (nonnegative result). *)
   fun gcd (a: int, b: int) : int =
     let
       val a = Int.abs a
@@ -83,6 +116,7 @@ structure G2_unitary_dual = struct
       if a = 0 then b else loop (a, b)
     end
 
+  (* Normalize a rational number: reduce by gcd and force positive denominator. *)
   fun normRat ({num, den}: rat) : rat =
     if den = 0 then
       raise Fail "G2_unitary_dual: normRat: zero denom"
@@ -96,19 +130,24 @@ structure G2_unitary_dual = struct
         {num = num' div g, den = den' div g}
       end
 
+  (* Rational addition. *)
   fun addRat (a: rat, b: rat) : rat =
     normRat {num = #num a * #den b + #num b * #den a, den = #den a * #den b}
 
+  (* Rational subtraction. *)
   fun subRat (a: rat, b: rat) : rat =
     normRat {num = #num a * #den b - #num b * #den a, den = #den a * #den b}
 
+  (* Multiply a rational by an integer. *)
   fun mulRatInt (a: rat, k: int) : rat =
     normRat {num = #num a * k, den = #den a}
 
+  (* Divide a rational by a nonzero integer. *)
   fun divRatInt (a: rat, k: int) : rat =
     if k = 0 then raise Fail "G2_unitary_dual: divRatInt: div by 0"
     else normRat {num = #num a, den = #den a * k}
 
+  (* Pretty-print a rational. *)
   fun ratToString (a: rat) : string =
     let
       val a = normRat a
@@ -117,9 +156,11 @@ structure G2_unitary_dual = struct
       else Int.toString (#num a) ^ "/" ^ Int.toString (#den a)
     end
 
+  (* Pretty-print a list of rationals (space-separated). *)
   fun ratListToString (xs: rat list) : string =
     "[" ^ String.concatWith "," (List.map ratToString xs) ^ "]"
 
+  (* Convert a pair of rationals into a rank-2 ratweight `{den, nums=[..]}`. *)
   fun ratToRatvec2 (a: rat, b: rat) : {den: int, nums: int list} =
     let
       val a = normRat a
@@ -132,6 +173,7 @@ structure G2_unitary_dual = struct
       {den = den div g, nums = [n1 div g, n2 div g]}
     end
 
+  (* `gamma` parameterization for the short-root Cartan line (matches `.at`). *)
   fun gamma_s (m: rat, v: rat) : {den: int, nums: int list} =
     let
       val v1 = v
@@ -140,6 +182,7 @@ structure G2_unitary_dual = struct
       ratToRatvec2 (v1, v2)
     end
 
+  (* `gamma` parameterization for the long-root Cartan line (matches `.at`). *)
   fun gamma_l (m: rat, v: rat) : {den: int, nums: int list} =
     let
       val a1 = divRatInt (addRat (m, mulRatInt (v, 3)), 2)
@@ -148,9 +191,12 @@ structure G2_unitary_dual = struct
       ratToRatvec2 (a1, a2)
     end
 
+  (* KGB indices for the short-/long-root Cartan classes in split G2 (script convention). *)
   val x_s = 4
   val x_l = 3
 
+  (* Local parser for `atlas_group_kgb_involution_matrix_text`. Kept here for
+     readability; identical intent to `AllParameters.parseInvolutionMatrixText`. *)
   fun parseInvolutionMatrixText s : Lattice.mat =
     let
       val ns = parseInts s
@@ -172,22 +218,26 @@ structure G2_unitary_dual = struct
       | _ => raise Fail "G2_unitary_dual: parseInvolutionMatrixText: empty"
     end
 
+  (* Add an integral vector to a denominator-1 rational weight. *)
   fun ratvecAddIntVec (u: {den: int, nums: int list}, v: int list) : {den: int, nums: int list} =
     if #den u <> 1 then
       raise Fail "G2_unitary_dual: ratvecAddIntVec: expected denom=1"
     else
       {den = 1, nums = ListPair.mapEq (op +) (#nums u, v)}
 
+  (* Return one (arbitrary) parameter for `(x,gamma)`, if any exist. *)
   fun all_parameters_x_gamma_one (g: AtlasFFI.group, x: int, gamma: {den: int, nums: int list}) :
     AtlasFFI.param option =
     (case AllParameters.all_parameters_x_gamma_raw (g, x, gamma) of
        [] => NONE
      | p :: _ => SOME p)
 
+  (* Enumerate parameters for `(x,gamma)` (may return multiple). *)
   fun all_parameters_x_gamma (g: AtlasFFI.group, x: int, gamma: {den: int, nums: int list}) :
     AtlasFFI.param list =
     AllParameters.all_parameters_x_gamma_raw (g, x, gamma)
 
+  (* Parameters along the short-root Cartan line at `(m,v)`; raises if empty. *)
   fun p_s (g: AtlasFFI.group) (m: rat, v: rat) : AtlasFFI.param list =
     let
       val all = all_parameters_x_gamma (g, x_s, gamma_s (m, v))
@@ -196,6 +246,7 @@ structure G2_unitary_dual = struct
       all
     end
 
+  (* Parameters along the long-root Cartan line at `(m,v)`; raises if empty. *)
   fun p_l (g: AtlasFFI.group) (m: rat, v: rat) : AtlasFFI.param list =
     let
       val all = all_parameters_x_gamma (g, x_l, gamma_l (m, v))
@@ -204,6 +255,9 @@ structure G2_unitary_dual = struct
       all
     end
 
+  (* Construct the split principal series parameter (open KGB element) with
+     infinitesimal character `rho+epsilon*gamma` and given `nu`.
+     This mirrors the `.at` helper used for locating complementary series. *)
   fun ps (g: AtlasFFI.group) (epsilon: int, nu: {den: int, nums: int list}) : AtlasFFI.param =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -238,6 +292,7 @@ structure G2_unitary_dual = struct
         p
     end
 
+  (* Compact string form for debugging/printing a parameter triple. *)
   fun short_format (p: AtlasFFI.param) : string =
     let
       val x = AtlasFFI.atlas_param_x p
@@ -247,6 +302,7 @@ structure G2_unitary_dual = struct
       "(x=" ^ Int.toString x ^ "," ^ lam ^ "," ^ nu ^ ")"
     end
 
+  (* Infinitesimal character coordinates (simple coroot basis) as rationals. *)
   fun coords_infchar (g: AtlasFFI.group) (p: AtlasFFI.param) : rat list =
     let
       val cors = Coordinates.parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
@@ -257,6 +313,8 @@ structure G2_unitary_dual = struct
         (Coordinates.coordsRatFromCoroots cors gamma)
     end
 
+  (* Integer quotient `a/b` (rounded toward 0) assuming the result is integral in
+     the contexts used by the scan loops. *)
   fun ratDiv (a: rat, b: rat) : int =
     let
       val a = normRat a
@@ -269,6 +327,7 @@ structure G2_unitary_dual = struct
       num div den
     end
 
+  (* Print a simple tab-separated table. *)
   fun tabulate (header: string list, rows: string list list) : unit =
     let
       fun joinRow xs = String.concatWith "\t" xs ^ "\n"
@@ -277,6 +336,11 @@ structure G2_unitary_dual = struct
       List.app (fn r => TextIO.print (joinRow r)) rows
     end
 
+  (* Extract the “conj/L” information used by the `.at` script’s report:
+       - `conj` is `"true"` when the parameter is unitary on the Levi witness and
+         the Levi has smaller semisimple rank than `G`
+       - `L` is a short textual description of the Levi witness
+     This is derived from `Induction.good_range_induced_from_first_text`. *)
   fun induced_conj_info (g: AtlasFFI.group) (p: AtlasFFI.param) : (string * string) =
     let
       val txt = Induction.good_range_induced_from_first_text (p, g)
@@ -289,6 +353,8 @@ structure G2_unitary_dual = struct
       | _ => raise Fail ("G2_unitary_dual: unexpected induced info: " ^ txt)
     end
 
+  (* Reproduce the “short-root Cartan line” scan table for fixed integer `m` and
+     `v` range. Prints rows with unitary/FPP status and induction witness. *)
   fun test_s (m: int, v0: rat, v1: rat, step_size: rat) : unit =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
@@ -332,6 +398,8 @@ structure G2_unitary_dual = struct
       ()
     end
 
+  (* Reproduce the “long-root Cartan line” scan table for fixed integer `m` and
+     `v` range. *)
   fun test_l (m: int, v0: rat, v1: rat, step_size: rat) : unit =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
@@ -375,6 +443,8 @@ structure G2_unitary_dual = struct
       ()
     end
 
+  (* Small smoke-demo showing how the helper constructors behave and printing a
+     few diagnostics (rho, finals, etc.). *)
   fun demo () =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)

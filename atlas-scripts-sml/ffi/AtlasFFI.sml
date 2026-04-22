@@ -1,3 +1,30 @@
+(*
+  File: atlas-scripts-sml/ffi/AtlasFFI.sml
+
+  Purpose
+  - Poly/ML FFI bindings for a small “SML-facing Atlas API” implemented in
+    `atlas-scripts-sml/ffi/atlas_smlffi.cpp` and linked as `libatlas_smlffi.so`.
+
+  Design
+  - This module is a thin, mostly 1:1 mapping from exported C symbols to SML
+    functions. Names are intentionally long and match the C exports.
+  - Many functions return `Foreign.Memory.null` or `"-1"` on error; callers
+    should check and use `atlas_last_error()` for details.
+
+  Ownership / lifetime rules (important)
+  - `group`, `rootdatum`, `param`, and other handle types are opaque C++ objects
+    allocated on the C++ side.
+  - When a function name includes `new`/`clone`/`*_new_*`, it usually returns a
+    freshly allocated handle that the caller must free via the corresponding
+    `*_free` function.
+  - When a function returns `cString`, the underlying C++ helper returns a
+    pointer to an internal buffer owned by the library; treat it as ephemeral
+    (copy it in SML if you need to keep it).
+
+  Tip
+  - Higher-level SML modules (e.g. `AllParameters`, `Parabolics`, `Induction`)
+    wrap these low-level bindings into safer, more Atlas-script-like APIs.
+*)
 structure AtlasFFI = struct
   val lib = Foreign.loadLibrary "atlas-scripts-sml/ffi/libatlas_smlffi.so"
 

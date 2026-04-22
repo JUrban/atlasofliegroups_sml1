@@ -1,9 +1,21 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 
+(*
+  File: atlas-scripts-sml/MatReduc.sml
+
+  Purpose
+  - Small wrappers around Atlas C++ routines for “matrix reduction” tasks used
+    in lattice computations (adapted bases, expressing matrices in a lattice basis).
+
+  Notes
+  - These helpers are used by `LambdaDifferential0` and other modules that
+    manipulate sublattices/eigenlattices.
+*)
 structure MatReduc = struct
   type mat = IntMatrix.mat
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -14,6 +26,8 @@ structure MatReduc = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Atlas wrapper for `adapted_basis`:
+     returns `(basisMatrix, diag)` where `diag` is the invariant list. *)
   fun adaptedBasis (a: mat) : mat * int list =
     let
       val h = AtlasFFI.atlas_intmat_adapted_basis (IntMatrix.matToText a)
@@ -47,6 +61,7 @@ structure MatReduc = struct
       | _ => raise Fail "MatReduc.adaptedBasis: empty diag"
     end
 
+  (* Express matrix `m` in the lattice basis given by columns of `a`. *)
   fun inLatticeBasis (a: mat, m: mat) : mat =
     let
       val out = AtlasFFI.atlas_intmat_in_lattice_basis_text (IntMatrix.matToText a, IntMatrix.matToText m)

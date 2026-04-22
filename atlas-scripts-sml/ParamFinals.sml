@@ -1,6 +1,19 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
+(*
+  File: atlas-scripts-sml/ParamFinals.sml
+
+  Purpose
+  - Convenience wrappers for the Atlas “finals_for” operation exposed via the
+    FFI (`atlas_param_finals`).
+
+  Ownership
+  - `finals` returns cloned parameter handles (caller must free them).
+  - `freeTerms` frees the parameter handles in a term list.
+*)
 structure ParamFinals = struct
+  (* Compute the list of final parameters (with multiplicities) associated to `p`.
+     Returns fresh clones; caller owns them. *)
   fun finals (p: AtlasFFI.param) : (AtlasFFI.param * int) list =
     let
       val h = AtlasFFI.atlas_param_finals p
@@ -39,7 +52,7 @@ structure ParamFinals = struct
       terms
     end
 
+  (* Free the parameter handles returned by `finals`. *)
   fun freeTerms (terms: (AtlasFFI.param * int) list) : unit =
     List.app (fn (p, _) => AtlasFFI.atlas_param_free p) terms
 end
-

@@ -2,9 +2,26 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/MatReduc.sml";
 
+(*
+  File: atlas-scripts-sml/LambdaDifferential0.sml
+
+  Purpose
+  - Compute the “lambda differential 0” character lattice used in Atlas to
+    enumerate twists of parameters by 2-torsion characters.
+
+  Atlas correspondence
+  - Wraps `atlas_kgb_all_lambda_differential_0_text` and provides utilities to
+    compute the subgroup of order-2 characters fixed by an involution matrix
+    `theta`, then enumerate all sums of its basis vectors.
+
+  Notes
+  - This is used by `AllParameters` when generating all parameters compatible
+    with a fixed `(x,gamma)` datum.
+*)
 structure LambdaDifferential0 = struct
   type mat = IntMatrix.mat
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -15,6 +32,8 @@ structure LambdaDifferential0 = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Atlas wrapper: return all `lambda_differential_0` vectors for `(g,x)` as a
+     list of integer vectors. *)
   fun all (g: AtlasFFI.group, x: int) : int list list =
     let
       val s = AtlasFFI.atlas_kgb_all_lambda_differential_0_text (g, x)
@@ -42,14 +61,18 @@ structure LambdaDifferential0 = struct
       | _ => raise Fail "LambdaDifferential0: bad header"
     end
 
+  (* Matrix shape, delegated to `IntMatrix`. *)
   fun matShape (rows: mat) : int * int = IntMatrix.matShape rows
 
+  (* Entrywise subtraction. *)
   fun matSub (a: mat, b: mat) : mat =
     ListPair.mapEq (fn (ra, rb) => ListPair.mapEq (op -) (ra, rb)) (a, b)
 
+  (* Identity matrix. *)
   fun identity (n: int) : mat =
     List.tabulate (n, fn i => List.tabulate (n, fn j => if i = j then 1 else 0))
 
+  (* Matrix multiplication (row-major). *)
   fun matMul (a: mat, b: mat) : mat =
     let
       val (ar, ac) = matShape a
@@ -70,6 +93,7 @@ structure LambdaDifferential0 = struct
       if ar = 0 then [] else List.map rowMul a
     end
 
+  (* Select columns from a matrix, returning a new matrix with those columns. *)
   fun selectColumns (cols: int list, m: mat) : mat =
     let
       val (_, c) = matShape m
@@ -80,6 +104,8 @@ structure LambdaDifferential0 = struct
       List.map row m
     end
 
+  (* Compute a basis for the subgroup of order-2 characters related to `theta`.
+     Returns a matrix whose columns form the basis. *)
   fun basisTheta (theta: mat) : mat =
     let
       val (n, n2) = matShape theta
@@ -111,6 +137,7 @@ structure LambdaDifferential0 = struct
         end
     end
 
+  (* Convert a matrix to its list of columns. *)
   fun columns (m: mat) : int list list =
     let
       val (r, c) = matShape m
@@ -119,9 +146,12 @@ structure LambdaDifferential0 = struct
       List.tabulate (c, col)
     end
 
+  (* Return the order-2 character basis as a list of vectors (columns). *)
   fun charactersOrder2Theta (theta: mat) : int list list =
     columns (basisTheta theta)
 
+  (* Enumerate all sums of the order-2 character basis vectors.
+     Returns a list including the zero vector. *)
   fun allTheta (theta: mat) : int list list =
     let
       val (n, n2) = matShape theta

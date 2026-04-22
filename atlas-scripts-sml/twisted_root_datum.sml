@@ -5,13 +5,25 @@ use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/sort.sml";
 use "atlas-scripts-sml/affine.sml";
 
-(* Minimal SML analogue of `atlas-scripts/twisted_root_datum.at`:
-   currently only implements `cyclic_twist`. *)
+(*
+  File: atlas-scripts-sml/twisted_root_datum.sml
+
+  Purpose
+  - Partial SML analogue of `atlas-scripts/twisted_root_datum.at`.
+  - Provides the minimal “twisted root datum” machinery needed by the folded-FPP
+    geometry and cofolded constructions.
+
+  Concept
+  - A twisted root datum is `(rd, delta)` where `delta` is an integer matrix
+    automorphism acting on the lattice of `rd`.
+  - “Distinguished” means `delta` permutes the simple roots.
+*)
 structure TwistedRootDatum = struct
   type mat = IntMatrix.mat
   type rootdatum = RootDatum.t
   type t = {rd: rootdatum, delta: mat}
 
+  (* Dot product on integer vectors. *)
   fun dot (xs: int list, ys: int list) : int =
     let
       fun loop ([], [], acc) = acc
@@ -21,14 +33,18 @@ structure TwistedRootDatum = struct
       loop (xs, ys, 0)
     end
 
+  (* Scale an integer vector. *)
   fun vecScale (v: int list, k: int) : int list =
     List.map (fn x => x * k) v
 
+  (* Add integer vectors componentwise. *)
   fun vecAdd (a: int list, b: int list) : int list =
     ListPair.mapEq (op +) (a, b)
 
+  (* Zero vector of length `n`. *)
   fun vecZero n = List.tabulate (n, fn _ => 0)
 
+  (* Convert columns (vectors) into a row-major matrix. *)
   fun matFromColumns (cols: int list list) : mat =
     (case cols of
        [] => []
@@ -38,9 +54,10 @@ structure TwistedRootDatum = struct
            val () = if List.all (fn c => length c = n) cs then () else raise Fail "TwistedRootDatum.matFromColumns: ragged"
            fun row i = List.map (fn c => List.nth (c, i)) cols
          in
-          List.tabulate (n, row)
+         List.tabulate (n, row)
          end)
 
+  (* Build a root datum from positive roots/coroots by extracting simple roots. *)
   fun rootdatum_from_positive (posRootsCols: int list list, posCorootsCols: int list list) : rootdatum =
     let
       val () =
@@ -59,6 +76,7 @@ structure TwistedRootDatum = struct
       RootDatum.newFromSimpleMats (matFromColumns simpleRoots, matFromColumns simpleCoroots, false)
     end
 
+  (* Direct product of two root data via block-diagonal concatenation. *)
   fun direct_product_rootdatum (rd1: rootdatum, rd2: rootdatum) : rootdatum =
     let
       val r1 = RootDatum.simpleRootsMat rd1
@@ -71,6 +89,7 @@ structure TwistedRootDatum = struct
       RootDatum.newFromSimpleMats (r, cr, false)
     end
 
+  (* Product of twisted root data (block-diagonal on both rd and delta). *)
   fun mul (a: t, b: t) : t =
     let
       val rd = direct_product_rootdatum (#rd a, #rd b)
@@ -79,6 +98,7 @@ structure TwistedRootDatum = struct
       {rd = rd, delta = delta}
     end
 
+  (* Check whether `delta` permutes the simple roots of `rd`. *)
   fun is_distinguished (rd: rootdatum, delta: mat) : bool =
     let
       val simple = RootDatum.simpleRootsCols rd
@@ -88,6 +108,7 @@ structure TwistedRootDatum = struct
       List.all ok simple
     end
 
+  (* Order of the twist (as a permutation action on simple roots). *)
   fun order_twist (trd: t) : int =
     let
       val rd = #rd trd
@@ -109,6 +130,7 @@ structure TwistedRootDatum = struct
       List.foldl Int.max 1 (List.map orbitSize simple)
     end
 
+  (* Block-diagonal repetition of a matrix `m`, repeated `r` times. *)
   fun block_diag_repeat (m: mat, r: int) : mat =
     if r < 0 then
       raise Fail "TwistedRootDatum.block_diag_repeat: negative repeat"
@@ -149,10 +171,12 @@ structure TwistedRootDatum = struct
         {rd = rd_r, delta = delta}
       end
 
+  (* Cyclic twist using the identity matrix in place of `tau`. *)
   fun cyclic_twist_id (rd: rootdatum, r: int) : t =
     cyclic_twist (rd, MatrixAT.id_mat (RootDatum.rank rd), r)
 
-  (* Not yet ported from `atlas-scripts/twisted_root_datum.at`. *)
+  (* Compute the “pre-folded” roots/coroots matrices (positive system) used to
+     build the folded root datum; this follows the approach in `twisted_root_datum.at`. *)
   fun pre_folded (trd: t) : mat * mat =
     let
       val rd = #rd trd
@@ -200,6 +224,7 @@ structure TwistedRootDatum = struct
       (matFromColumns roots, matFromColumns coroots)
     end
 
+  (* Convert a row-major matrix into its list of columns. *)
   fun matColumns (m: mat) : int list list =
     let
       val (_, nCols) = IntMatrix.matShape m
@@ -208,6 +233,8 @@ structure TwistedRootDatum = struct
       List.tabulate (nCols, col)
     end
 
+  (* Construct the folded root datum and the inclusion matrix `tMat` for the
+     fixed-point torus lattice. *)
   fun folded (trd: t) : rootdatum * mat =
     let
       val (rootsMat, corootsMat) = pre_folded trd
@@ -224,6 +251,7 @@ structure TwistedRootDatum = struct
       (foldedRd, tMat)
     end
 
+  (* Recover the inverse image of a folded simple factor inside the original datum. *)
   fun inverse_image_simple_factor (trd: t, foldedFactor: rootdatum, tMat: mat) : rootdatum =
     let
       val rd = #rd trd
@@ -251,6 +279,8 @@ structure TwistedRootDatum = struct
       rootdatum_from_positive (roots', coroots')
     end
 
+  (* Choose an affine root for a folded factor (highest root vs highest short root),
+     depending on the twist order of its inverse image. *)
   fun affine_root_of_factor (trd: t, foldedFactor: rootdatum, tMat: mat) : int list =
     let
       val inv = inverse_image_simple_factor (trd, foldedFactor, tMat)
@@ -264,6 +294,7 @@ structure TwistedRootDatum = struct
       if ord = 1 then RootDatum.highestRoot foldedFactor else RootDatum.highestShortRoot foldedFactor
     end
 
+  (* Build the affine datum associated to a twisted root datum’s folding. *)
   fun affine_datum (trd: t) : Affine.affine_datum =
     let
       val (frd, tMat) = folded trd

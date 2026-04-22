@@ -7,24 +7,51 @@ use "atlas-scripts-sml/parabolics.sml";
 use "atlas-scripts-sml/LieType.sml";
 use "atlas-scripts-sml/RootDatum.sml";
 
-(* Partial SML analogue of `atlas-scripts/induction.at`.
-   This file starts with the “good range” dominance checks and Levi construction
-   needed by unitary-dual scripts. *)
+(*
+  File: atlas-scripts-sml/induction.sml
+
+  Purpose
+  - Partial SML analogue of `atlas-scripts/induction.at` focused on the
+    subroutines needed by the current unitary-dual scripts.
+  - Implements:
+      - weakly-good range test (`is_weakly_good`)
+      - theta-stable parabolic enumeration for a given parameter (via
+        `Parabolics.theta_stable_parabolics_with`)
+      - a “first witness” search for good-range induction (`good_range_induced_from_first_text`)
+
+  Design and scope notes
+  - The Atlas interpreter’s induction code is large; this port is intentionally
+    incremental and currently aims to be “correct enough” for the scripts we
+    have translated (not yet a full induction library).
+  - Levi construction uses a dedicated C++ helper
+    `atlas_group_new_levi_of_parabolic` and returns a new group handle which
+    must be freed by callers.
+
+  Ownership
+  - Any `AtlasFFI.group` returned from `Levi` must be freed with
+    `AtlasFFI.atlas_group_free`.
+  - Any `AtlasFFI.param` created here is freed internally unless explicitly
+    returned (currently, no function returns parameters; only formatted text).
+*)
 structure Induction = struct
   type group = AtlasFFI.group
   type param = AtlasFFI.param
   type ratvec = Lattice.ratvec
   type parabolic = Parabolics.parabolic
 
+  (* Negate a rational vector. *)
   fun ratvecNeg (u: ratvec) : ratvec =
     Lattice.ratvecScale (u, ~1, 1)
 
+  (* Add two rational vectors. *)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec =
     Lattice.ratvecSub (u, ratvecNeg v)
 
+  (* Parse `ratvec` text as used by Atlas weight printers. *)
   fun parseRatWeightText (s: string) : ratvec =
     AllParameters.parseRatWeightText s
 
+  (* Dominance test against simple coroots of `g`. *)
   fun is_dominant (g: group) (v: ratvec) : bool =
     let
       val cors = Coordinates.parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
@@ -34,6 +61,8 @@ structure Induction = struct
       List.all (fn x => Coordinates.leq (zero, x)) coords
     end
 
+  (* Construct the Levi subgroup handle for a parabolic `(S,x)` in `g`.
+     Raises on failure. Caller must free the returned `group`. *)
   fun Levi (g: group) ((S, x): parabolic) : group =
     let
       val S_text = String.concatWith " " (List.map Int.toString S)
@@ -47,7 +76,8 @@ structure Induction = struct
       L
     end
 
-  (* `is_weakly_good(p_L,G)` from induction.at (requires L = real_form(p_L) is Levi in G). *)
+  (* `is_weakly_good(p_L,G)` from `induction.at`.
+     Requires that `L` is the Levi subgroup of `G` attached to `p_L`. *)
   fun is_weakly_good (pL: param, G: group, L: group) : bool =
     let
       val rhoG = parseRatWeightText (AtlasFFI.atlas_group_rho_text G)
@@ -59,6 +89,8 @@ structure Induction = struct
       is_dominant G v
     end
 
+  (* Try to build a Levi subgroup; returns `NONE` instead of raising.
+     Caller must free the returned `group` handle on `SOME`. *)
   fun tryLevi (g: group) ((S, x): parabolic) : group option =
     let
       val S_text = String.concatWith " " (List.map Int.toString S)
@@ -67,9 +99,11 @@ structure Induction = struct
       if L = Foreign.Memory.null then NONE else SOME L
     end
 
+  (* Pretty-print a subset of simple indices in the `.at`-style `[...]` form. *)
   fun subsetString (S: int list) : string =
     "[" ^ String.concatWith "," (List.map Int.toString S) ^ "]"
 
+  (* Pretty-print a `LieType.t` as `A1 x B2 x ...`. *)
   fun lieTypeString (lt: LieType.t) : string =
     let
       fun one (c, r) = str c ^ Int.toString r
@@ -77,6 +111,7 @@ structure Induction = struct
       String.concatWith " x " (List.map one lt)
     end
 
+  (* Return the semisimple Lie type string for an Atlas group handle. *)
   fun groupTypeString (g: group) : string =
     let
       val rd = AtlasFFI.atlas_group_rootdatum_new g
@@ -91,6 +126,8 @@ structure Induction = struct
       lieTypeString lt
     end
 
+  (* Find a KGB element in `g` matching both involution-matrix and torus-factor
+     text. Used to identify the “same” KGB element across Levi embeddings. *)
   fun findKGBByInvolutionAndTorusFactorText (g: group) (thetaText: string, tfText: string) : int option =
     let
       val n = AtlasFFI.atlas_group_kgb_size g
@@ -105,6 +142,8 @@ structure Induction = struct
       loop 0
     end
 
+  (* Decide whether `p` occurs with multiplicity 1 among the finals of the
+     standard module defined by the given `xG` and the `(lambda,nu)` of `p`. *)
   fun induced_matches (p: param, G: group, xG: int) : bool =
     let
       val lambda = parseRatWeightText (AtlasFFI.atlas_param_lambda_text p)
@@ -139,6 +178,10 @@ structure Induction = struct
 
   (* Atlas-style `is_good_range_induced_from(p)` but only returns the first witness (if any),
      formatted like the old C++ probe: "1|same|unitary|type=... rf=... S=[...]". *)
+  (* Search for a theta-stable parabolic `P=(S,y)` determined by `x(p)` such that:
+       - the corresponding Levi parameter `p_L` is final and weakly good for `G`
+       - `theta_induce_irreducible(p_L,G)` contains `p` (checked by `finals_for`)
+     Returns a compact, stable string for tests and script output. *)
   fun good_range_induced_from_first_text (p: param, G: group) : string =
     let
       val x = AtlasFFI.atlas_param_x p

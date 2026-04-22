@@ -1,5 +1,24 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
+(*
+  File: atlas-scripts-sml/ParamHash.sml
+
+  Purpose
+  - A lightweight “set with stable indexing” for Atlas parameters, used to
+    deduplicate large computed collections (e.g. F4 FPP point sets).
+
+  Design
+  - Parameters are bucketed using the Atlas-provided hash function
+    `atlas_param_hash(p, m)` and compared using `atlas_param_equal`.
+  - `match` inserts a clone of the parameter and returns its assigned index;
+    repeated `match` on an equal parameter returns the existing index.
+
+  Ownership
+  - The hash table owns the stored parameter handles (cloned at insertion).
+  - Call `freeAll` when done to free all stored handles.
+  - Callers should still free any temporary parameters they create; `match`
+    does not consume its input handle.
+*)
 structure ParamHash = struct
   type param = AtlasFFI.param
 
@@ -11,6 +30,7 @@ structure ParamHash = struct
     , count: int ref
     }
 
+  (* Create a new table with `bucketCount` buckets (must be positive). *)
   fun create bucketCount : t =
     if bucketCount <= 0 then raise Fail "ParamHash.create: bucketCount must be positive"
     else
@@ -23,12 +43,15 @@ structure ParamHash = struct
         }
       end
 
+  (* Number of stored parameters. *)
   fun size ({count, ...}: t) = !count
 
+  (* Clear buckets and reset count, but do not free stored parameters. *)
   fun clear ({buckets, count, ...}: t) =
     (buckets := Array.array (Array.length (!buckets), []);
      count := 0)
 
+  (* Free all stored parameters and reset the table to empty. *)
   fun freeAll (t: t) =
     let
       val {params, count, ...} = t
@@ -44,6 +67,7 @@ structure ParamHash = struct
       clear t
     end
 
+  (* Ensure backing array capacity for at least `need` stored parameters. *)
   fun ensureCapacity (t: t) (need: int) =
     let
       val {params, ...} = t
@@ -67,12 +91,14 @@ structure ParamHash = struct
         end
     end
 
+  (* Scan a bucket to find an equal parameter, returning its index if present. *)
   fun findInBucket (p: param) (xs: entry list) : int option =
     case xs of
       [] => NONE
     | {p = q, idx} :: rest =>
         if AtlasFFI.atlas_param_equal (p, q) = 1 then SOME idx else findInBucket p rest
 
+  (* Compute the bucket index for `p` using Atlas' hash function. *)
   fun bucketIndex (bs: entry list array) (p: param) : int =
     let
       val m = Array.length bs
@@ -81,6 +107,7 @@ structure ParamHash = struct
       if h < 0 then raise Fail ("ParamHash: hash failed: " ^ AtlasFFI.atlas_last_error ()) else h
     end
 
+  (* Lookup the index of `p`, or `~1` if absent. *)
   fun lookup ({buckets, ...}: t) (p: param) : int =
     let
       val bs = !buckets
@@ -91,15 +118,18 @@ structure ParamHash = struct
       | SOME j => j
     end
 
+  (* Membership test. *)
   fun contains (t: t) (p: param) : bool =
     lookup t p >= 0
 
+  (* Fetch the stored parameter handle by index. *)
   fun index ({params, count, ...}: t) (j: int) : param =
     if j < 0 orelse j >= !count then
       raise Subscript
     else
       Array.sub (!params, j)
 
+  (* Return the stored parameters as a list in insertion order. *)
   fun list (t: t) : param list =
     let
       val {params, count, ...} = t
@@ -111,6 +141,8 @@ structure ParamHash = struct
       loop (n - 1, [])
     end
 
+  (* Insert-or-match: returns the index of an equal stored parameter.
+     On insertion, clones `p` so that the table owns the stored handle. *)
   fun match (t: t) (p: param) : int =
     let
       val {buckets, params, count, ...} = t

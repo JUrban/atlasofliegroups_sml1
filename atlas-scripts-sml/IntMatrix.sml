@@ -1,8 +1,30 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
+(*
+  File: atlas-scripts-sml/IntMatrix.sml
+
+  Purpose
+  - Small integer-matrix utility layer used throughout the SML port.
+  - Provides basic linear algebra on `int list list` matrices plus thin wrappers
+    around Atlas C++ routines (Smith normal form, kernels, echelon forms, etc.)
+    exposed via the SML FFI.
+
+  Matrix representation and text formats
+  - `type mat = int list list` is row-major: each inner list is a row.
+  - `parseMatText` / `matToText` use the Atlas “int matrix text” convention:
+      `n m a11 a12 ... a1m a21 ... anm`
+    i.e. the first two integers are the number of rows and columns, followed by
+    row-major entries.
+
+  Error handling
+  - Pure SML routines raise `Fail` on shape mismatches.
+  - FFI-backed routines return `"-1"`/`null` on errors; wrappers translate this
+    into `Fail` with `AtlasFFI.atlas_last_error ()`.
+*)
 structure IntMatrix = struct
   type mat = int list list
 
+  (* Parse a whitespace-separated list of integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -13,6 +35,7 @@ structure IntMatrix = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Return the `(nRows,nCols)` shape; rejects ragged matrices. *)
   fun matShape (rows: mat) : int * int =
     case rows of
       [] => (0, 0)
@@ -24,9 +47,11 @@ structure IntMatrix = struct
           (length rows, m)
         end
 
+  (* Convert SML `~` negatives to C-style `-` negatives (Atlas parsers). *)
   fun toCText (s: string) : string =
     String.translate (fn #"~" => "-" | c => str c) s
 
+  (* Matrix transpose. *)
   fun transpose (a: mat) : mat =
     let
       val (n, m) = matShape a
@@ -35,14 +60,18 @@ structure IntMatrix = struct
       List.tabulate (m, col)
     end
 
+  (* Entrywise negation. *)
   fun neg (a: mat) : mat = List.map (fn row => List.map (fn x => ~x) row) a
 
+  (* Entrywise addition (shape must match). *)
   fun add (a: mat, b: mat) : mat =
     ListPair.mapEq (fn (ra, rb) => ListPair.mapEq (op +) (ra, rb)) (a, b)
 
+  (* Entrywise subtraction (shape must match). *)
   fun sub (a: mat, b: mat) : mat =
     ListPair.mapEq (fn (ra, rb) => ListPair.mapEq (op -) (ra, rb)) (a, b)
 
+  (* Horizontal concatenation `[a | b]` (same number of rows). *)
   fun hcat (a: mat, b: mat) : mat =
     let
       val (na, ma) = matShape a
@@ -52,6 +81,7 @@ structure IntMatrix = struct
       ListPair.mapEq (op @) (a, b)
     end
 
+  (* Matrix multiplication `a*b` (row-major, integer arithmetic). *)
   fun matMul (a: mat, b: mat) : mat =
     let
       val (ar, ac) = matShape a
@@ -72,9 +102,11 @@ structure IntMatrix = struct
       if ar = 0 then [] else List.map rowMul a
     end
 
+  (* Identity matrix of size `n`. *)
   fun identity (n: int) : mat =
     List.tabulate (n, fn i => List.tabulate (n, fn j => if i = j then 1 else 0))
 
+  (* Multiply matrix by an integer column vector. *)
   fun matVecMul (a: mat, x: int list) : int list =
     let
       val (_, m) = matShape a
@@ -84,6 +116,7 @@ structure IntMatrix = struct
       List.map (fn row => dot (row, x)) a
     end
 
+  (* First `k` rows of a matrix. *)
   fun firstRows (k: int, a: mat) : mat =
     let
       val (n, _) = matShape a
@@ -92,6 +125,7 @@ structure IntMatrix = struct
       List.take (a, k)
     end
 
+  (* First `k` columns of a matrix. *)
   fun firstCols (k: int, a: mat) : mat =
     let
       val (_, m) = matShape a
@@ -101,6 +135,7 @@ structure IntMatrix = struct
       List.map row a
     end
 
+  (* Serialize to the Atlas “int matrix text” format `n m ...` (row-major). *)
   fun matToText (a: mat) : string =
     let
       val (n, m) = matShape a
@@ -118,6 +153,7 @@ structure IntMatrix = struct
       String.concatWith " " (Int.toString n :: Int.toString m :: List.map intToCText entries)
     end
 
+  (* Parse the Atlas “int matrix text” format `n m ...` (row-major). *)
   fun parseMatText s : mat =
     let
       val ns = parseInts s
@@ -135,6 +171,7 @@ structure IntMatrix = struct
       | _ => raise Fail "IntMatrix: truncated header"
     end
 
+  (* Integer kernel basis as rows, via Atlas C++ routine. *)
   fun kernel (a: mat) : mat =
     let
       val out = AtlasFFI.atlas_intmat_kernel_text (matToText a)
@@ -144,6 +181,7 @@ structure IntMatrix = struct
       | _ => parseMatText out
     end
 
+  (* Eigenlattice for eigenvalue `eigenValue` of an integer matrix. *)
   fun eigenLattice (a: mat, eigenValue: int) : mat =
     let
       val out = AtlasFFI.atlas_intmat_eigen_lattice_text (matToText a, eigenValue)
@@ -153,6 +191,10 @@ structure IntMatrix = struct
       | _ => parseMatText out
     end
 
+  (* Smith normal form data:
+       - returns `(basis, diag)`
+       - `basis` is a change-of-basis matrix (Atlas convention)
+       - `diag` is the diagonal invariant list (no header). *)
   fun smithBasis (a: mat) : mat * int list =
     let
       val basisText = AtlasFFI.atlas_intmat_smith_basis_text (matToText a)
@@ -174,6 +216,9 @@ structure IntMatrix = struct
       | _ => raise Fail "IntMatrix.smithBasis: bad diag header"
     end
 
+  (* Diagonalization wrapper returning `(diag,row,col)`:
+       - `diag` is the diagonal list
+       - `row` and `col` are unimodular transforms in Atlas conventions. *)
   fun diagonalize (a: mat) : int list * mat * mat =
     let
       val h = AtlasFFI.atlas_intmat_diagonalize (matToText a)
@@ -204,6 +249,9 @@ structure IntMatrix = struct
  
   type echelon = AtlasFFI.echelon
  
+  (* Compute an echelon form:
+       returns `(M,C,pivots,eps)` following the Atlas C++ helper.
+     `eps` is a nonzero “tolerance”/flag value from the C++ side. *)
   fun echelon (a: mat) : mat * mat * int list * int =
     let
       val h = AtlasFFI.atlas_intmat_echelon (matToText a)

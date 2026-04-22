@@ -8,9 +8,39 @@ use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/VertexData.sml";
 
+(*
+  File: atlas-scripts-sml/F4_FPP_points_compute.sml
+
+  Purpose
+  - Compute and filter the Atlas parameter set used in the F4 FPP/unitarity
+    verification workflow (`script_to_verify_F4_FPP_unitary_dual.sml`).
+
+  What this module produces
+  - A `ParamHash.t` containing (deduplicated-by-equivalence) final parameters
+    built from the folded-FPP barycenters (gamma values) and the precomputed
+    lambda table, across all KGB elements of `F4_s`.
+
+  High-level algorithm
+  - For each KGB element `x`:
+      - read `theta(x)` and build `(I+theta)`
+      - for each candidate `lambda` attached to `x`:
+          - select those `gamma` barycenters compatible with the affine
+            involution constraint (implemented by key matching)
+          - build `nu` from `gamma` and `(I+theta)*lambda/2`
+          - construct and normalize the parameter
+          - keep it iff it is standard, final, hermitian, and (optionally)
+            unitary (controlled by `FPPFlags.Dirac_flag`)
+  - Insert into `ParamHash` (which owns canonical stored handles).
+
+  Memory/ownership
+  - Parameters built during the scan are freed immediately after hashing/matching.
+  - The caller owns the returned `ParamHash.t` from `computeAll`/`computeThetaStableFaces`
+    and must free it via `ParamHash.freeAll`.
+*)
 structure F4_FPP_points_compute = struct
   type ratvec = Lattice.ratvec
 
+  (* Convert SML `~` negatives to C-style `-` negatives as expected by Atlas parsers. *)
   fun intToCText (n: int) : string =
     let
       val s = Int.toString n
@@ -21,9 +51,11 @@ structure F4_FPP_points_compute = struct
         s
     end
 
+  (* Serialize an integer list in the Atlas C++ whitespace-separated format. *)
   fun intsToCText (xs: int list) : string =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Normalize a rational vector and turn it into a stable key `[den, nums...]`. *)
   fun ratvecKey (u: ratvec) : int list =
     let
       val u = Lattice.ratvecNormalize u
@@ -31,6 +63,7 @@ structure F4_FPP_points_compute = struct
       #den u :: #nums u
     end
 
+  (* Normalize a rational vector and serialize it as `(numsText, den)` for FFI calls. *)
   fun ratvecToTextParts (u: ratvec) : string * int =
     let
       val u = Lattice.ratvecNormalize u
@@ -38,9 +71,12 @@ structure F4_FPP_points_compute = struct
       (intsToCText (#nums u), #den u)
     end
 
+  (* Add two rational vectors. *)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec =
     Lattice.ratvecSub (u, Lattice.ratvecScale (v, ~1, 1))
 
+  (* Populate `out` with all parameters produced by the folded-FPP barycenter and
+     lambda tables, filtered by standard/final/hermitian and (optionally) unitary. *)
   fun computeAllIntoParamHash (g: AtlasFFI.group, out: ParamHash.t) : unit =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -130,6 +166,8 @@ structure F4_FPP_points_compute = struct
        v |-> -theta*v + (I+theta)*lambda
      (stability is checked on the FPP vertex-index set via `VertexData.lookup`).
      Intended as a stepping stone toward the exact 1864 "unitary facet" set for F4_s. *)
+  (* Experimental variant: restrict to barycenters of affine-theta-stable faces.
+     Not currently used by the main verifier, but kept as a reference path. *)
   fun computeThetaStableFacesIntoParamHash (g: AtlasFFI.group, out: ParamHash.t) : unit =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -271,6 +309,7 @@ structure F4_FPP_points_compute = struct
       List.app loopX (List.tabulate (kgbSize, fn i => i))
     end
 
+  (* Allocate a fresh hash and fill it using `computeThetaStableFacesIntoParamHash`. *)
   fun computeThetaStableFaces (g: AtlasFFI.group) : ParamHash.t =
     let
       val out = ParamHash.create 65536
@@ -279,6 +318,7 @@ structure F4_FPP_points_compute = struct
       out
     end
 
+  (* Allocate a fresh hash and fill it using `computeAllIntoParamHash`. *)
   fun computeAll (g: AtlasFFI.group) : ParamHash.t =
     let
       val out = ParamHash.create 65536
@@ -287,7 +327,7 @@ structure F4_FPP_points_compute = struct
       out
     end
 
-  (* Convenience aliases. *)
+  (* Convenience aliases used by higher-level scripts. *)
   val computeIntoParamHash = computeAllIntoParamHash
   val compute = computeAll
 end

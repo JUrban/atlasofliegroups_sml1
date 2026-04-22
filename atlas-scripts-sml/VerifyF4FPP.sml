@@ -4,7 +4,23 @@ use "atlas-scripts-sml/F4_FPP_points_compute.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/FPP_globalDirac.sml";
 
+(*
+  File: atlas-scripts-sml/VerifyF4FPP.sml
+
+  Purpose
+  - Self-contained “driver” that reproduces (in SML) the behavior of
+    `atlas-scripts/script_to_verify_F4_FPP_unitary_dual.at`:
+      - build the F4 FPP parameter hash (expected size 1864)
+      - run the bottom-layer / unitary / unitary-dual verification checks
+
+  Usage
+  - Typical invocation:
+      poly -q < atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml
+    which loads this file and calls `VerifyF4FPP.run()`.
+*)
 structure VerifyF4FPP = struct
+  (* Run the full verification pipeline for `F4_s`. Prints progress and
+     consistency checks; raises `Fail` on internal errors. *)
   fun run () : unit =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0)

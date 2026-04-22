@@ -7,6 +7,63 @@ use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/diagram.sml";
 use "atlas-scripts-sml/basic.sml";
 
+(*
+  File: atlas-scripts-sml/RootDatum.sml
+
+  Purpose
+  - High-level SML wrapper for the Atlas `RootDatum` C++ type, plus a collection
+    of pure-SML helpers for working with roots/coroots and simple factors.
+
+  Atlas correspondence
+  - Many functions mirror names and behaviors from the `.at` environment
+    (`root`, `coroot`, `highestRoot`, `FPP_orbit_numers`, etc.), but are
+    implemented via direct FFI calls rather than `.at` script evaluation.
+
+  Ownership
+  - `type t = AtlasFFI.rootdatum` is an FFI handle; free with `RootDatum.free`.
+  - Functions returning new rootdatum handles (e.g. `dual`, `newSimple`,
+    `newFromSimpleMats`, `fromLieType`) return owned handles.
+
+  Function index (1-line summaries)
+  - `dot`: integer dot product on vectors.
+  - `dual`: dual root datum (new handle).
+  - `newSimple`: construct simple root datum by letter+rank.
+  - `newFromSimpleMats`: construct root datum from simple root/coroot matrices.
+  - `free`: free an `AtlasFFI.rootdatum` handle.
+  - `rank`: total rank (including central torus).
+  - `rhoText`: rho as Atlas text.
+  - `parseInts`: parse whitespace-separated integers.
+  - `parseColumnVectorsText`: parse Atlas “column vectors” text.
+  - `matFromColumns`: convert columns (as vectors) into a row-major matrix.
+  - `simpleRootsCols` / `simpleCorootsCols`: simple roots/coroots as columns.
+  - `simpleRootsMat` / `simpleCorootsMat`: simple roots/coroots as matrices.
+  - `rootCoradicalMat` / `corootRadicalMat`: (co)radical basis matrices via FFI.
+  - `columnsOfMat`: convert a row-major matrix to a list of columns.
+  - `coradicalBasisCols` / `radicalBasisCols`: basis vectors as columns.
+  - `posRootsCols` / `posCorootsCols`: positive roots/coroots as columns.
+  - `numPosRoots`: number of positive roots.
+  - `negIndexOfPos` / `posIndexOfNeg`: index conversion between ±roots.
+  - `rootByIndex` / `corootByIndex`: root/coroot vectors by Atlas index.
+  - `rootIndex` / `corootIndex`: inverse lookup for root/coroot indices.
+  - `subDatumByRootIndices`: Levi/subdatum extraction by selected root indices.
+  - `rootsCols` / `corootsCols`: full root/coroot lists as columns.
+  - `corootOfRoot` / `rootOfCoroot`: convert between root and coroot vectors.
+  - `coroot` / `root`: compute coroot(root) / root(coroot) using the datum.
+  - `semisimpleRank`: semisimple rank of the datum.
+  - `rootExpression`: express a root as coordinates in the simple basis.
+  - `highestRoot` / `highestShortRoot`: highest (short) root.
+  - `cartanMatrix`: Cartan matrix (simple coroots vs simple roots).
+  - `fundamentalWeights`: fundamental weights as vectors.
+  - `ratvecToText`: serialize a rational vector to Atlas text.
+  - `FPP_orbit_numers`: folded-FPP orbit numerator data (FFI).
+  - `matColumns`, `selectColumns`, `mul`: assorted matrix helpers.
+  - `numberSimpleFactors`, `simpleFactorIndexSets`, `simpleFactorsEmbedded`:
+    simple-factor decomposition utilities.
+  - `derived_is_simple`, `highestRoots`, `highestShortRoots`: derived helpers.
+  - `lieType`: semisimple Lie type extraction.
+  - `diagramAutomorphismMatrices`: diagram automorphism matrices (if needed).
+  - `fromLieType`: construct a root datum from a Lie type description.
+*)
 structure RootDatum = struct
   type t = AtlasFFI.rootdatum
 

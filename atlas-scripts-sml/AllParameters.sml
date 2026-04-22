@@ -4,9 +4,32 @@ use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/LambdaDifferential0.sml";
 use "atlas-scripts-sml/Dominant.sml";
 
+(*
+  File: atlas-scripts-sml/AllParameters.sml
+
+  Purpose
+  - Construct (final) Atlas parameters from “geometric” input data, primarily a
+    KGB element `x` and a rational weight `gamma` (often taken from the
+    fundamental parallelepiped / FPP routines).
+
+  Background / Atlas correspondence
+  - In the Atlas interpreter, scripts frequently build parameters by specifying
+    `(x,lambda,nu)` implicitly via relations involving the involution `theta`
+    attached to `x`. This module provides the SML-side analogue needed by the
+    F4 FPP/unitarity workflow, without depending on any `.at` scripts.
+
+  Conventions and ownership
+  - `ratweight` is represented as `{den, nums}` with integers; values are not
+    automatically normalized except where documented.
+  - Functions returning `AtlasFFI.param list` allocate C++ parameters; callers
+    must eventually free them (use `freeAll`).
+  - Some helpers (e.g. `addUniqueByEquivalent`) may free parameters to avoid
+    duplicates; read the function-level comments.
+*)
 structure AllParameters = struct
   type ratweight = {den: int, nums: int list}
 
+  (* Parse a whitespace-separated list of integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -17,11 +40,13 @@ structure AllParameters = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Parse a `ratweight` from Atlas text: `den n1 n2 ... nk`. *)
   fun parseRatWeightText s : ratweight =
     (case parseInts s of
        den :: rest => {den = den, nums = rest}
      | _ => raise Fail ("AllParameters: bad ratweight text: " ^ s))
 
+  (* Convert SML `~` negatives to C-style `-` negatives (Atlas C++ parser). *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -32,9 +57,12 @@ structure AllParameters = struct
         s
     end
 
+  (* Serialize an integer list in Atlas C++ “int list text” format. *)
   fun intsToCText xs =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Parse `atlas_group_kgb_involution_matrix_text` output.
+     Format: `rank` followed by `rank*rank` row-major entries. *)
   fun parseInvolutionMatrixText s : Lattice.mat =
     let
       val ns = parseInts s
@@ -56,21 +84,34 @@ structure AllParameters = struct
       | _ => raise Fail "AllParameters: parseInvolutionMatrixText: empty"
     end
 
+  (* Add an integral vector to a `ratweight` with denominator 1. *)
   fun ratvecAddIntVec (u: ratweight, v: int list) : ratweight =
     if #den u <> 1 then
       raise Fail "AllParameters: ratvecAddIntVec: expected denom=1"
     else
       {den = 1, nums = ListPair.mapEq (op +) (#nums u, v)}
 
+  (* Serialize a `ratweight` as `den n1 ... nk` (SML-side, not C++-normalized). *)
   fun ratweightToText ({den, nums}: ratweight) : string =
     Int.toString den ^ " " ^ String.concatWith " " (List.map Int.toString nums)
 
+  (* Add `p` to `acc` unless already equivalent to some element of `acc`.
+     Frees `p` on the duplicate path (ownership is consumed either way). *)
   fun addUniqueByEquivalent (p: AtlasFFI.param, acc: AtlasFFI.param list) : AtlasFFI.param list =
     if List.exists (fn q => AtlasFFI.atlas_param_equivalent (p, q) = 1) acc then
       (AtlasFFI.atlas_param_free p; acc)
     else
       p :: acc
 
+  (* Enumerate final parameters for fixed `(g,x,gamma)` without forcing `gamma`
+     to be dominant. The algorithm:
+       1) read `theta(x)` from Atlas, build `(I+theta)`
+       2) solve for integral `lambda` consistent with `gamma` and `rho(g)`
+       3) set `nu = (1-theta)*gamma/2`
+       4) apply all `theta`-lattice twists (from `LambdaDifferential0`)
+       5) normalize and take `finals`, deduplicating by `equivalent`.
+
+     Returns newly allocated `AtlasFFI.param`s; caller must free them. *)
   fun all_parameters_x_gamma_raw (g: AtlasFFI.group, x: int, gamma: ratweight) : AtlasFFI.param list =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -139,6 +180,7 @@ structure AllParameters = struct
           end
     end
 
+  (* As `all_parameters_x_gamma_raw`, but first makes `gamma` dominant for `g`. *)
   fun all_parameters_x_gamma_dominant (g: AtlasFFI.group, x: int, gamma: ratweight) : AtlasFFI.param list =
     let
       val gammaDomText = Dominant.makeDominantText g (ratweightToText gamma)
@@ -147,8 +189,11 @@ structure AllParameters = struct
       all_parameters_x_gamma_raw (g, x, gammaDom)
     end
 
+  (* Default choice: do not force dominance. *)
   val all_parameters_x_gamma = all_parameters_x_gamma_raw
 
+  (* Enumerate parameters across all KGB elements, deduplicating by equivalence.
+     This can allocate many parameters; callers should free the result. *)
   fun all_parameters_gamma_raw (g: AtlasFFI.group, gamma: ratweight) : AtlasFFI.param list =
     let
       val kgbSize = AtlasFFI.atlas_group_kgb_size g
@@ -158,8 +203,10 @@ structure AllParameters = struct
       List.rev (List.foldl loop [] (List.tabulate (kgbSize, fn i => i)))
     end
 
+  (* Default choice: do not force dominance. *)
   val all_parameters_gamma = all_parameters_gamma_raw
 
+  (* As `all_parameters_gamma_raw`, but first makes `gamma` dominant for `g`. *)
   fun all_parameters_gamma_dominant (g: AtlasFFI.group, gamma: ratweight) : AtlasFFI.param list =
     let
       val gammaDomText = Dominant.makeDominantText g (ratweightToText gamma)
@@ -168,6 +215,7 @@ structure AllParameters = struct
       all_parameters_gamma_raw (g, gammaDom)
     end
 
+  (* Free a list of `AtlasFFI.param` handles. *)
   fun freeAll (ps: AtlasFFI.param list) : unit =
     List.app AtlasFFI.atlas_param_free ps
 end

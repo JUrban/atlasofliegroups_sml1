@@ -1,6 +1,20 @@
+(*
+  File: atlas-scripts-sml/Rat.sml
+
+  Purpose
+  - Tiny rational-number utility used by some of the FPP geometry helpers.
+  - Uses `int` storage but computes gcd using `IntInf` to avoid intermediate
+    overflow in gcd computations.
+
+  Conventions
+  - Rationals are always kept normalized by `normalize`:
+      - denominator positive
+      - numerator/denominator reduced by gcd
+*)
 structure Rat = struct
   type rat = {num: int, den: int}
 
+  (* GCD on `IntInf.int` (nonnegative result). *)
   fun gcdIntInf (a: IntInf.int, b: IntInf.int) : IntInf.int =
     let
       val a = IntInf.abs a
@@ -11,6 +25,7 @@ structure Rat = struct
       if a = 0 then b else loop (a, b)
     end
 
+  (* Normalize a rational: reduce by gcd and force `den > 0`. *)
   fun normalize (r: rat) : rat =
     let
       val den0 = #den r
@@ -27,18 +42,26 @@ structure Rat = struct
       if g <= 1 then {num = num1, den = den1} else {num = num1 div g, den = den1 div g}
     end
 
+  (* Constructor that normalizes. *)
   fun make (num: int, den: int) : rat = normalize {num = num, den = den}
 
+  (* Rational addition. *)
   fun add (a: rat, b: rat) : rat =
     normalize {num = #num a * #den b + #num b * #den a, den = #den a * #den b}
 
+  (* Rational subtraction. *)
   fun sub (a: rat, b: rat) : rat =
     normalize {num = #num a * #den b - #num b * #den a, den = #den a * #den b}
 
+  (* Multiply by an integer. *)
   fun mulInt (a: rat, k: int) : rat = normalize {num = #num a * k, den = #den a}
 
+  (* Nonnegativity predicate. *)
   fun isNonNeg (a: rat) : bool = #num (normalize a) >= 0
 
+  (* Floor division `⌊a/b⌋` under the assumptions used in this codebase:
+       - `a >= 0`
+       - `b > 0` *)
   fun divFloor (a: rat, b: rat) : int =
     let
       val a = normalize a
@@ -52,4 +75,3 @@ structure Rat = struct
       IntInf.toInt (IntInf.div (n, d))
     end
 end
-

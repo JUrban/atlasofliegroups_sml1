@@ -1,7 +1,18 @@
 use "atlas-scripts-sml/MatrixAT.sml";
 
-(* Minimal SML analogue of `atlas-scripts/basic.at` (partial).
-   Provide core constructors used throughout `.at` scripts. *)
+(*
+  File: atlas-scripts-sml/basic.sml
+
+  Purpose
+  - Minimal SML analogue of `atlas-scripts/basic.at` providing core list/matrix
+    constructors and sorting/search helpers that many translated scripts rely on.
+
+  Scope
+  - This is intentionally not a full port of `basic.at`; it contains only the
+    pieces needed by the current SML translations.
+  - When new `.at` scripts are translated, add functionality here in small,
+    reviewable increments and keep behavior compatible with the `.at` versions.
+*)
 structure Basic = struct
   type mat = MatrixAT.mat
 
@@ -15,18 +26,22 @@ structure Basic = struct
   val id_mat = MatrixAT.id_mat
   val block_matrix = MatrixAT.block_matrix
 
+  (* Create a length-`n` list by tabulating a function. *)
   fun vector (n: int, f: int -> 'a) : 'a list =
     if n < 0 then raise Fail "Basic.vector: negative length" else List.tabulate (n, f)
 
+  (* Create an integer matrix by tabulating an `(i,j) -> int` function. *)
   fun matrix ((nRows: int, nCols: int), f: int * int -> int) : mat =
     if nRows < 0 orelse nCols < 0 then
       raise Fail "Basic.matrix: negative shape"
     else
       List.tabulate (nRows, fn i => List.tabulate (nCols, fn j => f (i, j)))
 
+  (* Indices `0..length(xs)-1`. *)
   fun indices (xs: 'a list) : int list =
     List.tabulate (length xs, fn i => i)
 
+  (* Binary search for the first index where `pred` becomes true on `[low,high)`. *)
   fun binary_search_first (pred: int -> bool, low: int, high: int) : int =
     let
       fun loop (l, h) =
@@ -44,6 +59,8 @@ structure Basic = struct
         loop (low, high)
     end
 
+  (* Binary search in a sorted list using a total preorder `leq`.
+     Returns the index of an equal element, or `NONE` if absent. *)
   fun binary_search_in (a: 't list, leq: 't * 't -> bool) : 't -> int option =
     fn x =>
       let
@@ -54,6 +71,7 @@ structure Basic = struct
         if i < n andalso leq (at i, x) then SOME i else NONE
       end
 
+  (* Binary search in a list sorted by `f`, comparing by `leq`. *)
   fun binary_search_in_by (a: 's list, f: 's -> 't, leq: 't * 't -> bool) : 't -> int option =
     fn x =>
       let
@@ -64,6 +82,7 @@ structure Basic = struct
         if i < n andalso leq (at i, x) then SOME i else NONE
       end
 
+  (* Merge two sorted lists. *)
   fun merge (leq: 'a * 'a -> bool) (a: 'a list, b: 'a list) : 'a list =
     (case (a, b) of
        ([], _) => b
@@ -71,6 +90,7 @@ structure Basic = struct
      | (x :: xs, y :: ys) =>
          if leq (x, y) then x :: merge leq (xs, b) else y :: merge leq (a, ys))
 
+  (* Merge two sorted lists, removing duplicates under `leq`. *)
   fun merge_u (leq: 'a * 'a -> bool) (a: 'a list, b: 'a list) : 'a list =
     (case (a, b) of
        ([], _) => b
@@ -81,6 +101,7 @@ structure Basic = struct
          else x :: merge_u leq (xs, ys))
 
   (* Stable merge-sort. *)
+  (* Sort a list using a total preorder `leq`. *)
   fun sort (leq: 'a * 'a -> bool) (xs: 'a list) : 'a list =
     let
       fun split xs =
@@ -111,6 +132,7 @@ structure Basic = struct
       ms xs
     end
 
+  (* Sort and remove duplicates under `leq` (stable for first occurrences). *)
   fun sort_u (leq: 'a * 'a -> bool) (xs: 'a list) : 'a list =
     let
       fun split xs =
@@ -141,6 +163,7 @@ structure Basic = struct
       ms xs
     end
 
+  (* Return the permutation of indices that sorts a list by `leq`. *)
   fun ranking (leq: 'a * 'a -> bool) (a: 'a list) : int list =
     let
       fun at i = List.nth (a, i)
@@ -149,6 +172,7 @@ structure Basic = struct
       sort leqIdx (indices a)
     end
 
+  (* Sort a list by a projection `f`. *)
   fun sort_by (f: 'a -> 'b, leq: 'b * 'b -> bool) (a: 'a list) : 'a list =
     let
       val vals = List.map f a
@@ -157,6 +181,7 @@ structure Basic = struct
       List.map (fn i => List.nth (a, i)) r
     end
 
+  (* Sort a list by a projection `f`, removing duplicates under `leq`. *)
   fun sort_u_by (f: 'a -> 'b, leq: 'b * 'b -> bool) (a: 'a list) : 'a list =
     let
       val vals = List.map f a
@@ -174,6 +199,7 @@ structure Basic = struct
       loop (r, NONE)
     end
 
+  (* Power set of a list (exponential in length). *)
   fun power_set (xs: 'a list) : 'a list list =
     let
       fun loop [] = [[]]
@@ -188,6 +214,7 @@ structure Basic = struct
     end
 
   (* All k-subsets of xs, preserving original order inside each subset. *)
+  (* Combinations of size `k` from `xs`, preserving original order. *)
   fun choices_from (xs: 'a list, k: int) : 'a list list =
     if k < 0 then
       raise Fail "Basic.choices_from: negative k"
@@ -201,6 +228,7 @@ structure Basic = struct
            else
              List.map (fn ys => x :: ys) (choices_from (rest, k - 1)) @ choices_from (rest, k))
 
+  (* All 0/1 vectors of length `n` with coordinate sum `k`. *)
   fun all_0_1_vecs_with_sum (n: int, k: int) : int list list =
     if n < 0 then
       raise Fail "Basic.all_0_1_vecs_with_sum: negative n"

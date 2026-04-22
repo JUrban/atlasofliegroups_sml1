@@ -1,17 +1,39 @@
 use "atlas-scripts-sml/IntMatrix.sml";
 
+(*
+  File: atlas-scripts-sml/MatrixAT.sml
+
+  Purpose
+  - SML-side matrix utilities corresponding to frequently used routines from
+    `atlas-scripts/matrix.at`.
+  - Mostly thin wrappers around `IntMatrix` plus a few lattice-oriented helpers
+    (left/right inverses up to finite index, block matrices, Kronecker product).
+
+  Representation
+  - `type mat = IntMatrix.mat` is row-major `int list list`.
+
+  Lattice conventions
+  - Many routines interpret an integer matrix as a homomorphism of free abelian
+    groups (lattices). In this setting:
+      - “injective” means full column rank over Q
+      - “surjective / saturated image” correspond to Smith-form conditions
+  - Functions named `weak_*_inverse` return an inverse up to a scalar `d`.
+*)
 structure MatrixAT = struct
   type mat = IntMatrix.mat
 
+  (* Zero matrix of shape `(nRows,nCols)`. *)
   fun null (nRows: int, nCols: int) : mat =
     if nRows < 0 orelse nCols < 0 then
       raise Fail "MatrixAT.null: negative dimensions"
     else
       List.tabulate (nRows, fn _ => List.tabulate (nCols, fn _ => 0))
 
+  (* Identity matrix of size `n`. *)
   fun id_mat (n: int) : mat =
     if n < 0 then raise Fail "MatrixAT.id_mat: negative size" else IntMatrix.identity n
 
+  (* Block-diagonal concatenation `diag(a,b)`. *)
   fun block_matrix (a: mat, b: mat) : mat =
     let
       val (ra, ca) = IntMatrix.matShape a
@@ -22,6 +44,7 @@ structure MatrixAT = struct
       top @ bot
     end
 
+  (* Check whether `pi` is a permutation of `0..n-1`. *)
   fun is_permutation (pi: int list) : bool =
     let
       val n = length pi
@@ -35,6 +58,7 @@ structure MatrixAT = struct
       ok pi
     end
 
+  (* Permutation matrix for `pi` (columns encode images). *)
   fun permutation_matrix (pi: int list) : mat =
     if not (is_permutation pi) then
       raise Fail "MatrixAT.permutation_matrix: not a permutation"
@@ -46,6 +70,7 @@ structure MatrixAT = struct
         List.tabulate (n, row)
       end
 
+  (* Integer gcd. *)
   fun gcdInt (a: int, b: int) : int =
     let
       val a = Int.abs a
@@ -56,11 +81,13 @@ structure MatrixAT = struct
       if a = 0 then b else loop (a, b)
     end
 
+  (* GCD of a list (0 for empty list). *)
   fun gcdList xs =
     (case xs of
        [] => 0
      | x :: rest => List.foldl gcdInt (Int.abs x) rest)
 
+  (* GCD on `IntInf.int`. *)
   fun gcdIntInf (a: IntInf.int, b: IntInf.int) : IntInf.int =
     let
       val a = IntInf.abs a
@@ -71,6 +98,7 @@ structure MatrixAT = struct
       if a = 0 then b else loop (a, b)
     end
 
+  (* Integer lcm (uses `IntInf` to avoid overflow). *)
   fun lcmInt (a: int, b: int) : int =
     let
       val a' = IntInf.fromInt a
@@ -81,9 +109,12 @@ structure MatrixAT = struct
       IntInf.toInt l
     end
 
+  (* LCM of a list (0 for empty list). *)
   fun lcmList xs =
     List.foldl (fn (x, acc) => if acc = 0 then Int.abs x else lcmInt (acc, x)) 0 xs
 
+  (* Helper used by `weak_left_inverse`: construct a left inverse for a diagonal
+     matrix up to scalar `d`. *)
   fun diagonalLeftInverse (diag: int list, d: int, nRows: int) : mat =
     let
       val m = length diag
@@ -126,6 +157,7 @@ structure MatrixAT = struct
       (j, d)
     end
 
+  (* Strict left inverse in the lattice sense: succeeds only if `d=1`. *)
   fun left_inverse (a: mat) : mat =
     let
       val (j, d) = weak_left_inverse a
@@ -142,6 +174,7 @@ structure MatrixAT = struct
       if d = 0 orelse d = 1 then (d, m) else (d, List.map (fn row => List.map (fn x => x div d) row) m)
     end
 
+  (* Principal submatrix indexed by `s` (in the same order as `s`). *)
   fun principal_submatrix (m: mat, s: int list) : mat =
     let
       val (n, k) = IntMatrix.matShape m
@@ -154,6 +187,7 @@ structure MatrixAT = struct
       List.tabulate (length s, row)
     end
 
+  (* Square block on the diagonal starting at `offset`, of size `size`. *)
   fun main_diagonal_square_block (m: mat, size: int, offset: int) : mat =
     if size < 0 orelse offset < 0 then
       raise Fail "MatrixAT.main_diagonal_square_block: negative"
@@ -167,9 +201,11 @@ structure MatrixAT = struct
         principal_submatrix (m, s)
       end
 
+  (* Top-left `size x size` block of a square matrix. *)
   fun top_left_square_block (m: mat, size: int) : mat =
     main_diagonal_square_block (m, size, 0)
 
+  (* Leading principal minor (alias). *)
   fun leading_principal_minor (m: mat, size: int) : mat =
     top_left_square_block (m, size)
 
@@ -227,8 +263,10 @@ structure MatrixAT = struct
       List.tabulate (m * p, row)
     end
 
+  (* Capitalized alias used in some `.at` scripts. *)
   val Kronecker_product = kronecker_product
 
+  (* Integer matrix power by repeated squaring. *)
   fun matPow (a: mat, k: int) : mat =
     if k < 0 then
       raise Fail "MatrixAT.matPow: negative exponent"
