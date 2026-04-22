@@ -590,4 +590,4 @@ structure G2_unitary_dual = struct
     end
 end
 
-val () = G2_unitary_dual.demo ();
+(* Intentionally no toplevel side-effects; run `G2_unitary_dual.demo()` from a driver. *)
