@@ -1,0 +1,30 @@
+{set G=E8_s}
+set G=F4_s
+
+{Load in the unitary representations which we think exhaust the unitary facets of the Fundamental Parallelepiped (FPP)}
+
+{<candidate_for_all_unitary_alcoves.at  {This takes about 10 minutes on my laptop}}
+<F4_FPP_points.at
+
+{Check we loaded the right number: this should return "true"}
+
+big_unitary_hash.uhash(G).list().# = 1864 {3075281 for E8_s}
+
+{A bunch of flags to set.  }
+test_bl_flag:=false
+revert_flag:=false
+every_KGB_flag:=true 
+unip_flag:=false 
+every_lambda_flag:= true
+old_proj_flag:=true
+write_x_flag:=true
+Dirac_flag:=true
+every_lambda_deets_flag:=true
+face_verbose:=true
+fund_face_verbose:=true
+one_level_revert_flag:=true
+final_verbose:=true
+
+FPP_unitary_hash_bottom_layer(G)
+
+big_unitary_hash.uhash(G).list().# 
