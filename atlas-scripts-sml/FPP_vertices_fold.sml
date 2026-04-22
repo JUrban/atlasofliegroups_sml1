@@ -6,10 +6,22 @@ use "atlas-scripts-sml/FPP_fundamental_alcove.sml";
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 
-(* Folded-FPP vertices, using C++ `weyl::FPP_orbit_numers` to enumerate affine orbits. *)
+(*
+  File: atlas-scripts-sml/FPP_vertices_fold.sml
+
+  Purpose
+  - Compute folded-FPP vertices used by the face/barycenter reconstruction code.
+  - Uses the Atlas C++ routine `weyl::FPP_orbit_numers` (via `RootDatum.FPP_orbit_numers`)
+    to enumerate affine orbits, then folds them via the cofolded datum.
+
+  Output
+  - A sorted, deduplicated list of rational vectors representing vertices in the
+    folded picture.
+*)
 structure FPP_vertices_fold = struct
   type ratvec = Lattice.ratvec
 
+  (* Stable key `[den, nums...]` after normalization. *)
   fun ratvecKey (u: ratvec) : int list =
     let
       val u = Lattice.ratvecNormalize u
@@ -17,9 +29,11 @@ structure FPP_vertices_fold = struct
       #den u :: #nums u
     end
 
+  (* Sort and unique a list of rational vectors. *)
   fun no_reps_ratvec (us: ratvec list) : ratvec list =
     Basic.sort_u_by (ratvecKey, Sort.rlex_leq) us
 
+  (* Enumerate affine orbit points of `gamma` with fixed denominator. *)
   fun orbit_points_same_denom (rd: RootDatum.t, gamma: ratvec) : ratvec list =
     let
       val gamma = Lattice.ratvecNormalize gamma
@@ -36,6 +50,7 @@ structure FPP_vertices_fold = struct
       if k = 0 then [] else List.map mkRow numsMat
     end
 
+  (* All folded vertices for the group `g`. *)
   fun vertices (g: AtlasFFI.group) : ratvec list =
     let
       val (affd, m, j0) = Cofolded.cofolded g
@@ -51,4 +66,3 @@ structure FPP_vertices_fold = struct
       no_reps_ratvec mapped
     end
 end
-

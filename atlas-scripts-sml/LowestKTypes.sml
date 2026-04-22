@@ -2,7 +2,18 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/KType.sml";
 use "atlas-scripts-sml/KTypePol.sml";
 
+(*
+  File: atlas-scripts-sml/LowestKTypes.sml
+
+  Purpose
+  - Helpers to extract lowest K-types from Atlas deformation polynomials.
+
+  Atlas correspondence
+  - Mirrors the `.at`-side usage of `full_deform` and the “height” ordering of
+    K-types, returning the terms of minimal height.
+*)
 structure LowestKTypes = struct
+  (* Convert SML `~` negatives to C-style `-` negatives. *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -13,8 +24,10 @@ structure LowestKTypes = struct
         s
     end
 
+  (* Serialize an int list in the Atlas C++ parser format. *)
   fun intsToCText xs = String.concatWith " " (List.map intToCText xs)
 
+  (* Extract all minimal-height K-types from a full deformation polynomial. *)
   fun LKTs_of_full_deform (g: AtlasFFI.group, pol: AtlasFFI.ktypepol) : KType.ktype list =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -33,6 +46,7 @@ structure LowestKTypes = struct
       List.map mk lows
     end
 
+  (* Lowest K-types of a parameter, computed via `atlas_param_full_deform`. *)
   fun LKTs_param (g: AtlasFFI.group, p: AtlasFFI.param) : KType.ktype list =
     let
       val pol = AtlasFFI.atlas_param_full_deform p
@@ -47,6 +61,7 @@ structure LowestKTypes = struct
       lows
     end
 
+  (* Unique lowest K-type of a parameter; raises if not unique. *)
   fun LKT_param (g: AtlasFFI.group, p: AtlasFFI.param) : KType.ktype =
     (case LKTs_param (g, p) of
        [t] => t
@@ -54,6 +69,7 @@ structure LowestKTypes = struct
          (List.app KType.free ts;
           raise Fail ("LowestKTypes.LKT_param: no unique lowest K-type; count=" ^ Int.toString (length ts))))
 
+  (* Lowest K-types of a K-type (via its attached parameter). *)
   fun LKTs_ktype (g: AtlasFFI.group, t: KType.ktype) : KType.ktype list =
     let
       val p = KType.parameter t
@@ -63,6 +79,7 @@ structure LowestKTypes = struct
       lows
     end
 
+  (* Unique lowest K-type of a K-type (via its attached parameter). *)
   fun LKT_ktype (g: AtlasFFI.group, t: KType.ktype) : KType.ktype =
     let
       val p = KType.parameter t

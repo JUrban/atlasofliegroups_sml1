@@ -1,16 +1,24 @@
 use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 
-(* Partial SML analogue of `atlas-scripts/combinatorics.at`, focused on permutations. *)
+(*
+  File: atlas-scripts-sml/combinatorics.sml
+
+  Purpose
+  - Partial SML analogue of `atlas-scripts/combinatorics.at`, focused on
+    permutation utilities used by the diagram/folding code.
+*)
 structure Combinatorics = struct
   type permutation = int list
   type mat = IntMatrix.mat
 
   val is_permutation = MatrixAT.is_permutation
 
+  (* Permutation matrix for `pi`. *)
   fun permutation_matrix (pi: permutation) : mat =
     MatrixAT.permutation_matrix pi
 
+  (* Composition `sigma ∘ pi` (apply `pi` then `sigma`). *)
   fun compose_permutations (sigma: permutation, pi: permutation) : permutation =
     let
       val n = length sigma
@@ -20,6 +28,7 @@ structure Combinatorics = struct
       List.map (fn i => at sigma i) pi
     end
 
+  (* Inverse permutation, validating input. *)
   fun inverse (pi: permutation) : permutation =
     if not (is_permutation pi) then
       raise Fail "Combinatorics.inverse: not a permutation"
@@ -34,6 +43,7 @@ structure Combinatorics = struct
         List.tabulate (n, fn i => Array.sub (out, i))
       end
 
+  (* Inverse permutation without validation (assumes `pi` is a permutation). *)
   fun permutation_inverse (pi: permutation) : permutation =
     let
       val n = length pi
@@ -45,6 +55,7 @@ structure Combinatorics = struct
       List.tabulate (n, fn i => Array.sub (out, i))
     end
 
+  (* Construct the permutation that cycles the listed elements and fixes others. *)
   fun cyclic_permutation (n: int) (cycle: int list) : permutation =
     if n < 0 then
       raise Fail "Combinatorics.cyclic_permutation: negative n"
@@ -70,4 +81,3 @@ structure Combinatorics = struct
         List.tabulate (n, fn i => Array.sub (pi, i))
       end
 end
-

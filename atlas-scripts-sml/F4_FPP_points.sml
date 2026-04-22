@@ -1,7 +1,21 @@
 use "atlas-scripts-sml/BigUnitaryHash.sml";
 use "atlas-scripts-sml/ParamHash.sml";
 
+(*
+  File: atlas-scripts-sml/F4_FPP_points.sml
+
+  Purpose
+  - Load the “known-good” F4 FPP point set fixture from
+    `atlas-scripts-sml/data/F4_FPP_points.txt` into either `BigUnitaryHash` or
+    `ParamHash`.
+
+  Notes
+  - The fixture file stores rows of `(x, lambda, nu)` data in a simple integer
+    encoding. This loader reconstructs the corresponding Atlas parameters and
+    checks that Atlas prints back the expected `x/lambda/nu`.
+*)
 structure F4_FPP_points = struct
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -12,6 +26,7 @@ structure F4_FPP_points = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Strip trailing newline/CR from a line. *)
   fun rstripNewlines s =
     let
       val n = String.size s
@@ -24,6 +39,7 @@ structure F4_FPP_points = struct
         | _ => s
     end
 
+  (* Convert SML `~` negatives to C-style `-` negatives. *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -34,9 +50,11 @@ structure F4_FPP_points = struct
         s
     end
 
+  (* Serialize an int list in Atlas C++ parser format. *)
   fun intsToText xs =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Load the fixture into a `BigUnitaryHash` (the hash then owns inserted handles). *)
   fun loadInto (g: AtlasFFI.group, (hash: BigUnitaryHash.t)) =
     let
       val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_points.txt"
@@ -106,6 +124,7 @@ structure F4_FPP_points = struct
       (loop (); TextIO.closeIn input) handle e => (TextIO.closeIn input; raise e)
     end
 
+  (* Load the fixture into a `ParamHash` (which stores clones of inserted handles). *)
   fun loadIntoParamHash (g: AtlasFFI.group, (hash: ParamHash.t)) =
     let
       val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_points.txt"

@@ -2,12 +2,24 @@ use "atlas-scripts-sml/RootDatum.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/basic.sml";
 
-(* Fundamental-alcove combinatorics from `atlas-scripts/FPP_faces_geom.at`. *)
+(*
+  File: atlas-scripts-sml/FPP_fundamental_alcove.sml
+
+  Purpose
+  - Fundamental-alcove combinatorics extracted from `atlas-scripts/FPP_faces_geom.at`.
+  - Used to enumerate faces/vertices of the fundamental alcove and compute their
+    barycenters, which feed into folded-FPP barycenter generation.
+
+  Notes
+  - Uses `IntInf` for intermediate arithmetic (lcm) to reduce overflow risk when
+    adding rationals with different denominators.
+*)
 structure FPP_fundamental_alcove = struct
   type rootdatum = RootDatum.t
   type ratvec = Lattice.ratvec
   type face_verts = ratvec list
 
+  (* GCD on `IntInf.int` (nonnegative result). *)
   fun gcdIntInf (x: IntInf.int, y: IntInf.int) : IntInf.int =
     let
       val x = IntInf.abs x
@@ -18,11 +30,14 @@ structure FPP_fundamental_alcove = struct
       if x = 0 then y else loop (x, y)
     end
 
+  (* LCM on `IntInf.int`. *)
   fun lcmIntInf (x: IntInf.int, y: IntInf.int) : IntInf.int =
     if x = 0 orelse y = 0 then 0 else IntInf.div (IntInf.abs (x * y), gcdIntInf (x, y))
 
+  (* Zero rational vector of length `n`. *)
   fun ratvecZero (n: int) : ratvec = {den = 1, nums = List.tabulate (n, fn _ => 0)}
 
+  (* Add rational vectors, using `IntInf` to compute a common denominator. *)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec =
     let
       val u = Lattice.ratvecNormalize u
@@ -44,10 +59,13 @@ structure FPP_fundamental_alcove = struct
       Lattice.ratvecNormalize {den = den, nums = numsI}
     end
 
+  (* Sum a list of rational vectors in dimension `n`. *)
   fun ratvecSum (n: int, us: ratvec list) : ratvec =
     List.foldl ratvecAdd (ratvecZero n) us
 
   (* `labels(SimpleAffine affd)` from `FPP_faces_geom.at`. *)
+  (* Coefficients of the highest coroot expressed in the simple coroot basis,
+     with a leading `1` corresponding to the affine node. *)
   fun labels (rd: rootdatum) : int list =
     let
       val d = RootDatum.dual rd
@@ -61,6 +79,7 @@ structure FPP_fundamental_alcove = struct
     end
 
   (* `fundamental_vertices(SimpleAffine affd)` from `FPP_faces_geom.at`. *)
+  (* Fundamental alcove vertices: `0` and the scaled fundamental weights. *)
   fun fundamental_vertices (rd: rootdatum) : ratvec list =
     let
       val r = RootDatum.rank rd
@@ -73,10 +92,12 @@ structure FPP_fundamental_alcove = struct
     end
 
   (* `faces_fundamental(SimpleAffine affd, int d)` from `FPP_faces_geom.at`. *)
+  (* Faces of the fundamental alcove of dimension `d`, as vertex lists. *)
   fun faces_fundamental (rd: rootdatum, d: int) : face_verts list =
     Basic.choices_from (fundamental_vertices rd, d + 1)
 
   (* `barycenter([ratvec] verts)` from `FPP_faces_geom.at`. *)
+  (* Barycenter of a nonempty vertex list. *)
   fun barycenter (verts: ratvec list) : ratvec =
     (case verts of
        [] => raise Fail "barycenter: empty"
@@ -88,7 +109,7 @@ structure FPP_fundamental_alcove = struct
            Lattice.ratvecScale (sum, 1, length verts)
          end)
 
+  (* Barycenters of all fundamental faces of dimension `d`. *)
   fun fund_barycenters (rd: rootdatum, d: int) : ratvec list =
     List.map barycenter (faces_fundamental (rd, d))
 end
-

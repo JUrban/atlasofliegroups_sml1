@@ -1,6 +1,18 @@
+(* 
+  File: atlas-scripts-sml/F4_FPP_lambdas.sml
+
+  Purpose
+  - Load the precomputed `F4_FPP_lambdas` table from the fixture file
+    `atlas-scripts-sml/data/F4_FPP_lambdas.txt`.
+
+  Notes
+  - The modern pipeline computes lambdas via `FPP_lambdas_fold`; this fixture is
+    retained for debugging/regression comparisons.
+*)
 structure F4_FPP_lambdas = struct
   type ratvec_text = {numsText: string, denom: int}
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -11,6 +23,7 @@ structure F4_FPP_lambdas = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Strip trailing newline/CR from a line. *)
   fun rstripNewlines s =
     let
       val n = String.size s
@@ -23,6 +36,7 @@ structure F4_FPP_lambdas = struct
         | _ => s
     end
 
+  (* Convert SML `~` negatives to C-style `-` negatives. *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -33,14 +47,17 @@ structure F4_FPP_lambdas = struct
         s
     end
 
+  (* Serialize an int list in Atlas C++ parser format. *)
   fun intsToText xs =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Load the lambda table as an array indexed by KGB index `x`. *)
   fun load (kgbSize: int) : ratvec_text list array =
     let
       val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_lambdas.txt"
       val buckets = Array.array (kgbSize, ([]: ratvec_text list))
 
+      (* Parse one row and append it to the appropriate bucket. *)
       fun handleRow line =
         (case parseInts line of
            [x, den, a, b, c, d] =>

@@ -3,13 +3,24 @@ use "atlas-scripts-sml/LieType.sml";
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 
-(* Partial port of `atlas-scripts/simple_factors.at`.
-   Focuses on Dynkin-diagram decomposition and Bourbaki reordering. *)
+(*
+  File: atlas-scripts-sml/simple_factors.sml
+
+  Purpose
+  - Partial port of `atlas-scripts/simple_factors.at`.
+  - Provides Dynkin-diagram decomposition and Bourbaki reordering utilities,
+    plus projection operators onto a chosen simple factor.
+
+  Notes
+  - This file is used mainly by the folded-FPP machinery to reason about
+    components and projections without running `.at`.
+*)
 structure SimpleFactors = struct
   type rootdatum = RootDatum.t
 
   type ratvec = Lattice.ratvec
 
+  (* Map with indices. *)
   fun mapi f ys =
     let
       fun loop (_, [], acc) = List.rev acc
@@ -18,12 +29,15 @@ structure SimpleFactors = struct
       loop (0, ys, [])
     end
 
+  (* Zero rational vector of length `n`. *)
   fun ratvecZero (n: int) : ratvec = {den = 1, nums = List.tabulate (n, fn _ => 0)}
 
   val ratvecNormalize = Lattice.ratvecNormalize
 
+  (* Rational subtraction. *)
   fun ratvecSub (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, v)
 
+  (* Pair a ratvec with an int vector (dot product), returned as a 1D ratvec. *)
   fun ratvecDotIntVec (u: ratvec, a: int list) : ratvec =
     let
       val () = if length (#nums u) = length a then () else raise Fail "SimpleFactors: dot length mismatch"
@@ -32,6 +46,7 @@ structure SimpleFactors = struct
       ratvecNormalize {den = #den u, nums = [num]}
     end
 
+  (* Whether a rational is zero (represented as a 1D ratvec). *)
   fun ratIsZero (u: ratvec) : bool =
     let
       val u = ratvecNormalize u
@@ -39,8 +54,10 @@ structure SimpleFactors = struct
       List.all (fn x => x = 0) (#nums u)
     end
 
+  (* Whether a rational vector is the zero vector. *)
   fun ratvecIsZero (u: ratvec) : bool = ratIsZero u
 
+  (* Parse the Atlas `Cartan_matrix_type_text` format into `(LieType, permutation)`. *)
   fun parseCartanMatrixTypeText (s: string) : LieType.t * int list =
     let
       val parts = String.fields (fn c => c = #"|") s
@@ -93,6 +110,7 @@ structure SimpleFactors = struct
       (parseLT ltPart, parsePi piPart)
     end
 
+  (* Compute Cartan type and Bourbaki permutation for a Cartan matrix. *)
   fun cartan_matrix_type (cm: IntMatrix.mat) : LieType.t * int list =
     let
       val out = AtlasFFI.atlas_intmat_cartan_matrix_type_text (IntMatrix.matToText cm)
@@ -104,6 +122,7 @@ structure SimpleFactors = struct
     end
 
   (* Port of `permute` from `simple_factors.at` (simple roots only). *)
+  (* Permute the simple roots/coroots by `sigma`, returning a new root datum. *)
   fun permute (rd: rootdatum, sigma: int list) : rootdatum =
     let
       val sr = RootDatum.simpleRootsCols rd
@@ -130,6 +149,7 @@ structure SimpleFactors = struct
       RootDatum.newFromSimpleMats (matFromColumns sr', matFromColumns scr', false)
     end
 
+  (* Reorder the diagram in Bourbaki convention; returns `(reordered, permutation)`. *)
   fun reorder_diagram_Bourbaki (rd: rootdatum) : rootdatum * int list =
     let
       val (_, pi) = cartan_matrix_type (RootDatum.cartanMatrix rd)
@@ -137,9 +157,11 @@ structure SimpleFactors = struct
       (permute (rd, pi), pi)
     end
 
+  (* Return the Bourbaki-reordered datum, dropping the permutation. *)
   fun stratify (rd: rootdatum) : rootdatum =
     #1 (reorder_diagram_Bourbaki rd)
 
+  (* Connected components of the Dynkin diagram, as simple-root index lists. *)
   fun diagram_components (rd: rootdatum) : int list list =
     let
       val (lt, pi) = cartan_matrix_type (RootDatum.cartanMatrix rd)
@@ -150,6 +172,7 @@ structure SimpleFactors = struct
       loop (LieType.simple_factors lt, 0, [])
     end
 
+  (* Component containing node `i`, or `[]` if none. *)
   fun diagram_component (rd: rootdatum, i: int) : int list =
     let
       val comps = diagram_components rd
@@ -160,16 +183,20 @@ structure SimpleFactors = struct
       | NONE => []
     end
 
+  (* Number of simple factors (connected components). *)
   fun number_simple_factors (rd: rootdatum) : int =
     length (diagram_components rd)
 
+  (* Root coradical basis matrix (FFI wrapper via RootDatum). *)
   fun root_coradical (rd: rootdatum) : IntMatrix.mat =
     RootDatum.rootCoradicalMat rd
 
+  (* Coroot radical basis matrix (FFI wrapper via RootDatum). *)
   fun coroot_radical (rd: rootdatum) : IntMatrix.mat =
     RootDatum.corootRadicalMat rd
 
   (* RootDatum with simple roots those indexed by S (in that order). *)
+  (* Extract a sub-datum on the chosen simple indices `s`. *)
   fun sub_datum (rd: rootdatum, s: int list) : rootdatum =
     let
       val sr = RootDatum.simpleRootsCols rd
@@ -189,10 +216,12 @@ structure SimpleFactors = struct
       RootDatum.newFromSimpleMats (matFromColumns (pick sr), matFromColumns (pick scr), false)
     end
 
+  (* List the simple-factor subdata as root data. *)
   fun simple_factors (rd: rootdatum) : rootdatum list =
     List.map (fn s => sub_datum (rd, s)) (diagram_components rd)
 
   (* Port of the cheap comparison predicates from `atlas-scripts/simple_factors.at`. *)
+  (* Predicate: whether two weights have the same projection onto factor `i`. *)
   fun same_weight_projection_simple_factor (rd: rootdatum, i: int) : ratvec * ratvec -> bool =
     let
       val comp = diagram_component (rd, i)
@@ -210,6 +239,7 @@ structure SimpleFactors = struct
       ok
     end
 
+  (* Predicate: whether two coweights have the same projection onto factor `i`. *)
   fun same_coweight_projection_simple_factor (rd: rootdatum, i: int) : ratvec * ratvec -> bool =
     let
       val comp = diagram_component (rd, i)
@@ -230,6 +260,7 @@ structure SimpleFactors = struct
   (* Project a weight to the Q-span of roots in the simple factor containing node i.
      This is the direct analogue of `project_on_simple_factor(rd,i,wt)` in `simple_factors.at`,
      but returns a `ratvec` directly. *)
+  (* Project a weight onto the simple factor containing node `i`. *)
   fun project_on_simple_factor_weight (rd: rootdatum, i: int, wt: ratvec) : ratvec =
     let
       val comp = diagram_component (rd, i)
@@ -253,6 +284,7 @@ structure SimpleFactors = struct
 
   (* Dual approach: project a coweight in rd by projecting the same coordinate vector
      as a weight in the dual root datum. *)
+  (* Project a coweight onto the simple factor containing node `i`. *)
   fun project_on_simple_factor_coweight (rd: rootdatum, i: int, cwt: ratvec) : ratvec =
     let
       val rdDual = RootDatum.dual rd

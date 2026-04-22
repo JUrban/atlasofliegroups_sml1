@@ -7,20 +7,32 @@ use "atlas-scripts-sml/FPP_vertices_fold.sml";
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 
-(* Partial SML port of `FPP_lambdas.at` for split groups with no flippable-edge
-   contributions (e.g. `F4_s`), avoiding any `.at` dependencies.
+(*
+  File: atlas-scripts-sml/FPP_lambdas_fold.sml
 
-   Computes `FPP_lambdas(x)` by:
-   - enumerating (1+theta)*v over FPP vertices v (theta = involution at x),
-   - solving the defining lattice equation for lambda0,
-   - twisting by `all_lambda_differential_0(theta)`,
-   - filtering by whether the Atlas parameter constructor accepts (lambda,nu=0).
+  Purpose
+  - Partial SML port of `atlas-scripts/FPP_lambdas.at` tailored to split groups
+    without “flippable-edge” contributions (notably `F4_s`).
+  - Produces the lambda tables used to construct the F4 FPP parameter set.
+
+  High-level algorithm
+  - For each KGB element `x` with involution `theta(x)`:
+      1) enumerate integral candidates for `(1+theta)*lambda` coming from FPP vertices
+      2) solve the defining lattice equations to obtain `lambda0` candidates
+      3) add all 2-torsion twists (`LambdaDifferential0.allTheta theta`)
+      4) filter by asking Atlas whether `(x,lambda,nu=0)` yields a nonzero final
+         (via `ParamFinals.finals`)
+
+  Output
+  - `FPP_lambdas_table` returns an array indexed by `x`, whose entries are the
+    deduplicated list of admissible `lambda` values for that `x`.
 *)
 structure FPP_lambdas_fold = struct
   type mat = Lattice.mat
   type vec = int list
   type ratvec = Lattice.ratvec
 
+  (* Stable key `[den, nums...]` after normalization. *)
   fun ratvecKey (u: ratvec) : int list =
     let
       val u = Lattice.ratvecNormalize u
@@ -28,15 +40,20 @@ structure FPP_lambdas_fold = struct
       #den u :: #nums u
     end
 
+  (* Sort and unique rational vectors under the key ordering. *)
   fun no_reps_ratvec (us: ratvec list) : ratvec list =
     Basic.sort_u_by (ratvecKey, Sort.rlex_leq) us
 
+  (* Add integer vectors componentwise. *)
   fun vecAdd (a: vec, b: vec) : vec = ListPair.mapEq (op +) (a, b)
 
+  (* Negate an integer vector. *)
   fun vecNeg v : vec = List.map (fn x => ~x) v
 
+  (* Parse a rational weight in Atlas text form. *)
   fun parseRatWeight (s: string) : ratvec = AllParameters.parseRatWeightText s
 
+  (* Add an integral vector to a rational vector (same dimension). *)
   fun ratvecAddIntVec (u: ratvec, v: vec) : ratvec =
     let
       val u = Lattice.ratvecNormalize u
@@ -48,14 +65,17 @@ structure FPP_lambdas_fold = struct
       Lattice.ratvecNormalize {den = den, nums = nums'}
     end
 
+  (* Add each vector in `vs` to `u`. *)
   fun ratvecAddIntVecs (u: ratvec, vs: vec list) : ratvec list =
     List.map (fn v => ratvecAddIntVec (u, v)) vs
 
+  (* Solve `a*x=b`, raising if no solution exists. *)
   fun requiredVecSolve (a: mat, b: vec) : vec =
     case Lattice.solve (a, b) of
       NONE => raise Fail "requiredVecSolve: no solution"
     | SOME x => x
 
+  (* Compute `I+theta`. *)
   fun th1_of_theta (theta: mat) : mat =
     let
       val (n, m) = Lattice.matShape theta
@@ -64,9 +84,11 @@ structure FPP_lambdas_fold = struct
       Lattice.matAdd (Lattice.identity n, theta)
     end
 
+  (* Text for a length-`n` zero vector. *)
   fun zerosText n : string =
     String.concatWith " " (List.tabulate (n, fn _ => "0"))
 
+  (* Serialize an int list in the Atlas C++ parser format (C-style negatives). *)
   fun intsToCText xs =
     let
       fun intToCText n =
@@ -82,9 +104,11 @@ structure FPP_lambdas_fold = struct
       String.concatWith " " (List.map intToCText xs)
     end
 
+  (* Cache key for a theta matrix. *)
   fun thetaKey (theta: mat) : string = Lattice.matToText theta
 
   (* Compute the candidate lam+theta*lam values (integral vectors) from vertices only. *)
+  (* Enumerate integral candidates for `(1+theta)*lambda` arising from FPP vertices. *)
   fun lamthlams_from_vertices (verts: ratvec list, rho: ratvec, theta: mat) : vec list =
     let
       val th1 = th1_of_theta theta
@@ -112,6 +136,7 @@ structure FPP_lambdas_fold = struct
       Basic.sort_u (Sort.rlex_leq) (List.mapPartial okVertex verts)
     end
 
+  (* Recover `lambda0` values from the computed `(1+theta)*lambda` candidates. *)
   fun lambda0s_from_lamthlams (rho: ratvec, theta: mat, lamthlams: vec list) : ratvec list =
     let
       val th1 = th1_of_theta theta
@@ -132,6 +157,7 @@ structure FPP_lambdas_fold = struct
     end
 
   (* Compute FPP_lambdas(x) as a list of ratvecs (lambda values), for a fixed KGB index x. *)
+  (* Compute `FPP_lambdas(x)` without caching across different `x`. *)
   fun FPP_lambdas_x (g: AtlasFFI.group, x: int) : ratvec list =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -180,6 +206,7 @@ structure FPP_lambdas_fold = struct
     , twists: vec list
     }
 
+  (* Compute the theta-dependent pieces used in the lambda construction. *)
   fun compute_theta_info (verts: ratvec list, rho: ratvec, theta: mat) : theta_info =
     let
       val lamthlams = lamthlams_from_vertices (verts, rho, theta)
@@ -189,6 +216,7 @@ structure FPP_lambdas_fold = struct
       {theta = theta, lambda0s = lambda0s, twists = twists}
     end
 
+  (* Lookup-or-compute theta info in a simple association-list cache. *)
   fun get_theta_info (cache: (string * theta_info) list ref, verts: ratvec list, rho: ratvec, theta: mat) : theta_info =
     let
       val k = thetaKey theta
@@ -206,6 +234,7 @@ structure FPP_lambdas_fold = struct
           end
     end
 
+  (* Cached version of `FPP_lambdas_x` that reuses vertices and theta-derived info. *)
   fun FPP_lambdas_x_cached (g: AtlasFFI.group, x: int, verts: ratvec list, rho: ratvec, cache: (string * theta_info) list ref) : ratvec list =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -244,6 +273,7 @@ structure FPP_lambdas_fold = struct
     end
 
   (* Compute all `FPP_lambdas(x)` for a group, caching vertices and theta-derived data. *)
+  (* Compute the full `x -> lambdas` table for `g`. *)
   fun FPP_lambdas_table (g: AtlasFFI.group) : ratvec list array =
     let
       val kgbSize = AtlasFFI.atlas_group_kgb_size g

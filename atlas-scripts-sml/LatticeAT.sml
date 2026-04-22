@@ -3,8 +3,21 @@ use "atlas-scripts-sml/MatReduc.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/MatrixAT.sml";
 
-(* Small compatibility layer for translating `.at` scripts that depend on
-   `lattice.at` names into SML. *)
+(*
+  File: atlas-scripts-sml/LatticeAT.sml
+
+  Purpose
+  - Compatibility layer for translating `.at` scripts that depend on
+    `lattice.at` / `lattice_aux.at` names into SML.
+  - Provides higher-level lattice operations (projectors, saturation,
+    intersections, actions restricted to sublattices) built from `IntMatrix`,
+    `MatReduc`, and `Lattice`.
+
+  Notes
+  - Several routines are “ported by formula” from the `.at` scripts, using the
+    same names to ease line-by-line translation.
+  - Uses `IntInf` rationals (`BigRat`) for exact Q-solves where needed.
+*)
 structure LatticeAT = struct
   type vec = Lattice.vec
   type mat = IntMatrix.mat
@@ -21,6 +34,7 @@ structure LatticeAT = struct
   structure BigRat = struct
     type t = {num: IntInf.int, den: IntInf.int}
 
+    (* GCD on `IntInf.int`. *)
     fun gcd (a: IntInf.int, b: IntInf.int) : IntInf.int =
       let
         val a = IntInf.abs a
@@ -31,6 +45,7 @@ structure LatticeAT = struct
         if a = 0 then b else loop (a, b)
       end
 
+    (* Normalize a rational: reduce and force positive denominator. *)
     fun normalize (q: t) : t =
       let
         val den0 = #den q
@@ -46,22 +61,28 @@ structure LatticeAT = struct
 
     val zero : t = {num = 0, den = 1}
 
+    (* Rational addition. *)
     fun add (a: t, b: t) : t =
       normalize
         { num = #num a * #den b + #num b * #den a
         , den = #den a * #den b
         }
 
+    (* Multiply by an integer. *)
     fun mulInt (a: t, k: int) : t = normalize {num = #num a * IntInf.fromInt k, den = #den a}
 
+    (* Divide by a nonzero integer. *)
     fun divInt (a: t, k: int) : t =
       if k = 0 then raise Fail "BigRat.divInt: divide by zero"
       else normalize {num = #num a, den = #den a * IntInf.fromInt k}
 
+    (* Zero test. *)
     fun isZero (a: t) : bool = #num (normalize a) = 0
 
+    (* Integer test. *)
     fun isInteger (a: t) : bool = #den (normalize a) = 1
 
+    (* Convert to `int` iff integral and fits. *)
     fun toIntOption (a: t) : int option =
       let
         val a = normalize a
@@ -73,6 +94,7 @@ structure LatticeAT = struct
 
   (* Solve A*x=b over Q using diagonalisation (row*A*col is diagonal).
      Returns one rational solution vector (as BigRat list) when it exists. *)
+  (* Solve `A*x = b` over Q, returning one rational solution if it exists. *)
   fun solve_ratvec (a: mat, b: ratvec) : BigRat.t list option =
     let
       val (n, m) = IntMatrix.matShape a
@@ -143,6 +165,7 @@ structure LatticeAT = struct
     handle Fail _ => NONE
 
   (* Solve A*x=b over Q, but only succeed when there is an integral solution x. *)
+  (* Solve `A*x=b` and return an integral solution vector if one exists. *)
   fun solve_ratvec_as_vec (a: mat, b: ratvec) : vec option =
     case solve_ratvec (a, b) of
       NONE => NONE
@@ -157,6 +180,7 @@ structure LatticeAT = struct
           loop (xs, [])
         end
 
+  (* Convert a matrix to its columns. *)
   fun matColumns (a: mat) : vec list =
     let
       val (_, m) = IntMatrix.matShape a
@@ -165,6 +189,7 @@ structure LatticeAT = struct
       List.tabulate (m, col)
     end
 
+  (* Build a matrix from columns. *)
   fun matFromColumns (cols: vec list) : mat =
     (case cols of
        [] => []
@@ -174,9 +199,10 @@ structure LatticeAT = struct
            val () = if List.all (fn c => length c = n) cs then () else raise Fail "LatticeAT.matFromColumns: ragged"
            fun row i = List.map (fn c => List.nth (c, i)) cols
          in
-           List.tabulate (n, row)
+         List.tabulate (n, row)
          end)
 
+  (* Build a matrix from columns, forcing a row count even when `cols=[]`. *)
   fun matFromColumnsN (nRows: int, cols: vec list) : mat =
     if nRows < 0 then
       raise Fail "LatticeAT.matFromColumnsN: negative row count"
@@ -191,6 +217,7 @@ structure LatticeAT = struct
         m
       end
 
+  (* Select columns by index. *)
   fun select_columns (cols: int list, m: mat) : mat =
     let
       val (n, k) = IntMatrix.matShape m
@@ -201,9 +228,11 @@ structure LatticeAT = struct
       matFromColumnsN (n, picked)
     end
 
+  (* Select rows by index. *)
   fun select_rows (rows: int list, m: mat) : mat =
     IntMatrix.transpose (select_columns (rows, IntMatrix.transpose m))
 
+  (* Solve `A*X = B` for an integer matrix `X`, column-by-column. *)
   fun solve_mat (a: mat, b: mat) : mat option =
     let
       val (na, _) = IntMatrix.matShape a
@@ -220,6 +249,7 @@ structure LatticeAT = struct
       if mb = 0 then SOME (List.tabulate (ma, fn _ => [])) else loop (bcols, [])
     end
 
+  (* Invert a unimodular integer matrix (raises if not unimodular). *)
   fun matInverseUnimodular (a: mat) : mat =
     let
       val (n, m) = IntMatrix.matShape a
@@ -231,6 +261,7 @@ structure LatticeAT = struct
       | SOME inv => inv
     end
 
+  (* Helper: adapted basis decomposition returning `(rank, basisMatrix)`. *)
   fun adapted_direct_sum (m: mat) : int * mat =
     let
       val (r, diag) = MatReduc.adaptedBasis m
@@ -238,6 +269,7 @@ structure LatticeAT = struct
       (length diag, r)
     end
 
+  (* Saturated image lattice basis (a.k.a. saturation). *)
   fun image_subspace (m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -245,6 +277,7 @@ structure LatticeAT = struct
       select_columns (List.tabulate (c, fn i => i), r)
     end
 
+  (* Basis for a complement of the saturated image lattice. *)
   fun image_complement_basis (m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -256,6 +289,7 @@ structure LatticeAT = struct
   val saturation = image_subspace
   val saturation_quotient_basis = image_complement_basis
 
+  (* Projector matrix onto the saturated image lattice. *)
   fun projector_to_image (m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -267,6 +301,7 @@ structure LatticeAT = struct
       IntMatrix.matMul (cols, rows)
     end
 
+  (* Matrix projecting coordinates onto the image part in adapted coordinates. *)
   fun image_projector (m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -275,6 +310,7 @@ structure LatticeAT = struct
       select_rows (List.tabulate (c, fn i => i), invR)
     end
 
+  (* Projector matrix to a complement modulo the image lattice. *)
   fun projector_mod_image (m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -286,6 +322,7 @@ structure LatticeAT = struct
       IntMatrix.matMul (cols, rows)
     end
 
+  (* Matrix projecting coordinates modulo the image in adapted coordinates. *)
   fun mod_image_projector (m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -295,6 +332,7 @@ structure LatticeAT = struct
       select_rows (List.tabulate (n - c, fn i => c + i), invR)
     end
 
+  (* Decompose a vector into its image and complement components. *)
   fun decompose (m: mat, v: vec) : vec * vec =
     let
       val (c, r) = adapted_direct_sum m
@@ -307,6 +345,7 @@ structure LatticeAT = struct
       (IntMatrix.matVecMul (projIm, v), IntMatrix.matVecMul (projComp, v))
     end
 
+  (* Compute the induced map on the quotient by the image lattice. *)
   fun quotient_matrix (a: mat, m: mat) : mat =
     let
       val (c, r) = adapted_direct_sum m
@@ -319,6 +358,7 @@ structure LatticeAT = struct
     end
 
   (* Port of `restrict_action(A,M)` from `atlas-scripts/lattice.at`. *)
+  (* Restrict an action `a` to the sublattice spanned by columns of `m`. *)
   fun restrict_action (a: mat, m: mat) : mat =
     let
       val rhs = IntMatrix.matMul (a, m)
@@ -329,6 +369,7 @@ structure LatticeAT = struct
     end
 
   (* Port of `corestrict_action(M,A)` from `atlas-scripts/lattice.at`. *)
+  (* Corestrict an action `a` to the quotient by the sublattice spanned by `m`. *)
   fun corestrict_action (m: mat, a: mat) : mat =
     let
       val mt = IntMatrix.transpose m
@@ -340,6 +381,7 @@ structure LatticeAT = struct
       | SOME bt => IntMatrix.transpose bt
     end
 
+  (* Compute `(intersection, witness)` data for `im(a) ∩ im(b)` in the `.at` style. *)
   fun intersection_plus (a: mat, b: mat) : mat * mat =
     let
       val (na, ca) = IntMatrix.matShape a
@@ -359,6 +401,7 @@ structure LatticeAT = struct
         end
     end
 
+  (* Intersection lattice basis `im(a) ∩ im(b)`. *)
   fun intersection (a: mat, b: mat) : mat =
     let
       val (x, _) = intersection_plus (a, b)
@@ -367,6 +410,7 @@ structure LatticeAT = struct
     end
 
   (* Port of `image_lattice` / `image_lattice_plus` from `atlas-scripts/lattice_aux.at`. *)
+  (* Compute a “nice” basis for the image lattice, along with a change-of-basis. *)
   fun image_lattice_plus (a: mat) : mat * mat =
     let
       val (e, c0, _, _) = IntMatrix.echelon a
@@ -443,6 +487,7 @@ structure LatticeAT = struct
       m
     end
 
+  (* Whether the image lattice of `m` is saturated (all Smith invariants are 1). *)
   fun is_saturated_image (m: mat) : bool =
     let
       val (_, ds) = IntMatrix.smithBasis m
@@ -451,6 +496,7 @@ structure LatticeAT = struct
     end
 
   (* Port of `free_quotient_lattice_basis(mat M)` from `atlas-scripts/lattice.at`. *)
+  (* Basis for a direct complement of a saturated sublattice. *)
   fun free_quotient_lattice_basis (m: mat) : mat =
     let
       val e = image_lattice m
@@ -460,6 +506,7 @@ structure LatticeAT = struct
     end
 
   (* Port of `free_quotient_lattice_basis(L,M)` from `atlas-scripts/lattice_aux.at`. *)
+  (* Version of `free_quotient_lattice_basis` relative to an ambient lattice `L`. *)
   fun free_quotient_lattice_basis_LM (l: mat, m: mat) : mat =
     let
       val l1 = image_lattice l
@@ -471,6 +518,7 @@ structure LatticeAT = struct
     end
 
   (* Port of `saturation_quotient_basis(M,L)` from `atlas-scripts/lattice_aux.at`. *)
+  (* Compute the saturation quotient basis for `M` relative to `L`. *)
   fun saturation_quotient_basis_ML (m: mat, l: mat) : mat =
     let
       val q = saturation_quotient_basis l
@@ -480,6 +528,7 @@ structure LatticeAT = struct
       image_lattice (IntMatrix.matMul (p, m1))
     end
 
+  (* Smith invariant factors of a lattice map. *)
   fun inv_fact (a: mat) : int list =
     let
       val (_, ds) = IntMatrix.smithBasis a
@@ -487,6 +536,7 @@ structure LatticeAT = struct
       ds
     end
 
+  (* Whether columns of `l` lie in the column lattice of `m`. *)
   fun is_sublattice (l: mat, m: mat) : bool =
     let
       val (nrL, _) = IntMatrix.matShape l
@@ -501,9 +551,11 @@ structure LatticeAT = struct
       List.all ok colsL
     end
 
+  (* Lattice equality by mutual inclusion. *)
   fun is_lattice_equal (l: mat, m: mat) : bool =
     is_sublattice (l, m) andalso is_sublattice (m, l)
 
+  (* Whether `b` is a saturated sublattice of `a` (assumes inclusion). *)
   fun is_saturated (a: mat, b: mat) : bool =
     let
       val () = if is_sublattice (b, a) then () else raise Fail "LatticeAT.is_saturated: not a sublattice"
@@ -517,6 +569,7 @@ structure LatticeAT = struct
       List.all (fn d => d = 1) w
     end
 
+  (* Invariant factors for the quotient lattice `b/a` (assumes `a` sublattice of `b`). *)
   fun quotient (a: mat, b: mat) : int list =
     let
       val () = if is_sublattice (a, b) then () else raise Fail "LatticeAT.quotient: not a sublattice"

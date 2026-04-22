@@ -6,27 +6,49 @@ use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 use "atlas-scripts-sml/twisted_root_datum.sml";
 
-(* Port of the `cofoldedBOTH` / `cofolded(InnerClass)` machinery from
-   `atlas-scripts/FPP_faces_geom.at`, sufficient to construct the cofolded
-   root datum used for folded FPP geometry. *)
+(*
+  File: atlas-scripts-sml/cofolded.sml
+
+  Purpose
+  - Port of the `cofoldedBOTH` / `cofolded(InnerClass)` machinery from
+    `atlas-scripts/FPP_faces_geom.at`.
+  - Constructs the “cofolded” root datum (types B/C) and the folding matrix used
+    in the folded-FPP computations for F4.
+
+  Inputs/outputs
+  - Given a root datum `rd` and a distinguished involution `delta`, `cofoldedBOTH`
+    returns `(rdB, rdC, tStar)` where `tStar` is a basis for the delta-fixed lattice.
+  - Given an Atlas group handle `g`, `cofolded` reads `rd` and the distinguished
+    involution from the library and returns `(rdB, m, j0)` as in the `.at` code.
+
+  Ownership
+  - `cofoldedBOTH` returns new rootdatum handles; caller owns them.
+  - `cofolded` returns a new rootdatum handle `rdB`; caller must free it.
+*)
 structure Cofolded = struct
   type rootdatum = RootDatum.t
   type mat = IntMatrix.mat
   type vec = int list
   type ratvec = Lattice.ratvec
 
+  (* Add integer vectors componentwise. *)
   fun vecAdd (a: vec, b: vec) : vec = ListPair.mapEq (op +) (a, b)
 
+  (* Scale an integer vector. *)
   fun vecScale (v: vec, k: int) : vec = List.map (fn x => x * k) v
 
+  (* Zero vector. *)
   fun vecZero n : vec = List.tabulate (n, fn _ => 0)
 
+  (* Multiply a row vector by a matrix (implemented via transpose). *)
   fun vecMatMul (v: vec, m: mat) : vec =
     IntMatrix.matVecMul (IntMatrix.transpose m, v)
 
+  (* Half a vector if all entries are even. *)
   fun halfIfEven (v: vec) : vec option =
     if List.all (fn x => x mod 2 = 0) v then SOME (List.map (fn x => x div 2) v) else NONE
 
+  (* First index of an element satisfying predicate `p`. *)
   fun firstIndex (p: 'a -> bool, xs: 'a list) : int option =
     let
       fun loop (_, []) = NONE
@@ -35,9 +57,12 @@ structure Cofolded = struct
       loop (0, xs)
     end
 
+  (* Sum a list of vectors in dimension `n`. *)
   fun sumVecs (n: int, vs: vec list) : vec =
     List.foldl (fn (v, acc) => vecAdd (v, acc)) (vecZero n) vs
 
+  (* Core cofolding routine (see `FPP_faces_geom.at`):
+     builds both B- and C-type cofolded data and the fixed-lattice basis `tStar`. *)
   fun cofoldedBOTH (rd: rootdatum, delta: mat) : rootdatum * rootdatum * mat =
     let
       val () =
@@ -105,6 +130,10 @@ structure Cofolded = struct
 
   (* Port of `cofolded(InnerClass ic)` from `FPP_faces_geom.at`,
      with an InnerClass represented here by an Atlas group handle. *)
+  (* Construct the cofolded datum for the group `g`:
+       - returns the B-type folded root datum `rdB`
+       - returns the folding matrix `m`
+       - returns `j0` (currently expected to be `~1` for the cases we use). *)
   fun cofolded (g: AtlasFFI.group) : rootdatum * mat * int =
     let
       val rd = AtlasFFI.atlas_group_rootdatum_new g

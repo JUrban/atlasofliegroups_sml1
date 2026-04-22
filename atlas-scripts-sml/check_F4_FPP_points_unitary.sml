@@ -1,5 +1,16 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
+(*
+  File: atlas-scripts-sml/check_F4_FPP_points_unitary.sml
+
+  Purpose
+  - Standalone consistency check: read `atlas-scripts-sml/data/F4_FPP_points.txt`
+    and verify each listed parameter is unitary according to `atlas_param_is_unitary`.
+
+  Notes
+  - This is primarily a debugging/validation script; it is not imported by the
+    main verifier.
+*)
 fun parseInts s =
   let
     fun toInt tok =
@@ -10,6 +21,7 @@ fun parseInts s =
     List.map toInt (String.tokens Char.isSpace s)
   end
 
+(* Strip trailing newline/CR characters from a line. *)
 fun rstripNewlines s =
   let
     val n = String.size s
@@ -22,9 +34,11 @@ fun rstripNewlines s =
       | _ => s
   end
 
+(* Serialize an integer in C/Atlas format (no `~` negatives). *)
 fun intToCText n =
   if n < 0 then "-" ^ Int.toString (~n) else Int.toString n
 
+(* Serialize an integer list in C/Atlas format. *)
 fun intsToText xs =
   String.concatWith " " (List.map intToCText xs)
 
@@ -34,6 +48,7 @@ val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_points.txt";
 val total = ref 0;
 val bad = ref 0;
 
+(* Parse one data row, build the parameter, and update counters. *)
 fun checkRow row =
   let
     val ns = parseInts row
@@ -60,6 +75,7 @@ fun checkRow row =
       ()
   end
 
+(* Main file-processing loop. *)
 fun loop () =
   case TextIO.inputLine input of
     NONE => ()

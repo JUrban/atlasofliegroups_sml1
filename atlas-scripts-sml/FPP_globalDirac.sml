@@ -5,17 +5,36 @@ use "atlas-scripts-sml/FPP_lambdas_fold.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/ParamHash.sml";
 
+(*
+  File: atlas-scripts-sml/FPP_globalDirac.sml
+
+  Purpose
+  - Port/adapter of the “global Dirac” verification pipeline used by the F4
+    unitary facet computation scripts.
+  - Provides checks used by `VerifyF4FPP.run()` and the translated verifier:
+      - standard/final sanity checks
+      - lambda-table consistency checks (F4-specific)
+      - twist-equivalence checks
+      - hermitian/unitary checks (via Atlas FFI)
+
+  Notes
+  - The original `.at` scripts use global flags to control verbosity and the
+    scope of checks; this module reads `FPPFlags`.
+*)
 structure FPP_globalDirac = struct
   type param = AtlasFFI.param
 
   type param_set = {list: unit -> param list, contains: param -> bool}
 
+  (* View a `BigUnitaryHash` as a generic `param_set`. *)
   fun param_set_of_big_unitary_hash (h: BigUnitaryHash.t) : param_set =
     {list = fn () => BigUnitaryHash.list h, contains = fn p => BigUnitaryHash.contains h p}
 
+  (* View a `ParamHash` as a generic `param_set`. *)
   fun param_set_of_param_hash (h: ParamHash.t) : param_set =
     {list = fn () => ParamHash.list h, contains = fn p => ParamHash.contains h p}
 
+  (* Verify that every parameter in `hash` is standard and final. *)
   fun verify_all_standard_final (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
@@ -32,6 +51,8 @@ structure FPP_globalDirac = struct
            ^ Int.toString (length nonFinal))
     end
 
+  (* F4-specific consistency check: each parameter’s `lambda` must come from the
+     precomputed `FPP_lambdas_fold` table for its `x`. *)
   fun verify_F4_points_lambdas_ok (g: AtlasFFI.group, hash: BigUnitaryHash.t) : unit =
     let
       val kgbSize = AtlasFFI.atlas_group_kgb_size g
@@ -88,6 +109,7 @@ structure FPP_globalDirac = struct
         end
     end
 
+  (* Same as `verify_F4_points_lambdas_ok` but for a generic `param_set`. *)
   fun verify_F4_points_lambdas_ok_set (g: AtlasFFI.group, set: param_set) : unit =
     let
       val kgbSize = AtlasFFI.atlas_group_kgb_size g
@@ -144,6 +166,7 @@ structure FPP_globalDirac = struct
         end
     end
 
+  (* Verify that `p` is equivalent to its Atlas twist `twist(p)`. *)
   fun verify_all_twist_equivalent (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
@@ -168,6 +191,7 @@ structure FPP_globalDirac = struct
         raise Fail ("twist-equivalence check: failed for " ^ Int.toString (length bad) ^ " params")
     end
 
+  (* Set-based version of `verify_all_standard_final`. *)
   fun verify_all_standard_final_set (set: param_set) : unit =
     let
       val ps = #list set ()
@@ -184,6 +208,7 @@ structure FPP_globalDirac = struct
            ^ Int.toString (length nonFinal))
     end
 
+  (* Set-based version of `verify_all_twist_equivalent`. *)
   fun verify_all_twist_equivalent_set (set: param_set) : unit =
     let
       val ps = #list set ()
@@ -208,6 +233,7 @@ structure FPP_globalDirac = struct
         raise Fail ("twist-equivalence check: failed for " ^ Int.toString (length bad) ^ " params")
     end
 
+  (* Verify that all parameters in the set are hermitian. *)
   fun verify_all_hermitian_set (set: param_set) : unit =
     let
       val ps = #list set ()
@@ -219,6 +245,7 @@ structure FPP_globalDirac = struct
         raise Fail ("hermitian check: non-hermitian params: " ^ Int.toString (length bad))
     end
 
+  (* Verify that all parameters in the set are unitary, with optional progress prints. *)
   fun verify_all_unitary_set (set: param_set) : unit =
     let
       val ps = #list set ()
@@ -249,6 +276,7 @@ structure FPP_globalDirac = struct
         raise Fail ("unitary check: non-unitary params: " ^ Int.toString bad)
     end
 
+  (* Verify closure under contragredient within the set (unitary dual symmetry). *)
   fun verify_unitary_dual_set (set: param_set) : unit =
     let
       val ps = #list set ()
@@ -274,6 +302,7 @@ structure FPP_globalDirac = struct
         raise Fail ("unitary_dual check: missing contragredients: " ^ Int.toString (length missing))
     end
 
+  (* Hash-based version of `verify_all_hermitian_set`. *)
   fun verify_all_hermitian (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
@@ -285,6 +314,7 @@ structure FPP_globalDirac = struct
         raise Fail ("hermitian check: non-hermitian params: " ^ Int.toString (length bad))
     end
 
+  (* Hash-based version of `verify_all_unitary_set`. *)
   fun verify_all_unitary (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
@@ -315,6 +345,7 @@ structure FPP_globalDirac = struct
         raise Fail ("unitary check: non-unitary params: " ^ Int.toString bad)
     end
 
+  (* Hash-based version of `verify_unitary_dual_set`. *)
   fun verify_unitary_dual (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
@@ -340,6 +371,7 @@ structure FPP_globalDirac = struct
         raise Fail ("unitary_dual check: missing contragredients: " ^ Int.toString (length missing))
     end
 
+  (* Run the full bottom-layer verification pipeline for a generic parameter set. *)
   fun FPP_unitary_hash_bottom_layer_set (g: AtlasFFI.group, set: param_set) : unit =
     let
       val () =
@@ -366,9 +398,12 @@ structure FPP_globalDirac = struct
       ()
     end
 
+  (* Convenience wrapper for `BigUnitaryHash` inputs. *)
   fun FPP_unitary_hash_bottom_layer (g: AtlasFFI.group, hash: BigUnitaryHash.t) : unit =
     FPP_unitary_hash_bottom_layer_set (g, param_set_of_big_unitary_hash hash)
 
+  (* Convenience wrapper for `ParamHash` inputs; for compact groups, seeds the set
+     with parameters at infinitesimal character `rho`. *)
   fun FPP_unitary_hash_bottom_layer_param_hash (g: AtlasFFI.group, hash: ParamHash.t) : unit =
     if AtlasFFI.atlas_group_is_compact g = 1 then
       let

@@ -7,12 +7,28 @@ use "atlas-scripts-sml/Rat.sml";
 use "atlas-scripts-sml/KType.sml";
 use "atlas-scripts-sml/LowestKTypes.sml";
 
+(*
+  File: atlas-scripts-sml/K_highest_weights.sml
+
+  Purpose
+  - Partial SML translation of `atlas-scripts/K_highest_weights.at`.
+  - Provides utilities for:
+      - lambda-differential (order-2) character enumeration
+      - enumerating parameters with fixed infinitesimal character
+      - reducing parameter lists modulo Atlas equivalence
+      - extracting lowest K-types and identifying split-spherical K-types
+
+  Notes
+  - This module is not currently used by the F4 verifier, but it is part of the
+    broader effort to replace `.at` workflows with SML equivalents.
+*)
 structure K_highest_weights = struct
   type mat = IntMatrix.mat
   type ratweight = {den: int, nums: int list}
   type rat = Rat.rat
   type param = AtlasFFI.param
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -23,6 +39,7 @@ structure K_highest_weights = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Convert SML `~` negatives to C-style `-` negatives. *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -33,14 +50,17 @@ structure K_highest_weights = struct
         s
     end
 
+  (* Serialize an int list in Atlas C++ parser format. *)
   fun intsToCText xs =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Parse a rational weight `den n1 ... nk`. *)
   fun parseRatWeightText s : ratweight =
     (case parseInts s of
        den :: rest => {den = den, nums = rest}
      | _ => raise Fail ("K_highest_weights: bad ratweight text: " ^ s))
 
+  (* Parse a vector with a leading length header: `n x1 ... xn`. *)
   fun parseVecTextWithRankHeader s : int list =
     (case parseInts s of
        n :: rest =>
@@ -50,6 +70,7 @@ structure K_highest_weights = struct
            rest
      | _ => raise Fail "K_highest_weights: parseVecTextWithRankHeader: empty")
 
+  (* Add an integral vector to a rational weight. *)
   fun ratweightAddVec (w: ratweight, v: int list) : ratweight =
     let
       val den = #den w
@@ -59,6 +80,7 @@ structure K_highest_weights = struct
       {den = den, nums = ListPair.mapEq (fn (a, b) => a + b * den) (nums, v)}
     end
 
+  (* Parse the involution matrix attached to `(g,x)` from Atlas text. *)
   fun involutionMatrix (g: AtlasFFI.group, x: int) : mat =
     let
       val ns = parseInts (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
@@ -80,6 +102,7 @@ structure K_highest_weights = struct
       | _ => raise Fail "K_highest_weights: involutionMatrix: empty"
     end
 
+  (* Parse `atlas_group_simple_coroots_text` format. *)
   fun parseSimpleCorootsText s : int list list =
     let
       val ns = parseInts s
@@ -100,11 +123,13 @@ structure K_highest_weights = struct
       | _ => raise Fail "K_highest_weights: parseSimpleCorootsText: truncated header"
     end
 
+  (* Dot product of integer vectors. *)
   fun dot (xs: int list, ys: int list) : int =
     List.foldl (op +) 0 (ListPair.mapEq (op *) (xs, ys))
 
   (* Port of `is_split_spherical` from `atlas-scripts/K_highest_weights.at`,
      implemented for split real forms (uses `RealReductiveGroup::isSplit`). *)
+  (* Split-spherical test for a (final) K-type in a split real form. *)
   fun is_split_spherical (g: AtlasFFI.group, t: KType.ktype) : bool =
     let
       val () = if KType.isFinal t then () else raise Fail "K_highest_weights.is_split_spherical: K-type not final"
@@ -118,12 +143,15 @@ structure K_highest_weights = struct
       split andalso xOk andalso parityOk
     end
 
+  (* Extract the parameter attached to a K-type (caller owns result). *)
   fun parameter (t: KType.ktype) : param =
     KType.parameter t
 
+  (* Infinitesimal character `gamma(p)` as a ratweight. *)
   fun infinitesimal_character (p: param) : ratweight =
     parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
 
+  (* Split-spherical test for a parameter (via its lowest K-type). *)
   fun is_split_spherical_param (g: AtlasFFI.group, p: param) : bool =
     let
       val t = LowestKTypes.LKT_param (g, p)
@@ -133,34 +161,43 @@ structure K_highest_weights = struct
       ok
     end
 
+  (* Basis matrix for lambda-differential-0 characters fixed by `theta`. *)
   fun basis_lambda_differential_0_theta (theta: mat) : mat =
     LambdaDifferential0.basisTheta theta
 
+  (* Basis matrix for lambda-differential-0 characters at `(g,x)`. *)
   fun basis_lambda_differential_0 (g: AtlasFFI.group, x: int) : mat =
     basis_lambda_differential_0_theta (involutionMatrix (g, x))
 
+  (* Order-2 characters (basis columns) for a given `theta`. *)
   fun characters_order_2_theta (theta: mat) : int list list =
     LambdaDifferential0.charactersOrder2Theta theta
 
+  (* Order-2 characters for `(g,x)`. *)
   fun characters_order_2 (g: AtlasFFI.group, x: int) : int list list =
     characters_order_2_theta (involutionMatrix (g, x))
 
+  (* Enumerate all lambda-differential-0 twists for `theta`. *)
   fun all_lambda_differential_0_theta (theta: mat) : int list list =
     LambdaDifferential0.allTheta theta
 
+  (* Enumerate all lambda-differential-0 twists for `(g,x)`. *)
   fun all_lambda_differential_0 (g: AtlasFFI.group, x: int) : int list list =
     all_lambda_differential_0_theta (involutionMatrix (g, x))
 
   (* Port of `all_parameters_x_gamma` from `atlas-scripts/K_highest_weights.at`.
      `.at` version makes gamma dominant; here we do the same. *)
+  (* Enumerate parameters at fixed `(x,gamma)` (dominant gamma). *)
   fun all_parameters_x_gamma (g: AtlasFFI.group, x: int, gamma: ratweight) : AtlasFFI.param list =
     AllParameters.all_parameters_x_gamma_dominant (g, x, gamma)
 
+  (* Enumerate parameters across all KGB elements at fixed `gamma` (dominant gamma). *)
   fun all_parameters_gamma (g: AtlasFFI.group, gamma: ratweight) : AtlasFFI.param list =
     AllParameters.all_parameters_gamma_dominant (g, gamma)
 
   (* Port of `all_parameters(p)` from `atlas-scripts/K_highest_weights.at`:
      all parameters with same d_lambda as p and same nu, at fixed x. *)
+  (* Enumerate parameters with the same `d_lambda` and same `nu` as `p`. *)
   fun all_parameters (g: AtlasFFI.group, p: AtlasFFI.param) : AtlasFFI.param list =
     let
       val x = AtlasFFI.atlas_param_x p
@@ -195,11 +232,13 @@ structure K_highest_weights = struct
 
   (* Port of `reduce([Param])` from `atlas-scripts/K_highest_weights.at`.
      Returned params are freshly allocated and must be freed by caller. *)
+  (* Reduce a list of parameters modulo Atlas equivalence. *)
   fun reduce_parameters (ps: AtlasFFI.param list) : AtlasFFI.param list =
     ParamReduce.reduce ps
 
   (* Port of `all_equal_dlambda_K_parameters(t)` from `atlas-scripts/K_highest_weights.at`.
      Returned K_types are freshly allocated and must be freed by caller. *)
+  (* Enumerate K-types with the same `d_lambda` as `t`. *)
   fun all_equal_dlambda_K_parameters (g: AtlasFFI.group, t: KType.ktype) : KType.ktype list =
     let
       val x = KType.x t
@@ -219,6 +258,7 @@ structure K_highest_weights = struct
 
   (* Port of `reduce([KType])` from `atlas-scripts/K_highest_weights.at`.
      Returned K_types are freshly allocated and must be freed by caller. *)
+  (* Reduce a list of K-types modulo equivalence by reducing their parameters. *)
   fun reduce_K_parameters (kts: KType.ktype list) : KType.ktype list =
     let
       val ps = List.map KType.parameter kts
@@ -232,22 +272,28 @@ structure K_highest_weights = struct
 
   (* Port of `LKTs` / `LKT` / `final` from `atlas-scripts/K_highest_weights.at`.
      Interpretation: use `full_deform(param(t))` and take the lowest-height terms. *)
+  (* Lowest K-types of a K-type (via its parameter’s full deformation). *)
   fun LKTs (g: AtlasFFI.group, t: KType.ktype) : KType.ktype list =
     LowestKTypes.LKTs_ktype (g, t)
 
+  (* Lowest K-types of a parameter. *)
   fun LKTs_param (g: AtlasFFI.group, p: AtlasFFI.param) : KType.ktype list =
     LowestKTypes.LKTs_param (g, p)
 
+  (* Unique lowest K-type of a K-type. *)
   fun LKT (g: AtlasFFI.group, t: KType.ktype) : KType.ktype =
     LowestKTypes.LKT_ktype (g, t)
 
+  (* Unique lowest K-type of a parameter. *)
   fun LKT_param (g: AtlasFFI.group, p: AtlasFFI.param) : KType.ktype =
     LowestKTypes.LKT_param (g, p)
 
+  (* Alias: `final(t)` is defined as the unique lowest K-type in this port. *)
   fun final (g: AtlasFFI.group, t: KType.ktype) : KType.ktype =
     LKT (g, t)
 
   (* Port of `all_G_spherical_same_differential` from `atlas-scripts/K_highest_weights.at`. *)
+  (* Enumerate split-spherical K-types with the same differential as `mu`. *)
   fun all_G_spherical_same_differential (g: AtlasFFI.group, mu: KType.ktype) : KType.ktype list =
     let
       val p = parameter mu
@@ -275,6 +321,7 @@ structure K_highest_weights = struct
 
   (* Port of `cone(limit,cs)` from `atlas-scripts/K_highest_weights.at`.
      Returns an `n x m` matrix (row-major) whose columns are the weight vectors. *)
+  (* Enumerate integer points in the cone defined by `sum_i c_i * x_i <= limit`. *)
   fun cone (limit: rat, cs: rat list) : mat =
     let
       val limit = Rat.normalize limit

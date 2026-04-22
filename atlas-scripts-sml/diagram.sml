@@ -1,15 +1,31 @@
 use "atlas-scripts-sml/LieType.sml";
 use "atlas-scripts-sml/basic.sml";
 
+(*
+  File: atlas-scripts-sml/diagram.sml
+
+  Purpose
+  - Compute diagram automorphisms of a (semisimple) Lie type, following the
+    logic in `atlas-scripts/diagram.at`.
+  - Used by the folding/twisted-root-datum code to lift diagram permutations to
+    lattice automorphisms.
+
+  Output
+  - A diagram automorphism is represented as a permutation of the simple nodes
+    `0..(ssrank-1)`.
+*)
 structure Diagram = struct
   type permutation = int list
 
+  (* Identity permutation on `0..n-1`. *)
   fun identityPerm n = List.tabulate (n, fn i => i)
 
+  (* Reverse permutation `i ↦ n-1-i`. *)
   fun reversePerm n = List.tabulate (n, fn i => n - 1 - i)
 
   (* Port of `sanitize` from `atlas-scripts/diagram.at`:
      toggles B2<->C2 naming (and swaps the corresponding node positions in sigma). *)
+  (* Normalize B2/C2 naming conventions by swapping letters and permutation entries. *)
   fun sanitize (to_C: bool) (lt: LieType.t, sigma: int list) : LieType.t * int list =
     let
       val (fro, too) = if to_C then (#"B", #"C") else (#"C", #"B")
@@ -35,6 +51,7 @@ structure Diagram = struct
     end
 
   (* Port of `simple_automorphisms` for a single simple type. *)
+  (* Diagram automorphisms of a simple Dynkin type, as permutations of nodes. *)
   fun simple_automorphisms (typeLetter: char, rank: int) : permutation list =
     let
       val id = identityPerm rank
@@ -63,6 +80,7 @@ structure Diagram = struct
       | _ => raise Fail "Diagram.simple_automorphisms: unknown type"
     end
 
+  (* Group indices of equal simple factors (same letter+rank). *)
   fun groupEqualFactors (factors: LieType.simple_factor list) : int list list =
     let
       fun add (key, idx, []) = [(key, [idx])]
@@ -77,6 +95,7 @@ structure Diagram = struct
       List.map (fn (_, idxs) => List.rev idxs) groups
     end
 
+  (* List permutations of a list (factorial growth; used only for small lists). *)
   fun permutations (xs: 'a list) : 'a list list =
     let
       fun ins (x, []) = [[x]]
@@ -88,6 +107,7 @@ structure Diagram = struct
       perms xs
     end
 
+  (* Cartesian product of a list of choice lists. *)
   fun cartesianProduct (xss: 'a list list) : 'a list list =
     let
       fun step (xs, acc) = List.concat (List.map (fn a => List.map (fn x => x :: a) xs) acc)
@@ -95,6 +115,7 @@ structure Diagram = struct
       List.foldr step [[]] xss
     end
 
+  (* All diagram automorphisms of a (semisimple) Lie type. *)
   fun diagram_automorphisms (lt: LieType.t) : permutation list =
     let
       val factors = LieType.simple_factors lt
@@ -229,6 +250,7 @@ structure Diagram = struct
 
   type 'a iterator = {get: unit -> 'a option, incr: unit -> unit}
 
+  (* Build a simple iterator over a list. *)
   fun iteratorOfList (xs: 'a list) : 'a iterator =
     let
       val i = ref 0
@@ -239,6 +261,7 @@ structure Diagram = struct
       {get = get, incr = incr}
     end
 
+  (* Iterator over `diagram_automorphisms lt`. *)
   fun diagram_automorphism_iterator (lt: LieType.t) : permutation iterator =
     iteratorOfList (diagram_automorphisms lt)
 end

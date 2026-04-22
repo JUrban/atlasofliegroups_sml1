@@ -1,10 +1,21 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
+(*
+  File: atlas-scripts-sml/KTypePol.sml
+
+  Purpose
+  - Decode `KTypePol` (polynomials in K-types) returned by Atlas routines such as
+    `full_deform` and `K_type_formula`.
+
+  Ownership
+  - `type ktypepol = AtlasFFI.ktypepol` is an opaque handle; free with `free`.
+*)
 structure KTypePol = struct
   type ktypepol = AtlasFFI.ktypepol
 
   type term = {e: int, s: int, x: int, height: int, lambdaRho: int list}
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -15,6 +26,8 @@ structure KTypePol = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Extract polynomial terms, decoding `atlas_ktypepol_term_text` output.
+     `rank` is the ambient group rank (controls lambda_rho vector length). *)
   fun terms (pol: ktypepol, rank: int) : term list =
     let
       val n = AtlasFFI.atlas_ktypepol_num_terms pol
@@ -38,5 +51,6 @@ structure KTypePol = struct
       List.tabulate (n, one)
     end
 
+  (* Free a KTypePol handle. *)
   fun free (pol: ktypepol) : unit = AtlasFFI.atlas_ktypepol_free pol
 end

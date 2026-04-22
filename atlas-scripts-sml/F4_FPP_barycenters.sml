@@ -1,6 +1,18 @@
+(* 
+  File: atlas-scripts-sml/F4_FPP_barycenters.sml
+
+  Purpose
+  - Load the precomputed list of F4 folded-FPP barycenters from the fixture file
+    `atlas-scripts-sml/data/F4_FPP_barycenters.txt`.
+
+  Notes
+  - This fixture predates the fully computed folded-FPP barycenter generator and
+    is kept for debugging and cross-checks.
+*)
 structure F4_FPP_barycenters = struct
   type ratvec_text = {numsText: string, denom: int}
 
+  (* Parse whitespace-separated integers. *)
   fun parseInts s =
     let
       fun toInt tok =
@@ -11,6 +23,7 @@ structure F4_FPP_barycenters = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
+  (* Strip trailing newline/CR from a line. *)
   fun rstripNewlines s =
     let
       val n = String.size s
@@ -23,6 +36,7 @@ structure F4_FPP_barycenters = struct
         | _ => s
     end
 
+  (* Convert SML `~` negatives to C-style `-` negatives. *)
   fun intToCText n =
     let
       val s = Int.toString n
@@ -33,13 +47,16 @@ structure F4_FPP_barycenters = struct
         s
     end
 
+  (* Serialize an int list in Atlas C++ parser format. *)
   fun intsToText xs =
     String.concatWith " " (List.map intToCText xs)
 
+  (* Load all barycenters from disk. *)
   fun load () : ratvec_text list =
     let
       val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_barycenters.txt"
 
+      (* Parse one data row into `{denom, numsText}`. *)
       fun handleRow line =
         (case parseInts line of
            [den, a, b, c, d] => {numsText = intsToText [a, b, c, d], denom = den}
