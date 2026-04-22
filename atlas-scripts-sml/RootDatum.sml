@@ -128,6 +128,11 @@ structure RootDatum = struct
       loop (rs, cs, 0)
     end
 
+  fun coroot (h: t) (root: int list) : int list =
+    case corootOfRoot h root of
+      SOME c => c
+    | NONE => raise Fail "RootDatum.coroot: root not found"
+
   fun semisimpleRank (h: t) : int =
     length (simpleRootsCols h)
 
