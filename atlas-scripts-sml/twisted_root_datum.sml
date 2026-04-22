@@ -1,6 +1,8 @@
 use "atlas-scripts-sml/RootDatum.sml";
 use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
+use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/sort.sml";
 
 (* Minimal SML analogue of `atlas-scripts/twisted_root_datum.at`:
    currently only implements `cyclic_twist`. *)
@@ -8,6 +10,35 @@ structure TwistedRootDatum = struct
   type mat = IntMatrix.mat
   type rootdatum = RootDatum.t
   type t = {rd: rootdatum, delta: mat}
+
+  fun dot (xs: int list, ys: int list) : int =
+    let
+      fun loop ([], [], acc) = acc
+        | loop (a :: as', b :: bs', acc) = loop (as', bs', acc + a * b)
+        | loop _ = raise Fail "TwistedRootDatum.dot: length mismatch"
+    in
+      loop (xs, ys, 0)
+    end
+
+  fun vecScale (v: int list, k: int) : int list =
+    List.map (fn x => x * k) v
+
+  fun vecAdd (a: int list, b: int list) : int list =
+    ListPair.mapEq (op +) (a, b)
+
+  fun vecZero n = List.tabulate (n, fn _ => 0)
+
+  fun matFromColumns (cols: int list list) : mat =
+    (case cols of
+       [] => []
+     | c0 :: cs =>
+         let
+           val n = length c0
+           val () = if List.all (fn c => length c = n) cs then () else raise Fail "TwistedRootDatum.matFromColumns: ragged"
+           fun row i = List.map (fn c => List.nth (c, i)) cols
+         in
+           List.tabulate (n, row)
+         end)
 
   fun direct_product_rootdatum (rd1: rootdatum, rd2: rootdatum) : rootdatum =
     let
@@ -103,8 +134,52 @@ structure TwistedRootDatum = struct
     cyclic_twist (rd, MatrixAT.id_mat (RootDatum.rank rd), r)
 
   (* Not yet ported from `atlas-scripts/twisted_root_datum.at`. *)
-  fun pre_folded (_: t) : mat * mat =
-    raise Fail "TwistedRootDatum.pre_folded: unimplemented"
+  fun pre_folded (trd: t) : mat * mat =
+    let
+      val rd = #rd trd
+      val delta = #delta trd
+      val () = if is_distinguished (rd, delta) then () else raise Fail "TwistedRootDatum.pre_folded: not distinguished"
+
+      val tMat = IntMatrix.eigenLattice (IntMatrix.transpose delta, 1) (* inclusion X_*(T)->X_*(H) *)
+      val (_, tDim) = IntMatrix.matShape tMat
+      val tStar = IntMatrix.transpose tMat (* restrict weights X^*(H)->X^*(T) *)
+
+      fun restrict (root: int list) : int list =
+        IntMatrix.matVecMul (tStar, root)
+
+      val rootsNonreduced = Sort.sort_u_rlex (List.map restrict (RootDatum.posRootsCols rd))
+      val locate = Basic.binary_search_in (rootsNonreduced, Sort.rlex_leq)
+      val roots =
+        List.filter (fn alpha => not (Option.isSome (locate (vecScale (alpha, 2))))) rootsNonreduced
+
+      val rootsAndCoroots = ListPair.zipEq (RootDatum.rootsCols rd, RootDatum.corootsCols rd)
+
+      fun pullback alpha =
+        List.filter (fn (r, _) => restrict r = alpha) rootsAndCoroots
+
+      fun corestrictCoroot alpha =
+        let
+          val pb = pullback alpha
+          val () = if null pb then raise Fail "TwistedRootDatum.pre_folded: empty pullback" else ()
+          val (r0, _) = hd pb
+          val v =
+            List.foldl
+              (fn ((_, cor), acc) => vecAdd (acc, cor))
+              (vecZero (RootDatum.rank rd))
+              pb
+          val denom = dot (v, r0)
+          val () = if denom = 0 then raise Fail "TwistedRootDatum.pre_folded: zero pairing" else ()
+          val w : Lattice.ratvec = {den = denom, nums = vecScale (v, 2)}
+        in
+          case Lattice.vec_solve (tMat, w) of
+            NONE => raise Fail "TwistedRootDatum.pre_folded: corestrict solve failed"
+          | SOME coords => coords
+        end
+
+      val coroots = List.map corestrictCoroot roots
+    in
+      (matFromColumns roots, matFromColumns coroots)
+    end
 
   fun folded (_: t) : rootdatum * mat =
     raise Fail "TwistedRootDatum.folded: unimplemented"
