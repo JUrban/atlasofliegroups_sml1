@@ -63,4 +63,114 @@ structure Basic = struct
       in
         if i < n andalso leq (at i, x) then SOME i else NONE
       end
+
+  fun merge (leq: 'a * 'a -> bool) (a: 'a list, b: 'a list) : 'a list =
+    (case (a, b) of
+       ([], _) => b
+     | (_, []) => a
+     | (x :: xs, y :: ys) =>
+         if leq (x, y) then x :: merge leq (xs, b) else y :: merge leq (a, ys))
+
+  fun merge_u (leq: 'a * 'a -> bool) (a: 'a list, b: 'a list) : 'a list =
+    (case (a, b) of
+       ([], _) => b
+     | (_, []) => a
+     | (x :: xs, y :: ys) =>
+         if not (leq (x, y)) then y :: merge_u leq (a, ys)
+         else if not (leq (y, x)) then x :: merge_u leq (xs, b)
+         else x :: merge_u leq (xs, ys))
+
+  (* Stable merge-sort. *)
+  fun sort (leq: 'a * 'a -> bool) (xs: 'a list) : 'a list =
+    let
+      fun split xs =
+        let
+          fun loop (slow, fast, acc) =
+            (case fast of
+               [] => (List.rev acc, slow)
+             | [_] => (List.rev acc, slow)
+             | _ :: _ :: fast' =>
+                 (case slow of
+                    [] => (List.rev acc, [])
+                  | s :: slow' => loop (slow', fast', s :: acc)))
+        in
+          loop (xs, xs, [])
+        end
+
+      fun ms xs =
+        (case xs of
+           [] => []
+         | [_] => xs
+         | _ =>
+             let
+               val (a, b) = split xs
+             in
+               merge leq (ms a, ms b)
+             end)
+    in
+      ms xs
+    end
+
+  fun sort_u (leq: 'a * 'a -> bool) (xs: 'a list) : 'a list =
+    let
+      fun split xs =
+        let
+          fun loop (slow, fast, acc) =
+            (case fast of
+               [] => (List.rev acc, slow)
+             | [_] => (List.rev acc, slow)
+             | _ :: _ :: fast' =>
+                 (case slow of
+                    [] => (List.rev acc, [])
+                  | s :: slow' => loop (slow', fast', s :: acc)))
+        in
+          loop (xs, xs, [])
+        end
+
+      fun ms xs =
+        (case xs of
+           [] => []
+         | [_] => xs
+         | _ =>
+             let
+               val (a, b) = split xs
+             in
+               merge_u leq (ms a, ms b)
+             end)
+    in
+      ms xs
+    end
+
+  fun ranking (leq: 'a * 'a -> bool) (a: 'a list) : int list =
+    let
+      fun at i = List.nth (a, i)
+      fun leqIdx (i, j) = leq (at i, at j)
+    in
+      sort leqIdx (indices a)
+    end
+
+  fun sort_by (f: 'a -> 'b, leq: 'b * 'b -> bool) (a: 'a list) : 'a list =
+    let
+      val vals = List.map f a
+      val r = ranking leq vals
+    in
+      List.map (fn i => List.nth (a, i)) r
+    end
+
+  fun sort_u_by (f: 'a -> 'b, leq: 'b * 'b -> bool) (a: 'a list) : 'a list =
+    let
+      val vals = List.map f a
+      val r = ranking leq vals
+      fun eq (x, y) = leq (x, y) andalso leq (y, x)
+      fun loop ([], _) = []
+        | loop (i :: is, NONE) = List.nth (a, i) :: loop (is, SOME (List.nth (vals, i)))
+        | loop (i :: is, SOME prev) =
+            let
+              val v = List.nth (vals, i)
+            in
+              if eq (v, prev) then loop (is, SOME prev) else List.nth (a, i) :: loop (is, SOME v)
+            end
+    in
+      loop (r, NONE)
+    end
 end

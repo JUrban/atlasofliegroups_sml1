@@ -9,5 +9,7 @@ val _ = assert "find 3 (some index)" (Option.isSome (find 3));
 val _ = assert "find 4 none" (find 4 = NONE);
 val _ = assert "find 13" (find 13 = SOME 5);
 
-val _ = print "ok\n";
+val ys = Basic.sort_u (op <=) [3, 1, 2, 3, 2, 1];
+val _ = assert "sort_u dedups" (ys = [1, 2, 3]);
 
+val _ = print "ok\n";

@@ -11,75 +11,8 @@ structure Sort = struct
       loop xs
     end
 
-  fun merge (leq: 'a * 'a -> bool) (a: 'a list, b: 'a list) : 'a list =
-    (case (a, b) of
-       ([], _) => b
-     | (_, []) => a
-     | (x :: xs, y :: ys) =>
-         if leq (x, y) then x :: merge leq (xs, b) else y :: merge leq (a, ys))
-
-  fun merge_u (leq: 'a * 'a -> bool) (a: 'a list, b: 'a list) : 'a list =
-    (case (a, b) of
-       ([], _) => b
-     | (_, []) => a
-     | (x :: xs, y :: ys) =>
-         if not (leq (x, y)) then y :: merge_u leq (a, ys)
-         else if not (leq (y, x)) then x :: merge_u leq (xs, b)
-         else x :: merge_u leq (xs, ys))
-
-  fun sort (leq: 'a * 'a -> bool) (xs: 'a list) : 'a list =
-    let
-      fun split xs =
-        (case xs of
-           [] => ([], [])
-         | [x] => ([x], [])
-         | x :: y :: rest =>
-             let
-               val (a, b) = split rest
-             in
-               (x :: a, y :: b)
-             end)
-
-      fun ms xs =
-        (case xs of
-           [] => []
-         | [_] => xs
-         | _ =>
-             let
-               val (a, b) = split xs
-             in
-               merge leq (ms a, ms b)
-             end)
-    in
-      ms xs
-    end
-
-  fun sort_u (leq: 'a * 'a -> bool) (xs: 'a list) : 'a list =
-    let
-      fun split xs =
-        (case xs of
-           [] => ([], [])
-         | [x] => ([x], [])
-         | x :: y :: rest =>
-             let
-               val (a, b) = split rest
-             in
-               (x :: a, y :: b)
-             end)
-
-      fun ms xs =
-        (case xs of
-           [] => []
-         | [_] => xs
-         | _ =>
-             let
-               val (a, b) = split xs
-             in
-               merge_u leq (ms a, ms b)
-             end)
-    in
-      ms xs
-    end
+  val sort = Basic.sort
+  val sort_u = Basic.sort_u
 
   (* Restricted lex ordering for fixed-size integer vectors. *)
   fun rlex_leq (v: int list, w: int list) : bool =
@@ -95,4 +28,3 @@ structure Sort = struct
   fun sort_u_rlex (xs: int list list) : int list list =
     sort_u rlex_leq xs
 end
-

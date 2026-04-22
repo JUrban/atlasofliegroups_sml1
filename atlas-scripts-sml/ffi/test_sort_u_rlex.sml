@@ -6,5 +6,6 @@ val xs = [[2, 0], [1, 5], [2, 0], [1, 4]];
 val ys = Sort.sort_u_rlex xs;
 val _ = assert "sorted unique" (ys = [[1, 4], [1, 5], [2, 0]]);
 
-val _ = print "ok\n";
+val _ = assert "sort is stable for equals" (Basic.sort (op <=) [3, 3, 3] = [3, 3, 3]);
 
+val _ = print "ok\n";
