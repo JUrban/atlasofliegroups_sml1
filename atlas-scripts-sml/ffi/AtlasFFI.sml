@@ -25,6 +25,7 @@ structure AtlasFFI = struct
   val atlas_param_x_sym = Foreign.getSymbol lib "atlas_param_x"
   val atlas_param_lambda_text_sym = Foreign.getSymbol lib "atlas_param_lambda_text"
   val atlas_param_nu_text_sym = Foreign.getSymbol lib "atlas_param_nu_text"
+  val atlas_param_gamma_text_sym = Foreign.getSymbol lib "atlas_param_gamma_text"
   val atlas_param_cross_sym = Foreign.getSymbol lib "atlas_param_cross"
   val atlas_param_cayley_sym = Foreign.getSymbol lib "atlas_param_cayley"
   val atlas_param_scale_sym = Foreign.getSymbol lib "atlas_param_scale"
@@ -126,6 +127,9 @@ structure AtlasFFI = struct
 
   val atlas_param_nu_text =
     Foreign.buildCall1 (atlas_param_nu_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_param_gamma_text =
+    Foreign.buildCall1 (atlas_param_gamma_text_sym, Foreign.cPointer, Foreign.cString)
 
   val atlas_param_cross =
     Foreign.buildCall2 (atlas_param_cross_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)

@@ -29,6 +29,7 @@ fun parsePairs s =
 val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0);
 val p = AtlasFFI.atlas_param_trivial g;
 val () = showParam "p" p;
+val () = print ("gamma=" ^ AtlasFFI.atlas_param_gamma_text p ^ "\n");
 
 val rpText = AtlasFFI.atlas_param_reducibility_points_text p;
 val rps = parsePairs rpText;
@@ -60,4 +61,3 @@ val () =
 val () = AtlasFFI.atlas_param_free p0;
 val () = AtlasFFI.atlas_param_free p;
 val () = AtlasFFI.atlas_group_free g;
-

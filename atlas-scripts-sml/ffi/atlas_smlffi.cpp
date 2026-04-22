@@ -658,6 +658,44 @@ extern "C" long atlas_param_height(void* param_handle)
   }
 }
 
+extern "C" const char* atlas_param_gamma_text(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_gamma_text: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_gamma_text: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    const auto rank = rc.rank();
+    const auto& gamma = p->sr.gamma();
+
+    std::ostringstream out;
+    out << gamma.denominator();
+    const auto& num = gamma.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" void* atlas_param_cross(void* p_handle, int s)
 {
   try
