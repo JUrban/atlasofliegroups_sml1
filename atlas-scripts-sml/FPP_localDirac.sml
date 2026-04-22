@@ -1,9 +1,11 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
+use "atlas-scripts-sml/basic.sml";
 
 (*
   File: atlas-scripts-sml/FPP_localDirac.sml
@@ -45,6 +47,7 @@ structure FPP_localDirac = struct
   type param = AtlasFFI.param
   type ratvec = Lattice.ratvec
   type mat = Lattice.mat
+  type face_key = int list
 
   (* ---------------------------------------------------------------------- *)
   (* Configuration flags (mirrors top-level `.at` globals; not yet used).    *)
@@ -185,6 +188,43 @@ structure FPP_localDirac = struct
     , mapAct: int array          (* length = |vd|, values in [~1..|Lvd|-1] *)
     }
 
+  (* Membership test for tiny face keys (length <= 5). *)
+  fun memberInt (x: int, xs: int list) : bool = List.exists (fn y => y = x) xs
+
+  (* Face stability under the partially-defined involution `perm`. *)
+  fun faceStableUnderPerm (perm: perm, face: face_key) : bool =
+    List.all
+      (fn i =>
+        let
+          val j = Array.sub (perm, i)
+        in
+          j <> ~1 andalso memberInt (j, face)
+        end)
+      face
+
+  (* Map a global face key to a local face key using `mapAct`, collapsing
+     paired vertices by sorting+deduping indices. *)
+  fun mapFaceKey (mapAct: int array, face: face_key) : face_key option =
+    let
+      fun mappedIndex i =
+        let
+          val k = Array.sub (mapAct, i)
+        in
+          if k < 0 then NONE else SOME k
+        end
+    in
+      if List.exists (fn i => Array.sub (mapAct, i) < 0) face then
+        NONE
+      else
+        SOME (Basic.sort_u (op <=) (List.mapPartial mappedIndex face))
+    end
+
+  type local_face =
+    { gamma: ratvec
+    , global_face: face_key
+    , local_face: face_key
+    }
+
   (*
     Compute the affine involution on the *global* FPP vertex set `vd` induced by
     `(x,lambda)`:
@@ -279,5 +319,34 @@ structure FPP_localDirac = struct
       val () = fillPairs (pairs, length fixed)
     in
       {Lvd = Lvd, perm = perm, pairs = pairs, mapAct = mapAct}
+    end
+
+  (*
+    Enumerate all *stable* local faces meeting the `(x,lambda)` slice, as a list
+    of records that remember both:
+      - `global_face`: vertex indices in the global folded-FPP vertex table
+      - `local_face`: vertex indices in the derived local vertex table `Lvd`
+
+    This is a preparatory step toward porting the `.at` algorithms that build
+    unitary face graphs dimension-by-dimension.
+  *)
+  fun local_faces_for_x_lambda (g: group, x: int, lambda: ratvec) : local_face list =
+    let
+      val faceCtx = FPPFaceKey.create g
+      val vd = #vd faceCtx
+      val {perm, mapAct, ...} = localFD_Lvd_simple (g, x, lambda, vd)
+
+      fun one gamma =
+        (case FPPFaceKey.faceKeyOfGamma (faceCtx, gamma) of
+           NONE => NONE
+         | SOME gf =>
+             if not (faceStableUnderPerm (perm, gf)) then
+               NONE
+             else
+               (case mapFaceKey (mapAct, gf) of
+                  NONE => NONE
+                | SOME lf => SOME {gamma = gamma, global_face = gf, local_face = lf}))
+    in
+      List.mapPartial one (gammas_for_x_lambda (g, x, lambda))
     end
 end
