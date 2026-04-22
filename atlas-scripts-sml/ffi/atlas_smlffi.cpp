@@ -546,6 +546,174 @@ extern "C" long atlas_param_height(void* param_handle)
   }
 }
 
+extern "C" void* atlas_param_cross(void* p_handle, int s)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_cross: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_cross: null group pointer in param";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    const unsigned int r =
+      atlas::rootdata::integrality_rank(rc.root_datum(), p->sr.gamma());
+    if (s < 0 || static_cast<unsigned int>(s) >= r)
+    {
+      std::ostringstream out;
+      out << "atlas_param_cross: illegal simple reflection: " << s << ", should be <" << r;
+      g_last_error = out.str();
+      return nullptr;
+    }
+
+    atlas::repr::StandardRepr sr = rc.cross(static_cast<atlas::weyl::Generator>(s), p->sr);
+    return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_param_cayley(void* p_handle, int s)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_cayley: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_cayley: null group pointer in param";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    const unsigned int r =
+      atlas::rootdata::integrality_rank(rc.root_datum(), p->sr.gamma());
+    if (s < 0 || static_cast<unsigned int>(s) >= r)
+    {
+      std::ostringstream out;
+      out << "atlas_param_cayley: illegal simple reflection: " << s << ", should be <" << r;
+      g_last_error = out.str();
+      return nullptr;
+    }
+
+    try
+    {
+      atlas::repr::StandardRepr sr = rc.Cayley(static_cast<atlas::weyl::Generator>(s), p->sr);
+      return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+    }
+    catch (atlas::error::Cayley_error&)
+    {
+      atlas::repr::StandardRepr sr = p->sr;
+      return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+    }
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_param_scale(void* p_handle, int num, int den)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_scale: null param handle";
+      return nullptr;
+    }
+    if (den == 0)
+    {
+      g_last_error = "atlas_param_scale: zero denominator";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_scale: null group pointer in param";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    atlas::RatNum f(num, den);
+    f.normalize();
+    atlas::repr::StandardRepr sr = rc.scale(p->sr, f);
+    return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_param_reducibility_points_text(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_reducibility_points_text: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_reducibility_points_text: null group pointer in param";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    atlas::RatNumList rp = rc.reducibility_points(p->sr);
+
+    std::ostringstream out;
+    out << rp.size();
+    for (const auto& r : rp)
+      out << ' ' << r.numerator() << ' ' << r.denominator();
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" int atlas_param_is_standard(void* p_handle)
 {
   try

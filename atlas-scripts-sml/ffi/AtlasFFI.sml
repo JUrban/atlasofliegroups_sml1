@@ -20,6 +20,11 @@ structure AtlasFFI = struct
   val atlas_param_x_sym = Foreign.getSymbol lib "atlas_param_x"
   val atlas_param_lambda_text_sym = Foreign.getSymbol lib "atlas_param_lambda_text"
   val atlas_param_nu_text_sym = Foreign.getSymbol lib "atlas_param_nu_text"
+  val atlas_param_cross_sym = Foreign.getSymbol lib "atlas_param_cross"
+  val atlas_param_cayley_sym = Foreign.getSymbol lib "atlas_param_cayley"
+  val atlas_param_scale_sym = Foreign.getSymbol lib "atlas_param_scale"
+  val atlas_param_reducibility_points_text_sym =
+    Foreign.getSymbol lib "atlas_param_reducibility_points_text"
   val atlas_param_is_standard_sym = Foreign.getSymbol lib "atlas_param_is_standard"
   val atlas_param_is_final_sym = Foreign.getSymbol lib "atlas_param_is_final"
   val atlas_param_twist_sym = Foreign.getSymbol lib "atlas_param_twist"
@@ -103,6 +108,22 @@ structure AtlasFFI = struct
 
   val atlas_param_nu_text =
     Foreign.buildCall1 (atlas_param_nu_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_param_cross =
+    Foreign.buildCall2 (atlas_param_cross_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)
+
+  val atlas_param_cayley =
+    Foreign.buildCall2 (atlas_param_cayley_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)
+
+  val atlas_param_scale =
+    Foreign.buildCall3
+      ( atlas_param_scale_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cInt)
+      , Foreign.cPointer
+      )
+
+  val atlas_param_reducibility_points_text =
+    Foreign.buildCall1 (atlas_param_reducibility_points_text_sym, Foreign.cPointer, Foreign.cString)
 
   val atlas_param_is_standard =
     Foreign.buildCall1 (atlas_param_is_standard_sym, Foreign.cPointer, Foreign.cInt)
