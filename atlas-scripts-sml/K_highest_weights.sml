@@ -5,6 +5,7 @@ use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/ParamReduce.sml";
 use "atlas-scripts-sml/Rat.sml";
 use "atlas-scripts-sml/KType.sml";
+use "atlas-scripts-sml/LowestKTypes.sml";
 
 structure K_highest_weights = struct
   type mat = IntMatrix.mat
@@ -174,6 +175,23 @@ structure K_highest_weights = struct
     in
       ts
     end
+
+  (* Port of `LKTs` / `LKT` / `final` from `atlas-scripts/K_highest_weights.at`.
+     Interpretation: use `full_deform(param(t))` and take the lowest-height terms. *)
+  fun LKTs (g: AtlasFFI.group, t: KType.ktype) : KType.ktype list =
+    LowestKTypes.LKTs_ktype (g, t)
+
+  fun LKTs_param (g: AtlasFFI.group, p: AtlasFFI.param) : KType.ktype list =
+    LowestKTypes.LKTs_param (g, p)
+
+  fun LKT (g: AtlasFFI.group, t: KType.ktype) : KType.ktype =
+    LowestKTypes.LKT_ktype (g, t)
+
+  fun LKT_param (g: AtlasFFI.group, p: AtlasFFI.param) : KType.ktype =
+    LowestKTypes.LKT_param (g, p)
+
+  fun final (g: AtlasFFI.group, t: KType.ktype) : KType.ktype =
+    LKT (g, t)
 
   (* Port of `cone(limit,cs)` from `atlas-scripts/K_highest_weights.at`.
      Returns an `n x m` matrix (row-major) whose columns are the weight vectors. *)
