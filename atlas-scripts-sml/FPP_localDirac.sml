@@ -51,6 +51,28 @@ structure FPP_localDirac = struct
   type mat = Lattice.mat
   type face_key = int list
 
+  (*
+    Group-level context
+
+    Many `FPP_localDirac.at` computations are repeated for many `(x,lambda)`
+    pairs inside a fixed group `g`. In particular, building the folded-FPP
+    vertex table (and its `FPPFaceKey` inverse mapping) and enumerating all
+    folded-FPP face barycenters are expensive. We therefore expose an explicit
+    context that callers can reuse.
+  *)
+
+  type ctx =
+    { g: group
+    , faceCtx: FPPFaceKey.t
+    , barycenters: ratvec list
+    }
+
+  fun create_ctx (g: group) : ctx =
+    { g = g
+    , faceCtx = FPPFaceKey.create g
+    , barycenters = FPP_barycenters_fold.barycenters_all g
+    }
+
   (* ---------------------------------------------------------------------- *)
   (* Configuration flags (mirrors top-level `.at` globals; not yet used).    *)
   (* ---------------------------------------------------------------------- *)
@@ -125,20 +147,24 @@ structure FPP_localDirac = struct
 
     which is the same “key match” used in `F4_FPP_points_compute`.
   *)
-  fun gammas_for_x_lambda (g: group, x: int, lambda: ratvec) : ratvec list =
+  fun gammas_for_x_lambda_ctx (c: ctx, x: int, lambda: ratvec) : ratvec list =
     let
+      val g = #g c
       val rank = AtlasFFI.atlas_group_rank g
       val theta =
         AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
       val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
       val k = ratvecKey (Lattice.matVecMulRatvec onePlus lambda)
-      val barycenters = FPP_barycenters_fold.barycenters_all g
+      val barycenters = #barycenters c
 
       fun keep gamma =
         ratvecKey (Lattice.matVecMulRatvec onePlus gamma) = k
     in
       List.filter keep barycenters
     end
+
+  fun gammas_for_x_lambda (g: group, x: int, lambda: ratvec) : ratvec list =
+    gammas_for_x_lambda_ctx (create_ctx g, x, lambda)
 
   (*
     Enumerate final standard parameters at a fixed `(x,lambda)` by running over
@@ -148,8 +174,9 @@ structure FPP_localDirac = struct
 
     Returns newly allocated parameters; caller must free them.
   *)
-  fun params_for_x_lambda (g: group, x: int, lambda: ratvec) : param list =
+  fun params_for_x_lambda_ctx (c: ctx, x: int, lambda: ratvec) : param list =
     let
+      val g = #g c
       val rank = AtlasFFI.atlas_group_rank g
       val theta =
         AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
@@ -174,8 +201,11 @@ structure FPP_localDirac = struct
             (AtlasFFI.atlas_param_free p1; NONE)
         end
     in
-      List.mapPartial mk (gammas_for_x_lambda (g, x, lambda))
+      List.mapPartial mk (gammas_for_x_lambda_ctx (c, x, lambda))
     end
+
+  fun params_for_x_lambda (g: group, x: int, lambda: ratvec) : param list =
+    params_for_x_lambda_ctx (create_ctx g, x, lambda)
 
   (* ---------------------------------------------------------------------- *)
   (* Local vertex data induced by the affine involution.                      *)
@@ -344,15 +374,18 @@ structure FPP_localDirac = struct
 
   (* Convenience wrapper: compute `(Lvd, Perm2, mapAct)` using the canonical
      folded-FPP vertex table for `g`. *)
-  fun localFD_Lvd2_simple (g: group, x: int, lambda: ratvec) : (VertexData.t * perm2 * int array) =
+  fun localFD_Lvd2_simple_ctx (c: ctx, x: int, lambda: ratvec) : (VertexData.t * perm2 * int array) =
     let
-      val faceCtx = FPPFaceKey.create g
-      val vd = #vd faceCtx
+      val vd = #vd (#faceCtx c)
+      val g = #g c
       val fd = localFD_Lvd_simple (g, x, lambda, vd)
       val perm2 = perm2_of_localFD fd
     in
       (#Lvd fd, perm2, #mapAct fd)
     end
+
+  fun localFD_Lvd2_simple (g: group, x: int, lambda: ratvec) : (VertexData.t * perm2 * int array) =
+    localFD_Lvd2_simple_ctx (create_ctx g, x, lambda)
 
   (*
     Enumerate all *stable* local faces meeting the `(x,lambda)` slice, as a list
@@ -363,9 +396,10 @@ structure FPP_localDirac = struct
     This is a preparatory step toward porting the `.at` algorithms that build
     unitary face graphs dimension-by-dimension.
   *)
-  fun local_faces_for_x_lambda (g: group, x: int, lambda: ratvec) : local_face list =
+  fun local_faces_for_x_lambda_ctx (c: ctx, x: int, lambda: ratvec) : local_face list =
     let
-      val faceCtx = FPPFaceKey.create g
+      val g = #g c
+      val faceCtx = #faceCtx c
       val vd = #vd faceCtx
       val {perm, mapAct, ...} = localFD_Lvd_simple (g, x, lambda, vd)
 
@@ -380,13 +414,17 @@ structure FPP_localDirac = struct
                   NONE => NONE
                 | SOME lf => SOME {gamma = gamma, global_face = gf, local_face = lf}))
     in
-      List.mapPartial one (gammas_for_x_lambda (g, x, lambda))
+      List.mapPartial one (gammas_for_x_lambda_ctx (c, x, lambda))
     end
+
+  fun local_faces_for_x_lambda (g: group, x: int, lambda: ratvec) : local_face list =
+    local_faces_for_x_lambda_ctx (create_ctx g, x, lambda)
 
   (* Group local faces by their local dimension (length-1), returning an array
      of length `rank(g)+1`. *)
-  fun local_faces_for_x_lambda_by_dim (g: group, x: int, lambda: ratvec) : face_key list array =
+  fun local_faces_for_x_lambda_by_dim_ctx (c: ctx, x: int, lambda: ratvec) : face_key list array =
     let
+      val g = #g c
       val r = AtlasFFI.atlas_group_rank g
       val a = Array.array (r + 1, ([]: face_key list))
       fun add ({local_face, ...}: local_face) =
@@ -398,10 +436,13 @@ structure FPP_localDirac = struct
           else
             Array.update (a, d, local_face :: Array.sub (a, d))
         end
-      val () = List.app add (local_faces_for_x_lambda (g, x, lambda))
+      val () = List.app add (local_faces_for_x_lambda_ctx (c, x, lambda))
     in
       a
     end
+
+  fun local_faces_for_x_lambda_by_dim (g: group, x: int, lambda: ratvec) : face_key list array =
+    local_faces_for_x_lambda_by_dim_ctx (create_ctx g, x, lambda)
 
   (*
     Enumerate final parameters associated to the barycenters of *local* faces.
@@ -422,12 +463,12 @@ structure FPP_localDirac = struct
       of faces processed.
   *)
 
-  fun params_for_local_faces_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
+  fun params_for_local_faces_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFaces: int) : param list =
     let
-      val faceCtx = FPPFaceKey.create g
-      val vd = #vd faceCtx
+      val g = #g c
+      val vd = #vd (#faceCtx c)
       val fd = localFD_Lvd_simple (g, x, lambda, vd)
-      val facesAll = local_faces_for_x_lambda (g, x, lambda)
+      val facesAll = local_faces_for_x_lambda_ctx (c, x, lambda)
       val faces = if maxFaces < 0 then facesAll else List.take (facesAll, Int.min (maxFaces, length facesAll))
 
       fun addFinal ((q, mult), acc) =
@@ -456,6 +497,9 @@ structure FPP_localDirac = struct
       List.foldl addFromFace [] faces
     end
 
+  fun params_for_local_faces_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
+    params_for_local_faces_limit_ctx (create_ctx g, x, lambda, maxFaces)
+
   fun params_for_local_faces (g: group, x: int, lambda: ratvec) : param list =
     params_for_local_faces_limit (g, x, lambda, ~1)
 
@@ -477,8 +521,14 @@ structure FPP_localDirac = struct
   fun unitary_params_for_local_faces_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
     keep_unitary_and_free_rest (params_for_local_faces_limit (g, x, lambda, maxFaces))
 
+  fun unitary_params_for_local_faces_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFaces: int) : param list =
+    keep_unitary_and_free_rest (params_for_local_faces_limit_ctx (c, x, lambda, maxFaces))
+
   fun unitary_params_for_local_faces (g: group, x: int, lambda: ratvec) : param list =
     unitary_params_for_local_faces_limit (g, x, lambda, ~1)
+
+  fun unitary_params_for_local_faces_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    unitary_params_for_local_faces_limit_ctx (c, x, lambda, ~1)
 
   (* Insert unitary parameters into a `ParamHash` (which clones on insertion),
      freeing the input handles. Returns the number of new insertions. *)
@@ -499,8 +549,15 @@ structure FPP_localDirac = struct
     (g: group, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
     add_unitary_params_to_hash (uhash, unitary_params_for_local_faces_limit (g, x, lambda, maxFaces))
 
+  fun add_unitary_from_local_faces_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
+    add_unitary_params_to_hash (uhash, unitary_params_for_local_faces_limit_ctx (c, x, lambda, maxFaces))
+
   fun add_unitary_from_local_faces (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     add_unitary_from_local_faces_limit (g, x, lambda, ~1, uhash)
+
+  fun add_unitary_from_local_faces_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    add_unitary_from_local_faces_limit_ctx (c, x, lambda, ~1, uhash)
 
   (*
     Simple entry points (baseline)
@@ -516,13 +573,26 @@ structure FPP_localDirac = struct
   fun local_test_GEO_simple_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
     unitary_params_for_local_faces_limit (g, x, lambda, maxFaces)
 
+  fun local_test_GEO_simple_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFaces: int) : param list =
+    unitary_params_for_local_faces_limit_ctx (c, x, lambda, maxFaces)
+
   fun local_test_GEO_simple (g: group, x: int, lambda: ratvec) : param list =
     unitary_params_for_local_faces (g, x, lambda)
+
+  fun local_test_GEO_simple_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    unitary_params_for_local_faces_ctx (c, x, lambda)
 
   fun local_test_GEO_simple_into_hash_limit
     (g: group, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
     add_unitary_from_local_faces_limit (g, x, lambda, maxFaces, uhash)
 
+  fun local_test_GEO_simple_into_hash_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
+    add_unitary_from_local_faces_limit_ctx (c, x, lambda, maxFaces, uhash)
+
   fun local_test_GEO_simple_into_hash (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     add_unitary_from_local_faces (g, x, lambda, uhash)
+
+  fun local_test_GEO_simple_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    add_unitary_from_local_faces_ctx (c, x, lambda, uhash)
 end
