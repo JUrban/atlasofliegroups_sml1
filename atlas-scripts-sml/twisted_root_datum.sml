@@ -9,6 +9,26 @@ structure TwistedRootDatum = struct
   type rootdatum = RootDatum.t
   type t = {rd: rootdatum, delta: mat}
 
+  fun direct_product_rootdatum (rd1: rootdatum, rd2: rootdatum) : rootdatum =
+    let
+      val r1 = RootDatum.simpleRootsMat rd1
+      val cr1 = RootDatum.simpleCorootsMat rd1
+      val r2 = RootDatum.simpleRootsMat rd2
+      val cr2 = RootDatum.simpleCorootsMat rd2
+      val r = MatrixAT.block_matrix (r1, r2)
+      val cr = MatrixAT.block_matrix (cr1, cr2)
+    in
+      RootDatum.newFromSimpleMats (r, cr, false)
+    end
+
+  fun mul (a: t, b: t) : t =
+    let
+      val rd = direct_product_rootdatum (#rd a, #rd b)
+      val delta = MatrixAT.block_matrix (#delta a, #delta b)
+    in
+      {rd = rd, delta = delta}
+    end
+
   fun is_distinguished (rd: rootdatum, delta: mat) : bool =
     let
       val simple = RootDatum.simpleRootsCols rd
@@ -81,4 +101,11 @@ structure TwistedRootDatum = struct
 
   fun cyclic_twist_id (rd: rootdatum, r: int) : t =
     cyclic_twist (rd, MatrixAT.id_mat (RootDatum.rank rd), r)
+
+  (* Not yet ported from `atlas-scripts/twisted_root_datum.at`. *)
+  fun pre_folded (_: t) : mat * mat =
+    raise Fail "TwistedRootDatum.pre_folded: unimplemented"
+
+  fun folded (_: t) : rootdatum * mat =
+    raise Fail "TwistedRootDatum.folded: unimplemented"
 end
