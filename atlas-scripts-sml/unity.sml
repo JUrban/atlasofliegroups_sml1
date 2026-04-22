@@ -17,11 +17,16 @@ use "atlas-scripts-sml/basic.sml";
       - `full_deform_term_heights(p)`: `term_heights(full_deform(p))` (frees `KTypePol`)
       - `full_deform_off_hts(p)`: `off_hts(full_deform(p))` (frees `KTypePol`)
       - `next_heights(p, depth)`: first `depth` values of `full_deform_off_hts(p)`
+  - Baseline unitarity predicates (exact):
+      - `is_unitary_test(p)`
+      - `is_unitary_test_hts(p, hts)` (currently ignores `hts`)
 
   Notes and limitations
   - In `.at`, `short_hts`/`next_heights` are tuned to avoid doing full KL
     computations in hard cases. This SML baseline computes heights directly
     from `full_deform(p)`, which is correct but may be slower.
+  - In `.at`, `is_unitary_test` implements height-stepped pruning; here we
+    currently delegate to `AtlasFFI.atlas_param_is_unitary`.
 
   Ownership
   - Any `KTypePol` handle returned by the FFI is freed in these helpers.
@@ -80,5 +85,17 @@ structure Unity = struct
       val d = Int.max (0, depth)
     in
       List.take (hs, Int.min (d, length hs))
+    end
+
+  (* Exact unitarity predicate used as a baseline replacement for `.at`'s
+     `is_unitary_test` logic. *)
+  fun is_unitary_test (p: param) : bool =
+    AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1
+
+  fun is_unitary_test_hts (p: param, hts: int list) : bool =
+    let
+      val _ = hts
+    in
+      is_unitary_test p
     end
 end
