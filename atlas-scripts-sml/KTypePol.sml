@@ -22,7 +22,9 @@ structure KTypePol = struct
 
       fun one i =
         let
-          val ns = parseInts (AtlasFFI.atlas_ktypepol_term_text (pol, i))
+          val s = AtlasFFI.atlas_ktypepol_term_text (pol, i)
+          val () = if s = "-1" then raise Fail ("KTypePol.terms: term_text failed: " ^ AtlasFFI.atlas_last_error ()) else ()
+          val ns = parseInts s
         in
           case ns of
             e :: s :: x :: height :: rest =>
@@ -38,4 +40,3 @@ structure KTypePol = struct
 
   fun free (pol: ktypepol) : unit = AtlasFFI.atlas_ktypepol_free pol
 end
-
