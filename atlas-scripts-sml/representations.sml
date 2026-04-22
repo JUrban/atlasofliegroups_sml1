@@ -53,11 +53,63 @@ structure Representations = struct
   fun ratvecNeg (u: ratvec) : ratvec = Lattice.ratvecScale (u, ~1, 1)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, ratvecNeg v)
 
+  (* Construct a parameter `parameter(G,x,lambda,nu)` in `.at`-style where
+     `lambda`/`nu` are the usual “ratweight text” inputs (same as `p.lambda` /
+     `p.nu` printers). This is the SML-side analogue of the `.at` `parameter`
+     primitive (without additional normalization).
+
+     Ownership: returns an owned `AtlasFFI.param` handle; caller must free it. *)
+  fun parameter (g: group, x: int, lambda: ratvec, nu: ratvec) : param =
+    let
+      val p =
+        AtlasFFI.atlas_param_new_from_lambda_nu_text
+          ( g
+          , x
+          , AllParameters.intsToCText (#nums lambda)
+          , #den lambda
+          , AllParameters.intsToCText (#nums nu)
+          , #den nu
+          )
+    in
+      if p = Foreign.Memory.null then
+        raise Fail ("Representations.parameter: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        p
+    end
+
+  (* Conservative equal-rank test for a real form `g`.
+
+     Atlas meaning
+     - In `.at`, `is_equal_rank(G)` is a predicate on the real form.
+     - Internally Atlas detects equal-rank via existence of a KGB element whose
+       involution matrix is `-I` (a compact Cartan).
+
+     Implementation
+     - We scan the KGB set for an element with `theta = -I` using the FFI
+       predicate `atlas_group_kgb_involution_is_minus_identity`.
+  *)
+  fun is_equal_rank (g: group) : bool =
+    let
+      val n = AtlasFFI.atlas_group_kgb_size g
+      fun loop i =
+        if i >= n then
+          false
+        else if AtlasFFI.atlas_group_kgb_involution_is_minus_identity (g, i) = 1 then
+          true
+        else
+          loop (i + 1)
+    in
+      loop 0
+    end
+
   fun assertSplit (g: group) : unit =
     if AtlasFFI.atlas_group_is_split g = 1 then
       ()
     else
       raise Fail "Representations.minimal_principal_series: group is not split"
+
+  fun assertEqualRank (g: group) : unit =
+    if is_equal_rank g then () else raise Fail "Representations.large_discrete_series: group is not equal rank"
 
   (* Minimal principal series of a split group with given `lambda` and `nu`.
      The returned parameter is normalized (`atlas_param_normalise`).
@@ -107,30 +159,34 @@ structure Representations = struct
   fun minimal_spherical_principal_series_default (g: group) : param =
     minimal_spherical_principal_series (g, rho g)
 
+  (* Large fundamental series for (typically) quasisplit groups.
+
+     Atlas correspondence
+     - Mirrors `representations.at`:
+         `parameter(G,0,lambda,lambda)`
+       (no automatic normalization).
+
+     Notes
+     - The `.at` version asserts quasisplit + regularity; we currently do not
+       reimplement those checks here.
+  *)
+  fun large_fundamental_series (g: group, lambda: ratvec) : param =
+    parameter (g, 0, lambda, lambda)
+
+  fun large_fundamental_series_default (g: group) : param =
+    large_fundamental_series (g, rho g)
+
+  (* Large discrete series (equal rank), mirroring `representations.at`:
+       `large_discrete_series(G,lambda) = large_fundamental_series(G,lambda)`
+     with an equal-rank assertion. *)
+  fun large_discrete_series (g: group, lambda: ratvec) : param =
+    (assertEqualRank g; large_fundamental_series (g, lambda))
+
+  fun large_discrete_series_default (g: group) : param =
+    large_discrete_series (g, rho g)
+
   (* Build `x_open(G)` from `basic.at`: `KGB(G,G.KGB_size-1)`. *)
   fun x_open (g: group) : int = AtlasFFI.atlas_group_kgb_size g - 1
-
-  (* Construct a parameter `parameter(G,x,lambda,nu)` in `.at`-style where
-     `lambda`/`nu` are the usual “ratweight text” inputs (same as `p.lambda` /
-     `p.nu` printers). This is the SML-side analogue of the `.at` `parameter`
-     primitive (without additional normalization). *)
-  fun parameter (g: group, x: int, lambda: ratvec, nu: ratvec) : param =
-    let
-      val p =
-        AtlasFFI.atlas_param_new_from_lambda_nu_text
-          ( g
-          , x
-          , AllParameters.intsToCText (#nums lambda)
-          , #den lambda
-          , AllParameters.intsToCText (#nums nu)
-          , #den nu
-          )
-    in
-      if p = Foreign.Memory.null then
-        raise Fail ("Representations.parameter: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
-      else
-        p
-    end
 
   (* Make a rational weight dominant for `g`. *)
   fun dominant (g: group) (v: ratvec) : ratvec =
