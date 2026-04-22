@@ -450,4 +450,28 @@ structure FPP_localDirac = struct
 
   fun add_unitary_from_local_faces (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     add_unitary_from_local_faces_limit (g, x, lambda, ~1, uhash)
+
+  (*
+    Simple entry points (baseline)
+
+    These mirror the *shape* of the `.at` entry points like `local_test_GEO`,
+    but currently use only the baseline enumeration:
+      local faces -> barycenters -> finalize -> exact `is_unitary`.
+
+    They exist primarily as scaffolding for the ongoing port; callers should
+    expect these to be less efficient than the `.at` originals.
+  *)
+
+  fun local_test_GEO_simple_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
+    unitary_params_for_local_faces_limit (g, x, lambda, maxFaces)
+
+  fun local_test_GEO_simple (g: group, x: int, lambda: ratvec) : param list =
+    unitary_params_for_local_faces (g, x, lambda)
+
+  fun local_test_GEO_simple_into_hash_limit
+    (g: group, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
+    add_unitary_from_local_faces_limit (g, x, lambda, maxFaces, uhash)
+
+  fun local_test_GEO_simple_into_hash (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    add_unitary_from_local_faces (g, x, lambda, uhash)
 end
