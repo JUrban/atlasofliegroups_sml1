@@ -92,7 +92,7 @@ structure AllParameters = struct
                 (Lattice.identity rank, theta)
             val nu = Lattice.ratvecScale (Lattice.matVecMulRatvec oneMinusTheta gamma, 1, 2)
 
-            val twists = LambdaDifferential0.all (g, x)
+            val twists = LambdaDifferential0.allTheta theta
 
             fun addTwist (v: int list, acc: AtlasFFI.param list) =
               let
