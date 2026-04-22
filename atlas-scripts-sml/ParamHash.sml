@@ -91,6 +91,9 @@ structure ParamHash = struct
       | SOME j => j
     end
 
+  fun contains (t: t) (p: param) : bool =
+    lookup t p >= 0
+
   fun index ({params, count, ...}: t) (j: int) : param =
     if j < 0 orelse j >= !count then
       raise Subscript
@@ -135,4 +138,3 @@ structure ParamHash = struct
           end
     end
 end
-

@@ -1,5 +1,5 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
-use "atlas-scripts-sml/BigUnitaryHash.sml";
+use "atlas-scripts-sml/ParamHash.sml";
 use "atlas-scripts-sml/F4_FPP_points.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/FPP_globalDirac.sml";
@@ -8,11 +8,11 @@ structure VerifyF4FPP = struct
   fun run () : unit =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0)
-      val big_unitary_hash = BigUnitaryHash.create 4096
+      val uhash = ParamHash.create 4096
 
-      val () = F4_FPP_points.loadInto (g, big_unitary_hash)
+      val () = F4_FPP_points.loadIntoParamHash (g, uhash)
 
-      val () = TextIO.print (Bool.toString (BigUnitaryHash.size big_unitary_hash = 1864) ^ "\n")
+      val () = TextIO.print (Bool.toString (ParamHash.size uhash = 1864) ^ "\n")
 
       val () = FPPFlags.test_bl_flag := false
       val () = FPPFlags.revert_flag := false
@@ -28,14 +28,13 @@ structure VerifyF4FPP = struct
       val () = FPPFlags.one_level_revert_flag := true
       val () = FPPFlags.final_verbose := true
 
-      val () = FPP_globalDirac.FPP_unitary_hash_bottom_layer (g, big_unitary_hash)
+      val () = FPP_globalDirac.FPP_unitary_hash_bottom_layer_param_hash (g, uhash)
 
-      val () = TextIO.print (Int.toString (BigUnitaryHash.size big_unitary_hash) ^ "\n")
+      val () = TextIO.print (Int.toString (ParamHash.size uhash) ^ "\n")
 
-      val () = BigUnitaryHash.freeAll big_unitary_hash
+      val () = ParamHash.freeAll uhash
       val () = AtlasFFI.atlas_group_free g
     in
       ()
     end
 end
-
