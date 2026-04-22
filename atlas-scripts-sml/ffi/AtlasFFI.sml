@@ -40,6 +40,12 @@ structure AtlasFFI = struct
   val atlas_param_twist_sym = Foreign.getSymbol lib "atlas_param_twist"
   val atlas_param_equivalent_sym = Foreign.getSymbol lib "atlas_param_equivalent"
   val atlas_param_is_hermitian_sym = Foreign.getSymbol lib "atlas_param_is_hermitian"
+  val atlas_param_finals_sym = Foreign.getSymbol lib "atlas_param_finals"
+  val atlas_paramlist_size_sym = Foreign.getSymbol lib "atlas_paramlist_size"
+  val atlas_paramlist_mult_sym = Foreign.getSymbol lib "atlas_paramlist_mult"
+  val atlas_paramlist_get_param_clone_sym =
+    Foreign.getSymbol lib "atlas_paramlist_get_param_clone"
+  val atlas_paramlist_free_sym = Foreign.getSymbol lib "atlas_paramlist_free"
   val atlas_param_new_from_lambda_nu_sym =
     Foreign.getSymbol lib "atlas_param_new_from_lambda_nu"
   val atlas_param_new_from_lambda_nu_text_sym =
@@ -175,6 +181,27 @@ structure AtlasFFI = struct
 
   val atlas_param_is_hermitian =
     Foreign.buildCall1 (atlas_param_is_hermitian_sym, Foreign.cPointer, Foreign.cInt)
+
+  type paramlist = Foreign.Memory.voidStar
+
+  val atlas_param_finals =
+    Foreign.buildCall1 (atlas_param_finals_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_paramlist_size =
+    Foreign.buildCall1 (atlas_paramlist_size_sym, Foreign.cPointer, Foreign.cLong)
+
+  val atlas_paramlist_mult =
+    Foreign.buildCall2 (atlas_paramlist_mult_sym, (Foreign.cPointer, Foreign.cLong), Foreign.cLong)
+
+  val atlas_paramlist_get_param_clone =
+    Foreign.buildCall2
+      ( atlas_paramlist_get_param_clone_sym
+      , (Foreign.cPointer, Foreign.cLong)
+      , Foreign.cPointer
+      )
+
+  val atlas_paramlist_free =
+    Foreign.buildCall1 (atlas_paramlist_free_sym, Foreign.cPointer, Foreign.cVoid)
 
   val atlas_param_new_from_lambda_nu =
     Foreign.buildCall6

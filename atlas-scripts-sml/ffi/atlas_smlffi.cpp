@@ -109,6 +109,16 @@ struct ParamHandle
   {}
 };
 
+struct ParamListHandle
+{
+  GroupHandle* group; // non-owning
+  std::vector<std::pair<atlas::repr::StandardRepr, int>> terms;
+
+  explicit ParamListHandle(GroupHandle* group)
+    : group(group), terms()
+  {}
+};
+
 struct KTypePolHandle
 {
   GroupHandle* group; // non-owning
@@ -119,6 +129,151 @@ struct KTypePolHandle
   {}
 };
 } // namespace
+
+extern "C" void* atlas_param_finals(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_finals: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_finals: null group pointer in param";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    auto finals = rc.finals_for(p->sr);
+
+    auto* out = new ParamListHandle(p->group);
+    for (auto it = finals.begin(); not finals.at_end(it); ++it)
+      out->terms.emplace_back(it->first, it->second);
+
+    return static_cast<void*>(out);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" long atlas_paramlist_size(void* list_handle)
+{
+  try
+  {
+    if (list_handle == nullptr)
+    {
+      g_last_error = "atlas_paramlist_size: null list handle";
+      return -1;
+    }
+    const auto* h = static_cast<const ParamListHandle*>(list_handle);
+    return static_cast<long>(h->terms.size());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" long atlas_paramlist_mult(void* list_handle, long index)
+{
+  try
+  {
+    if (list_handle == nullptr)
+    {
+      g_last_error = "atlas_paramlist_mult: null list handle";
+      return 0;
+    }
+    const auto* h = static_cast<const ParamListHandle*>(list_handle);
+    if (index < 0 || static_cast<std::size_t>(index) >= h->terms.size())
+    {
+      g_last_error = "atlas_paramlist_mult: index out of range";
+      return 0;
+    }
+    return static_cast<long>(h->terms[static_cast<std::size_t>(index)].second);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" void* atlas_paramlist_get_param_clone(void* list_handle, long index)
+{
+  try
+  {
+    if (list_handle == nullptr)
+    {
+      g_last_error = "atlas_paramlist_get_param_clone: null list handle";
+      return nullptr;
+    }
+    const auto* h = static_cast<const ParamListHandle*>(list_handle);
+    if (h->group == nullptr)
+    {
+      g_last_error = "atlas_paramlist_get_param_clone: null group pointer";
+      return nullptr;
+    }
+    if (index < 0 || static_cast<std::size_t>(index) >= h->terms.size())
+    {
+      g_last_error = "atlas_paramlist_get_param_clone: index out of range";
+      return nullptr;
+    }
+
+    const auto& sr = h->terms[static_cast<std::size_t>(index)].first;
+    return static_cast<void*>(
+      new ParamHandle(h->group, atlas::repr::StandardRepr(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void atlas_paramlist_free(void* list_handle)
+{
+  try
+  {
+    if (list_handle == nullptr)
+      return;
+    delete static_cast<ParamListHandle*>(list_handle);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+  }
+}
 
 extern "C" const char* atlas_intmat_find_solution_text(const char* mat_text, const char* vec_text)
 {

@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/ParamFinals.sml";
 
 structure G2_unitary_dual = struct
   type rat = {num: int, den: int}
@@ -227,7 +228,16 @@ structure G2_unitary_dual = struct
                 if q = Foreign.Memory.null then
                   raise Fail ("G2_unitary_dual: normalise failed: " ^ AtlasFFI.atlas_last_error ())
                 else
-                  SOME q
+                  let
+                    val finals = ParamFinals.finals q
+                    val () = AtlasFFI.atlas_param_free q
+                  in
+                    case finals of
+                      [] => raise Fail "G2_unitary_dual: finals_for returned empty list"
+                    | (f, _) :: rest =>
+                        (ParamFinals.freeTerms rest;
+                         SOME f)
+                  end
               end
           end
     end
@@ -273,12 +283,27 @@ structure G2_unitary_dual = struct
       val () = print ("G2_s rho=" ^ rho ^ "\n")
 
       val p = ps g (0, {den = 1, nums = [0, 0]})
-      val () = print ("p.gamma=" ^ AtlasFFI.atlas_param_gamma_text p ^ "\n")
-      val () = print ("p.lambda=" ^ AtlasFFI.atlas_param_lambda_text p ^ "\n")
-      val () = print ("p.nu=" ^ AtlasFFI.atlas_param_nu_text p ^ "\n")
-      val () = print ("hermitian=" ^ Int.toString (AtlasFFI.atlas_param_is_hermitian p) ^ "\n")
-      val () = print ("unitary_c_form=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form p) ^ "\n")
-      val () = print ("in_fpp=" ^ Bool.toString (in_fpp_param g p) ^ "\n")
+      val finals = ParamFinals.finals p
+      val () = AtlasFFI.atlas_param_free p
+      val () = print ("finals_for(ps) terms=" ^ Int.toString (length finals) ^ "\n")
+      val () =
+        List.app
+          (fn (q, mult) =>
+             print
+               ("mult="
+                ^ Int.toString mult
+                ^ " gamma="
+                ^ AtlasFFI.atlas_param_gamma_text q
+                ^ " final="
+                ^ Int.toString (AtlasFFI.atlas_param_is_final q)
+                ^ " hermitian="
+                ^ Int.toString (AtlasFFI.atlas_param_is_hermitian q)
+                ^ " unitary_c_form="
+                ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q)
+                ^ " in_fpp="
+                ^ Bool.toString (in_fpp_param g q)
+                ^ "\n"))
+          finals
 
       val x_s = 4
       val x_l = 3
@@ -301,7 +326,7 @@ structure G2_unitary_dual = struct
                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
               AtlasFFI.atlas_param_free q))
 
-      val () = AtlasFFI.atlas_param_free p
+      val () = ParamFinals.freeTerms finals
       val () = AtlasFFI.atlas_group_free g
     in
       ()
