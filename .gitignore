@@ -2,3 +2,7 @@ Fokko
 atlas
 *.[od]
 *.out
+sources/io/filekl.cpp
+sources/io/filekl.h
+sources/io/filekl_in.cpp
+sources/io/filekl_in.h
