@@ -122,6 +122,20 @@ structure RootDatum = struct
 
   fun rhoText (h: t) : string = AtlasFFI.atlas_rootdatum_rho_text h
 
+  (* Make a rational weight dominant for this root datum (C++ `make_dominant`).
+
+     Input/output text format matches Atlas’ `ratweight` printers:
+       `den n1 n2 ... nk` (where `k = rank(rd)`).
+  *)
+  fun makeDominantRatWeightText (h: t) (ratweightText: string) : string =
+    let
+      val out = AtlasFFI.atlas_rootdatum_make_dominant_ratweight_text (h, ratweightText)
+    in
+      case Int.fromString (hd (String.tokens Char.isSpace out)) of
+        SOME ~1 => raise Fail ("RootDatum.makeDominantRatWeightText failed: " ^ AtlasFFI.atlas_last_error ())
+      | _ => out
+    end
+
   fun parseInts s =
     let
       fun toInt tok =
