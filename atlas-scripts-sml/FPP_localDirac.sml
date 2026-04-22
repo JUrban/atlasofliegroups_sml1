@@ -383,6 +383,26 @@ structure FPP_localDirac = struct
       List.mapPartial one (gammas_for_x_lambda (g, x, lambda))
     end
 
+  (* Group local faces by their local dimension (length-1), returning an array
+     of length `rank(g)+1`. *)
+  fun local_faces_for_x_lambda_by_dim (g: group, x: int, lambda: ratvec) : face_key list array =
+    let
+      val r = AtlasFFI.atlas_group_rank g
+      val a = Array.array (r + 1, ([]: face_key list))
+      fun add ({local_face, ...}: local_face) =
+        let
+          val d = length local_face - 1
+        in
+          if d < 0 orelse d > r then
+            ()
+          else
+            Array.update (a, d, local_face :: Array.sub (a, d))
+        end
+      val () = List.app add (local_faces_for_x_lambda (g, x, lambda))
+    in
+      a
+    end
+
   (*
     Enumerate final parameters associated to the barycenters of *local* faces.
 
