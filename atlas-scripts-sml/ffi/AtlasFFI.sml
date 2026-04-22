@@ -13,6 +13,7 @@ structure AtlasFFI = struct
 
   val atlas_param_trivial_sym = Foreign.getSymbol lib "atlas_param_trivial"
   val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
+  val atlas_param_clone_sym = Foreign.getSymbol lib "atlas_param_clone"
   val atlas_param_height_sym = Foreign.getSymbol lib "atlas_param_height"
   val atlas_param_x_sym = Foreign.getSymbol lib "atlas_param_x"
   val atlas_param_lambda_text_sym = Foreign.getSymbol lib "atlas_param_lambda_text"
@@ -79,6 +80,9 @@ structure AtlasFFI = struct
 
   val atlas_param_free =
     Foreign.buildCall1 (atlas_param_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_param_clone =
+    Foreign.buildCall1 (atlas_param_clone_sym, Foreign.cPointer, Foreign.cPointer)
 
   val atlas_param_height =
     Foreign.buildCall1 (atlas_param_height_sym, Foreign.cPointer, Foreign.cLong)

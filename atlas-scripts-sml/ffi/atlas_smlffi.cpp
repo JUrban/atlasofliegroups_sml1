@@ -330,6 +330,36 @@ extern "C" void atlas_param_free(void* param_handle)
   }
 }
 
+extern "C" void* atlas_param_clone(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_clone: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_clone: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::StandardRepr sr = p->sr;
+    return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" const char* atlas_param_lambda_text(void* p_handle)
 {
   try
