@@ -155,6 +155,37 @@ structure MatrixAT = struct
            m0
            rest)
 
+  (* Port of `kronecker_product` / `Kronecker_product` from `atlas-scripts/matrix.at`. *)
+  fun kronecker_product (a: mat, b: mat) : mat =
+    let
+      val (m, n) = IntMatrix.matShape a
+      val (p, q) = IntMatrix.matShape b
+
+      fun entryA (i, j) = List.nth (List.nth (a, i), j)
+      fun entryB (i, j) = List.nth (List.nth (b, i), j)
+
+      fun row i =
+        let
+          val rA = i div p
+          val rB = i mod p
+        in
+          List.tabulate
+            ( n * q
+            , fn j =>
+                let
+                  val cA = j div q
+                  val cB = j mod q
+                in
+                  entryA (rA, cA) * entryB (rB, cB)
+                end
+            )
+        end
+    in
+      List.tabulate (m * p, row)
+    end
+
+  val Kronecker_product = kronecker_product
+
   (* Port of `weak_right_inverse` from `atlas-scripts/matrix.at`:
      returns (B,d) such that A*B = d*I if A is surjective onto a finite-index sublattice. *)
   fun weak_right_inverse (a: mat) : mat * int =
