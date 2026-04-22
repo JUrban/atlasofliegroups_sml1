@@ -2219,6 +2219,116 @@ extern "C" const char* atlas_group_from_dominant_ratweight_text(void* group_hand
   }
 }
 
+extern "C" const char* atlas_group_weyl_word_act_ratweight_text(void* group_handle,
+                                                               const char* word_text,
+                                                               const char* ratweight_text)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: null group handle";
+      return store_result("-1");
+    }
+    if (word_text == nullptr)
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: null word_text";
+      return store_result("-1");
+    }
+    if (ratweight_text == nullptr)
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: null ratweight_text";
+      return store_result("-1");
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+    const auto& rd = rc.root_datum();
+
+    std::vector<int> ws;
+    if (!parse_int_list(word_text, ws))
+      return store_result("-1");
+    if (ws.empty())
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: empty word";
+      return store_result("-1");
+    }
+    const int k = ws[0];
+    if (k < 0)
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: negative word length";
+      return store_result("-1");
+    }
+    if (ws.size() != static_cast<std::size_t>(1 + k))
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: wrong word arity";
+      return store_result("-1");
+    }
+
+    atlas::WeylWord ww;
+    ww.reserve(static_cast<std::size_t>(k));
+    for (int i = 0; i < k; ++i)
+    {
+      const int s = ws[1 + i];
+      if (s < 0 || static_cast<unsigned int>(s) >= rd.semisimple_rank())
+      {
+        g_last_error = "atlas_group_weyl_word_act_ratweight_text: invalid generator index";
+        return store_result("-1");
+      }
+      ww.push_back(static_cast<atlas::weyl::Generator>(s));
+    }
+
+    std::vector<int> xs;
+    if (!parse_int_list(ratweight_text, xs))
+      return store_result("-1");
+    if (xs.size() != static_cast<std::size_t>(1 + rank))
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: wrong ratweight arity";
+      return store_result("-1");
+    }
+    const int denom = xs[0];
+    if (denom == 0)
+    {
+      g_last_error = "atlas_group_weyl_word_act_ratweight_text: zero denominator";
+      return store_result("-1");
+    }
+    std::vector<int32_t> nums;
+    nums.reserve(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const int v = xs[1 + i];
+      if (v < std::numeric_limits<int32_t>::min() || v > std::numeric_limits<int32_t>::max())
+      {
+        g_last_error = "atlas_group_weyl_word_act_ratweight_text: numerator out of int32 range";
+        return store_result("-1");
+      }
+      nums.push_back(static_cast<int32_t>(v));
+    }
+
+    atlas::RatWeight v = ratweight_from_int32(nums.data(), rank, denom);
+    rd.act(ww, v);
+    v.normalize();
+
+    std::ostringstream out;
+    out << v.denominator();
+    const auto& num = v.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
 extern "C" const char* atlas_group_distinguished_involution_text(void* handle)
 {
   try

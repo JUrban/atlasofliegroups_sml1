@@ -1,4 +1,5 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+use "atlas-scripts-sml/Lattice.sml";
 
 (*
   File: atlas-scripts-sml/WeylWord.sml
@@ -34,6 +35,8 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 structure WeylWord = struct
   type t = int list
 
+  type ratvec = Lattice.ratvec
+
   (* Encode a word `[s0,...,s_{k-1}]` as `"k s0 ... s_{k-1}"`. *)
   fun toText (w: t) : string =
     String.concatWith " " (Int.toString (length w) :: List.map Int.toString w)
@@ -58,6 +61,53 @@ structure WeylWord = struct
   (* Inverse of a Weyl word (reverse order; generators are involutions). *)
   fun inverse (w: t) : t = List.rev w
 
+  (* Convert SML `~` negatives to C-style `-` negatives. *)
+  fun intToCText (n: int) : string =
+    let
+      val s = Int.toString n
+    in
+      if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+        "-" ^ String.extract (s, 1, NONE)
+      else
+        s
+    end
+
+  fun ratvecToText (u: ratvec) : string =
+    let
+      val u = Lattice.ratvecNormalize u
+    in
+      String.concatWith " " (intToCText (#den u) :: List.map intToCText (#nums u))
+    end
+
+  fun parseInts (s: string) : int list =
+    let
+      fun toInt tok =
+        case Int.fromString tok of
+          SOME n => n
+        | NONE => raise Fail ("WeylWord: bad int token: " ^ tok)
+    in
+      List.map toInt (String.tokens Char.isSpace s)
+    end
+
+  fun parseRatvecText (s: string) : ratvec =
+    (case parseInts s of
+       den :: rest => Lattice.ratvecNormalize {den = den, nums = rest}
+     | _ => raise Fail ("WeylWord: bad ratweight text: " ^ s))
+
+  (* Weyl group action on rational weights:
+       returns `w * v` for the Weyl element encoded by `w`.
+
+     This is implemented by the C++ shim `atlas_group_weyl_word_act_ratweight_text`.
+  *)
+  fun actRatvec (g: AtlasFFI.group, w: t, v: ratvec) : ratvec =
+    let
+      val out = AtlasFFI.atlas_group_weyl_word_act_ratweight_text (g, toText w, ratvecToText v)
+    in
+      case parseInts out of
+        ~1 :: _ => raise Fail ("WeylWord.actRatvec failed: " ^ AtlasFFI.atlas_last_error ())
+      | _ => parseRatvecText out
+    end
+
   (* Cross action `cross(WeylElt w, KGBElt x)` (as in `basic.at`).
 
      This uses the C++ shim’s `atlas_kgb_cross_word_text`, which matches the
@@ -72,4 +122,3 @@ structure WeylWord = struct
         y
     end
 end
-

@@ -83,6 +83,8 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_group_make_dominant_ratweight_text"
   val atlas_group_from_dominant_ratweight_text_sym =
     Foreign.getSymbol lib "atlas_group_from_dominant_ratweight_text"
+  val atlas_group_weyl_word_act_ratweight_text_sym =
+    Foreign.getSymbol lib "atlas_group_weyl_word_act_ratweight_text"
   val atlas_group_simple_coroots_text_sym =
     Foreign.getSymbol lib "atlas_group_simple_coroots_text"
   val atlas_group_posroots_text_sym = Foreign.getSymbol lib "atlas_group_posroots_text"
@@ -332,6 +334,13 @@ structure AtlasFFI = struct
     Foreign.buildCall2
       ( atlas_group_from_dominant_ratweight_text_sym
       , (Foreign.cPointer, Foreign.cString)
+      , Foreign.cString
+      )
+
+  val atlas_group_weyl_word_act_ratweight_text =
+    Foreign.buildCall3
+      ( atlas_group_weyl_word_act_ratweight_text_sym
+      , (Foreign.cPointer, Foreign.cString, Foreign.cString)
       , Foreign.cString
       )
 

@@ -5,6 +5,7 @@ use "atlas-scripts-sml/Dominant.sml";
 use "atlas-scripts-sml/RootDatum.sml";
 use "atlas-scripts-sml/WeylWord.sml";
 use "atlas-scripts-sml/FromDominant.sml";
+use "atlas-scripts-sml/cross_W_orbit.sml";
 
 (*
   File: atlas-scripts-sml/representations.sml
@@ -226,6 +227,30 @@ structure Representations = struct
      with respect to `KGB(G,0)` (mirrors the `.at` overload). *)
   fun discrete_series (g: group, lambda: ratvec) : param =
     discrete_series_at_x (g, 0, lambda)
+
+  (* Harish-Chandra parameter of (relative) discrete series, with respect to
+     a chosen base KGB element `x_b`.
+
+     Atlas correspondence
+     - Mirrors `representations.at`:
+         `hc_parameter(Param p, KGBElt x_b) = let w=cross_divide(x_b,x(p)) in w*lambda(p)`
+
+     Notes
+     - This is meaningful primarily for equal-rank discrete series parameters
+       with compact Cartan; we do not currently reimplement the `.at` assertions.
+  *)
+  fun hc_parameter_at_xb (g: group, p: param, x_b: int) : ratvec =
+    let
+      val x_p = AtlasFFI.atlas_param_x p
+      val w = CrossWOrbit.cross_divide (g, x_b, x_p)
+      val lam = Lattice.ratvecNormalize (AllParameters.parseRatWeightText (AtlasFFI.atlas_param_lambda_text p))
+    in
+      WeylWord.actRatvec (g, w, lam)
+    end
+
+  (* Harish-Chandra parameter with `x_b = KGB(G,0)` (mirrors the `.at` overload). *)
+  fun hc_parameter (g: group, p: param) : ratvec =
+    hc_parameter_at_xb (g, p, 0)
 
   (* Make a rational weight dominant for `g`. *)
   fun dominant (g: group) (v: ratvec) : ratvec =
