@@ -20,4 +20,7 @@ structure Affine = struct
 
   fun affine_datum (rd: RootDatum.t) : affine_datum =
     affine_datum_from_root (rd, RootDatum.highestRoot rd)
+
+  fun affine_datum_from_lieType (lt: LieType.t) : affine_datum =
+    affine_datum (RootDatum.fromLieType lt)
 end
