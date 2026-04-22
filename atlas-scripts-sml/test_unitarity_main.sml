@@ -43,7 +43,7 @@ val table = pickTable args;
 val (typeLetter, rank, nus) =
   case table of
     "F4" => (#"F", 4, Unitary.F4_spherical_unitary)
-  | "D4" => (#"D", 4, Unitary.D4_spherical_unitary)
+  | "D4" => (#"D", 4, Unitary.D4_spherical_unitary_fundamental)
   | "E7" => (#"E", 7, Unitary.E7_spherical_unitary)
   | _ => raise Fail "unreachable";
 

@@ -44,6 +44,14 @@ The initial handle type started out as a hardcoded “`F4_s` group”, but it is
 
 - `atlas_group_new_simple(typeLetter, rank, innerClassLetter, realFormNbr)`
 
+New script/data ports:
+
+- `atlas-scripts-sml/unitary.sml`: translation of `atlas-scripts/unitary.at` (F4/D4/E7 spherical unitary point lists)
+- `atlas-scripts-sml/representations.sml`: minimal principal series constructors (`minimal_spherical_principal_series`, etc.)
+- `atlas-scripts-sml/test_unitarity.sml`: partial translation of `atlas-scripts/test_unitarity.at`
+- `atlas-scripts-sml/test_unitarity_main.sml`: runnable entrypoint for checking the tables via Poly/ML
+- `atlas-scripts-sml/Hermitian.sml`: wrapper exposing `hermitian_form_irreducible` via FFI
+
 ## Build & run
 
 Build the shared library:
@@ -76,6 +84,19 @@ Run the F4 verifier script directly with the Poly/ML REPL:
 
 ```sh
 poly -q < atlas-scripts-sml/script_to_verify_F4_FPP_unitary_dual.sml
+```
+
+Run the spherical-unitary table checker (defaults to first 3 F4 points):
+
+```sh
+poly -q < atlas-scripts-sml/test_unitarity_main.sml
+```
+
+Select the table and number of points:
+
+```sh
+poly -q < atlas-scripts-sml/test_unitarity_main.sml -- D4 10
+poly -q < atlas-scripts-sml/test_unitarity_main.sml -- E7 5 verbose
 ```
 
 Build a standalone executable with `polyc`:

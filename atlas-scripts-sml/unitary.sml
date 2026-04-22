@@ -31,6 +31,29 @@ structure Unitary = struct
   fun rv (nums: int list, den: int) : ratvec =
     Lattice.ratvecNormalize {nums = nums, den = den}
 
+  (* Convert D4 “standard coordinates” (as in `unitary.at`, where rho=(3,2,1,0))
+     to the fundamental-weight coordinates used by `atlas_group_new_simple (#"D",4,...)`
+     (where rho has coordinates (1,1,1,1)).
+
+     In type D4 with standard basis (e1,e2,e3,e4), fundamental weights are:
+       w1 = e1
+       w2 = e1 + e2
+       w3 = (e1 + e2 + e3 - e4)/2
+       w4 = (e1 + e2 + e3 + e4)/2
+
+     Solving v = c1*w1 + c2*w2 + c3*w3 + c4*w4 yields:
+       c1 = v1 - v2
+       c2 = v2 - v3
+       c3 = v3 - v4
+       c4 = v3 + v4
+
+     The input `ratvec` uses a common denominator, so we can compute the output
+     numerators using integer arithmetic and keep the same denominator. *)
+  fun d4StandardToFundamental (v: ratvec) : ratvec =
+    (case #nums v of
+       [v1, v2, v3, v4] => rv ([v1 - v2, v2 - v3, v3 - v4, v3 + v4], #den v)
+     | _ => raise Fail "Unitary.d4StandardToFundamental: expected length 4");
+
   (* Data ported from `atlas-scripts/unitary.at` (F4_spherical_unitary). *)
   val F4_spherical_unitary : ratvec list =
   [
@@ -132,6 +155,11 @@ structure Unitary = struct
     rv ([7, 7, 1, ~1], 8),
     rv ([4, 1, 0, 0], 4)
   ]
+
+  (* Same points as `D4_spherical_unitary`, but converted to the fundamental-weight
+     coordinates used by `atlas_group_new_simple (#"D",4,...)`. *)
+  val D4_spherical_unitary_fundamental : ratvec list =
+    List.map d4StandardToFundamental D4_spherical_unitary
 
   (* Data ported from `atlas-scripts/unitary.at` (E7_spherical_unitary). *)
   val E7_spherical_unitary : ratvec list =

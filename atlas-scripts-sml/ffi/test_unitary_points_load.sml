@@ -5,7 +5,8 @@ fun assertEqInt (a: int, b: int, msg: string) =
 
 val () = assertEqInt (length Unitary.F4_spherical_unitary, 59, "F4_spherical_unitary length");
 val () = assertEqInt (length Unitary.D4_spherical_unitary, 33, "D4_spherical_unitary length");
+val () =
+  assertEqInt (length Unitary.D4_spherical_unitary_fundamental, 33, "D4_spherical_unitary_fundamental length");
 val () = assertEqInt (length Unitary.E7_spherical_unitary, 918, "E7_spherical_unitary length");
 
 val () = print "OK\n";
-

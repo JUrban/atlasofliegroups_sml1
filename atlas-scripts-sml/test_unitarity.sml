@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/KTypePol.sml";
+use "atlas-scripts-sml/Hermitian.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/unitary.sml";
 
@@ -17,14 +18,14 @@ use "atlas-scripts-sml/unitary.sml";
     minimal spherical principal series) and checks unitarity via:
       `hf = hermitian_form_irreducible(p)` and `is_pure(hf)` (for delta-fixed p).
   - In this SML port we primarily use the C++-side predicate
-      `AtlasFFI.atlas_param_is_unitary`
-    which is implemented to match Atlas’s equal-rank hermitian-form purity test
-    (see `atlas-scripts-sml/ffi/atlas_smlffi.cpp`).
+      `Hermitian.hermitian_form_irreducible` + `KTypePol.isPureModule`
+    which matches the equal-rank hermitian-form purity path used in Atlas.
 
   What is (and is not) implemented here
   - Implemented:
       - formatting of predicted/computed outcomes (as in `.at`)
       - reducibility point counts via `atlas_param_reducibility_points_text`
+      - hermitian-form purity reporting (`purity(KTypePol)`)
       - optional “c-form purity” reporting via `atlas_param_c_form_irreducible`
   - Not implemented (yet):
       - the full `.at` API surface (e.g. `is_fixed(delta,p)` and the full
@@ -99,6 +100,23 @@ structure TestUnitarity = struct
         end
     end
 
+  (* Compute unitarity via hermitian-form purity, and return:
+       (unitary, purityTripleString)
+     where `purityTripleString` is `"(nInt,nS,nMixed)"` like `basic.at`’s `purity`. *)
+  fun unitaryViaHermitianFormWithPurity (g: group, p: param) : bool * string option =
+    if AtlasFFI.atlas_param_is_hermitian p <> 1 then
+      (false, NONE)
+    else
+      let
+        val pol = Hermitian.hermitian_form_irreducible p
+        val r = AtlasFFI.atlas_group_rank g
+        val unitary = KTypePol.isPureModule (pol, r)
+        val purity = SOME (KTypePol.purityString (pol, r))
+        val () = KTypePol.free pol
+      in
+        (unitary, purity)
+      end
+
   (* Test a list of parameters from the same group.
      Each entry is `(p,predicted)` where `predicted` is in {1,0,~1}.
 
@@ -109,18 +127,19 @@ structure TestUnitarity = struct
         if verbose then
           TextIO.print
             ("Testing " ^ Int.toString (length parameters) ^ " parameters\n"
-             ^ "index, parameter hermitian unitary predicted/computed rp_count c_form_purity result\n")
+             ^ "index, parameter hermitian unitary purity predicted/computed rp_count c_form_purity result\n")
         else
           ()
 
       fun step (((p, predicted), i), passed) =
         let
           val herm = AtlasFFI.atlas_param_is_hermitian p = 1
-          val unitary = AtlasFFI.atlas_param_is_unitary p = 1
+          val (unitary, hfPurityOpt) = unitaryViaHermitianFormWithPurity (g, p)
           val ok = asPredicted (predicted, unitary)
           val rpCount = reducibilityPointCount p
-          val purityOpt = cFormPurityString (g, p)
-          val purityTxt = case purityOpt of NONE => "-" | SOME s => s
+          val cfPurityOpt = cFormPurityString (g, p)
+          val cfPurityTxt = case cfPurityOpt of NONE => "-" | SOME s => s
+          val hfPurityTxt = case hfPurityOpt of NONE => "-" | SOME s => s
           val () =
             if verbose then
               TextIO.print
@@ -128,9 +147,10 @@ structure TestUnitarity = struct
                  ^ "ht=" ^ Int.toString (AtlasFFI.atlas_param_height p)
                  ^ " hermitian=" ^ (if herm then "1" else "0")
                  ^ " unitary=" ^ (if unitary then "1" else "0")
+                 ^ " purity=" ^ hfPurityTxt
                  ^ " " ^ uflagPred predicted ^ "/" ^ uflagBool unitary
                  ^ " rp=" ^ Int.toString rpCount
-                 ^ " cform_purity=" ^ purityTxt
+                 ^ " cform_purity=" ^ cfPurityTxt
                  ^ " " ^ passedFlag ok ^ "\n")
             else
               ()
@@ -165,4 +185,3 @@ structure TestUnitarity = struct
       ok
     end
 end
-
