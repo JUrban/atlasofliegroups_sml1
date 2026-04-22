@@ -13,6 +13,9 @@ val _ = assert "delta is 3x3" (IntMatrix.matShape delta = (3, 3));
 val y = IntMatrix.matVecMul (delta, [10, 20, 30]);
 val _ = assert "cycle action (x1,x2,x3)->(x2,x3,x1)" (y = [20, 30, 10]);
 
+val _ = assert "identity twist is distinguished" (TwistedRootDatum.is_distinguished (rd2, delta));
+val _ = assert "order_twist for cyclic 3 is 3" (TwistedRootDatum.order_twist {rd = rd2, delta = delta} = 3);
+
 val () = RootDatum.free rd;
 val () = RootDatum.free rd2;
 

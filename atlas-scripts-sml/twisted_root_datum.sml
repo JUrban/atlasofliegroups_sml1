@@ -9,6 +9,36 @@ structure TwistedRootDatum = struct
   type rootdatum = RootDatum.t
   type t = {rd: rootdatum, delta: mat}
 
+  fun is_distinguished (rd: rootdatum, delta: mat) : bool =
+    let
+      val simple = RootDatum.simpleRootsCols rd
+      fun contains v = List.exists (fn w => w = v) simple
+      fun ok alpha = contains (IntMatrix.matVecMul (delta, alpha))
+    in
+      List.all ok simple
+    end
+
+  fun order_twist (trd: t) : int =
+    let
+      val rd = #rd trd
+      val delta = #delta trd
+      val () = if is_distinguished (rd, delta) then () else raise Fail "TwistedRootDatum.order_twist: not distinguished"
+      val simple = RootDatum.simpleRootsCols rd
+      fun orbitSize alpha =
+        let
+          val maxIter = MatrixAT.order delta
+          fun loop (k, v) =
+            if v = alpha then k
+            else if k >= maxIter then raise Fail "TwistedRootDatum.order_twist: exceeded delta order"
+            else loop (k + 1, IntMatrix.matVecMul (delta, v))
+          val v1 = IntMatrix.matVecMul (delta, alpha)
+        in
+          if v1 = alpha then 1 else loop (2, IntMatrix.matVecMul (delta, v1))
+        end
+    in
+      List.foldl Int.max 1 (List.map orbitSize simple)
+    end
+
   fun block_diag_repeat (m: mat, r: int) : mat =
     if r < 0 then
       raise Fail "TwistedRootDatum.block_diag_repeat: negative repeat"
@@ -52,4 +82,3 @@ structure TwistedRootDatum = struct
   fun cyclic_twist_id (rd: rootdatum, r: int) : t =
     cyclic_twist (rd, MatrixAT.id_mat (RootDatum.rank rd), r)
 end
-

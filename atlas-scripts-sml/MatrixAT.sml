@@ -229,6 +229,38 @@ structure MatrixAT = struct
 
   val Kronecker_product = kronecker_product
 
+  fun matPow (a: mat, k: int) : mat =
+    if k < 0 then
+      raise Fail "MatrixAT.matPow: negative exponent"
+    else
+      let
+        val (n, m) = IntMatrix.matShape a
+        val () = if n = m then () else raise Fail "MatrixAT.matPow: non-square"
+        val id = id_mat n
+        fun mul (x, y) = IntMatrix.matMul (x, y)
+        fun pow (base, exp, acc) =
+          if exp = 0 then acc
+          else if exp mod 2 = 1 then pow (mul (base, base), exp div 2, mul (acc, base))
+          else pow (mul (base, base), exp div 2, acc)
+      in
+        pow (a, k, id)
+      end
+
+  (* Order of a finite-order square integer matrix, by repeated powering. *)
+  fun order (a: mat) : int =
+    let
+      val (n, m) = IntMatrix.matShape a
+      val () = if n = m then () else raise Fail "MatrixAT.order: non-square"
+      val id = id_mat n
+      val maxIter = 4096
+      fun loop (k: int, p: mat) =
+        if p = id then k
+        else if k >= maxIter then raise Fail "MatrixAT.order: exceeded iteration limit"
+        else loop (k + 1, IntMatrix.matMul (p, a))
+    in
+      if n = 0 then 1 else loop (1, a)
+    end
+
   (* Port of `weak_right_inverse` from `atlas-scripts/matrix.at`:
      returns (B,d) such that A*B = d*I if A is surjective onto a finite-index sublattice. *)
   fun weak_right_inverse (a: mat) : mat * int =
