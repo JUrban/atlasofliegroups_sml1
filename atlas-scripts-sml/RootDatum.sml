@@ -169,6 +169,99 @@ structure RootDatum = struct
   fun posCorootsCols (h: t) : int list list =
     parseColumnVectorsText (AtlasFFI.atlas_rootdatum_poscoroots_text h)
 
+  fun numPosRoots (h: t) : int =
+    length (posRootsCols h)
+
+  (* Atlas `.at` convention: root indices range over [-npr..npr-1], where
+     negative indices represent negative roots via i = ~ (j+1) (i.e. -j-1). *)
+  fun negIndexOfPos (j: int) : int = ~(j + 1)
+
+  fun posIndexOfNeg (i: int) : int = ~i - 1
+
+  fun rootByIndex (h: t, i: int) : int list =
+    let
+      val pos = posRootsCols h
+      val npr = length pos
+    in
+      if i >= 0 then
+        if i < npr then List.nth (pos, i) else raise Subscript
+      else
+        let
+          val j = posIndexOfNeg i
+        in
+          if j < 0 orelse j >= npr then raise Subscript else List.map (fn x => ~x) (List.nth (pos, j))
+        end
+    end
+
+  fun corootByIndex (h: t, i: int) : int list =
+    let
+      val pos = posCorootsCols h
+      val npr = length pos
+    in
+      if i >= 0 then
+        if i < npr then List.nth (pos, i) else raise Subscript
+      else
+        let
+          val j = posIndexOfNeg i
+        in
+          if j < 0 orelse j >= npr then raise Subscript else List.map (fn x => ~x) (List.nth (pos, j))
+        end
+    end
+
+  fun rootIndex (h: t, v: int list) : int =
+    let
+      val pos = posRootsCols h
+      fun findIndex ([], _) = NONE
+        | findIndex (x :: xs, i) = if x = v then SOME i else findIndex (xs, i + 1)
+      fun negVec xs = List.map (fn x => ~x) xs
+      fun findNegIndex ([], _) = NONE
+        | findNegIndex (x :: xs, i) = if x = negVec v then SOME i else findNegIndex (xs, i + 1)
+    in
+      case findIndex (pos, 0) of
+        SOME j => j
+      | NONE =>
+          (case findNegIndex (pos, 0) of
+             SOME j => negIndexOfPos j
+           | NONE => length pos)
+    end
+
+  fun corootIndex (h: t, v: int list) : int =
+    let
+      val pos = posCorootsCols h
+      fun findIndex ([], _) = NONE
+        | findIndex (x :: xs, i) = if x = v then SOME i else findIndex (xs, i + 1)
+      fun negVec xs = List.map (fn x => ~x) xs
+      fun findNegIndex ([], _) = NONE
+        | findNegIndex (x :: xs, i) = if x = negVec v then SOME i else findNegIndex (xs, i + 1)
+    in
+      case findIndex (pos, 0) of
+        SOME j => j
+      | NONE =>
+          (case findNegIndex (pos, 0) of
+             SOME j => negIndexOfPos j
+           | NONE => length pos)
+    end
+
+  (* Port of `sub_datum(rd,S)` from `atlas-scripts/basic.at`, for a list of root indices. *)
+  fun subDatumByRootIndices (rd: t, s: int list) : t =
+    let
+      val r = rank rd
+      val roots = List.map (fn i => rootByIndex (rd, i)) s
+      val coroots = List.map (fn i => corootByIndex (rd, i)) s
+
+      fun matFromColumns cols =
+        (case cols of
+           [] => List.tabulate (r, fn _ => [])
+         | _ =>
+             let
+               fun row i = List.map (fn c => List.nth (c, i)) cols
+             in
+               List.tabulate (r, row)
+             end)
+    in
+      newFromSimpleMats (matFromColumns roots, matFromColumns coroots, false)
+    end
+
   fun rootsCols (h: t) : int list list =
     parseColumnVectorsText (AtlasFFI.atlas_rootdatum_roots_text h)
 
