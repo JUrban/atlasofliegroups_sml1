@@ -140,4 +140,36 @@ structure IntMatrix = struct
         [~1] => raise Fail ("IntMatrix.eigenLattice: C++ error: " ^ AtlasFFI.atlas_last_error ())
       | _ => parseMatText out
     end
+
+  type echelon = AtlasFFI.echelon
+
+  fun echelon (a: mat) : mat * mat * int list * int =
+    let
+      val h = AtlasFFI.atlas_intmat_echelon (matToText a)
+      val () =
+        if h = Foreign.Memory.null then
+          raise Fail ("IntMatrix.echelon: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val mText = AtlasFFI.atlas_intmat_echelon_M_text h
+      val cText = AtlasFFI.atlas_intmat_echelon_C_text h
+      val pText = AtlasFFI.atlas_intmat_echelon_pivots_text h
+      val eps = AtlasFFI.atlas_intmat_echelon_eps h
+      val () = AtlasFFI.atlas_intmat_echelon_free h
+
+      val () =
+        if mText = "-1" orelse cText = "-1" orelse pText = "-1" orelse eps = 0 then
+          raise Fail ("IntMatrix.echelon: C++ error: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val m = parseMatText mText
+      val c = parseMatText cText
+      val ps =
+        (case parseInts pText of
+           k :: rest =>
+             if k < 0 orelse length rest <> k then raise Fail "IntMatrix.echelon: bad pivots" else rest
+         | _ => raise Fail "IntMatrix.echelon: bad pivots header")
+    in
+      (m, c, ps, eps)
+    end
 end

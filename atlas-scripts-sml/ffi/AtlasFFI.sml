@@ -6,6 +6,13 @@ structure AtlasFFI = struct
   val atlas_intmat_kernel_text_sym = Foreign.getSymbol lib "atlas_intmat_kernel_text"
   val atlas_intmat_eigen_lattice_text_sym =
     Foreign.getSymbol lib "atlas_intmat_eigen_lattice_text"
+  val atlas_intmat_echelon_sym = Foreign.getSymbol lib "atlas_intmat_echelon"
+  val atlas_intmat_echelon_M_text_sym = Foreign.getSymbol lib "atlas_intmat_echelon_M_text"
+  val atlas_intmat_echelon_C_text_sym = Foreign.getSymbol lib "atlas_intmat_echelon_C_text"
+  val atlas_intmat_echelon_pivots_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_echelon_pivots_text"
+  val atlas_intmat_echelon_eps_sym = Foreign.getSymbol lib "atlas_intmat_echelon_eps"
+  val atlas_intmat_echelon_free_sym = Foreign.getSymbol lib "atlas_intmat_echelon_free"
   val atlas_intmat_adapted_basis_sym = Foreign.getSymbol lib "atlas_intmat_adapted_basis"
   val atlas_intmat_adapted_basis_matrix_text_sym =
     Foreign.getSymbol lib "atlas_intmat_adapted_basis_matrix_text"
@@ -104,6 +111,26 @@ structure AtlasFFI = struct
       , (Foreign.cString, Foreign.cInt)
       , Foreign.cString
       )
+
+  type echelon = Foreign.Memory.voidStar
+
+  val atlas_intmat_echelon =
+    Foreign.buildCall1 (atlas_intmat_echelon_sym, Foreign.cString, Foreign.cPointer)
+
+  val atlas_intmat_echelon_M_text =
+    Foreign.buildCall1 (atlas_intmat_echelon_M_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_echelon_C_text =
+    Foreign.buildCall1 (atlas_intmat_echelon_C_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_echelon_pivots_text =
+    Foreign.buildCall1 (atlas_intmat_echelon_pivots_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_echelon_eps =
+    Foreign.buildCall1 (atlas_intmat_echelon_eps_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_intmat_echelon_free =
+    Foreign.buildCall1 (atlas_intmat_echelon_free_sym, Foreign.cPointer, Foreign.cVoid)
 
   type adapted_basis = Foreign.Memory.voidStar
 

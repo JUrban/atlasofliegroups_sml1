@@ -17,6 +17,7 @@
 #include "repr.h"
 #include "K_repr.h"
 #include "alcoves.h"
+#include "bitmap.h"
 
 static thread_local std::string g_last_error;
 static thread_local std::string g_last_result;
@@ -187,6 +188,14 @@ struct AdaptedBasisHandle
 {
   atlas::int_Matrix basis;
   std::vector<int> diagonal;
+};
+
+struct EchelonHandle
+{
+  atlas::int_Matrix M;
+  atlas::int_Matrix C;
+  std::vector<int> pivots;
+  int eps;
 };
 } // namespace
 
@@ -2211,19 +2220,19 @@ extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
     if (kt_handle == nullptr)
     {
       g_last_error = "atlas_ktypepol_term_text: null handle";
-      return nullptr;
+      return store_result("-1");
     }
     if (index < 0)
     {
       g_last_error = "atlas_ktypepol_term_text: negative index";
-      return nullptr;
+      return store_result("-1");
     }
     const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
     const std::size_t i = static_cast<std::size_t>(index);
     if (i >= kt->poly.size())
     {
       g_last_error = "atlas_ktypepol_term_text: index out of range";
-      return nullptr;
+      return store_result("-1");
     }
 
     std::size_t cur = 0;
@@ -2246,7 +2255,41 @@ extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
     }
 
     g_last_error = "atlas_ktypepol_term_text: internal iteration failure";
-    return nullptr;
+    return store_result("-1");
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" void* atlas_intmat_echelon(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return nullptr;
+
+    atlas::int_Matrix col;
+    bool flip = false;
+    atlas::bitmap::BitMap piv = atlas::matreduc::column_echelon(m, col, flip);
+
+    auto* h = new EchelonHandle();
+    h->M = std::move(m);
+    h->C = std::move(col);
+    h->pivots.clear();
+    h->pivots.reserve(piv.size());
+    for (atlas::bitmap::BitMap::iterator it = piv.begin(); it(); ++it)
+      h->pivots.push_back(static_cast<int>(*it));
+    h->eps = flip ? -1 : 1;
+    return static_cast<void*>(h);
   }
   catch (const std::exception& e)
   {
@@ -2257,6 +2300,117 @@ extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
   {
     g_last_error = "unknown C++ exception";
     return nullptr;
+  }
+}
+
+extern "C" const char* atlas_intmat_echelon_M_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_echelon_M_text: null handle";
+      return store_result("-1");
+    }
+    const auto* h = static_cast<const EchelonHandle*>(handle);
+    return store_result(int_matrix_to_text(h->M));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_echelon_C_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_echelon_C_text: null handle";
+      return store_result("-1");
+    }
+    const auto* h = static_cast<const EchelonHandle*>(handle);
+    return store_result(int_matrix_to_text(h->C));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_echelon_pivots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_echelon_pivots_text: null handle";
+      return store_result("-1");
+    }
+    const auto* h = static_cast<const EchelonHandle*>(handle);
+    std::ostringstream out;
+    out << h->pivots.size();
+    for (int i : h->pivots)
+      out << ' ' << i;
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" int atlas_intmat_echelon_eps(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_echelon_eps: null handle";
+      return 0;
+    }
+    const auto* h = static_cast<const EchelonHandle*>(handle);
+    return h->eps;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" void atlas_intmat_echelon_free(void* handle)
+{
+  try
+  {
+    delete static_cast<EchelonHandle*>(handle);
+  }
+  catch (...)
+  {
   }
 }
 
