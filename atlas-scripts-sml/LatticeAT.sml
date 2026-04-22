@@ -51,6 +51,41 @@ structure LatticeAT = struct
         m
       end
 
+  fun select_columns (cols: int list, m: mat) : mat =
+    let
+      val (n, k) = IntMatrix.matShape m
+      val () = if List.all (fn j => 0 <= j andalso j < k) cols then () else raise Fail "LatticeAT.select_columns: oob"
+      val mcols = matColumns m
+      val picked = List.map (fn j => List.nth (mcols, j)) cols
+    in
+      matFromColumnsN (n, picked)
+    end
+
+  fun adapted_direct_sum (m: mat) : int * mat =
+    let
+      val (r, diag) = MatReduc.adaptedBasis m
+    in
+      (length diag, r)
+    end
+
+  fun image_subspace (m: mat) : mat =
+    let
+      val (c, r) = adapted_direct_sum m
+    in
+      select_columns (List.tabulate (c, fn i => i), r)
+    end
+
+  fun image_complement_basis (m: mat) : mat =
+    let
+      val (c, r) = adapted_direct_sum m
+      val (n, _) = IntMatrix.matShape r
+    in
+      select_columns (List.tabulate (n - c, fn i => c + i), r)
+    end
+
+  val saturation = image_subspace
+  val saturation_quotient_basis = image_complement_basis
+
   fun solve_mat (a: mat, b: mat) : mat option =
     let
       val (na, _) = IntMatrix.matShape a
@@ -190,6 +225,22 @@ structure LatticeAT = struct
       val (m, _) = image_lattice_plus a
     in
       m
+    end
+
+  fun is_saturated_image (m: mat) : bool =
+    let
+      val (_, ds) = IntMatrix.smithBasis m
+    in
+      List.all (fn d => d = 1) ds
+    end
+
+  (* Port of `free_quotient_lattice_basis(mat M)` from `atlas-scripts/lattice.at`. *)
+  fun free_quotient_lattice_basis (m: mat) : mat =
+    let
+      val e = image_lattice m
+    in
+      if is_saturated_image e then image_complement_basis e
+      else raise Fail "LatticeAT.free_quotient_lattice_basis: sublattice is not a direct factor"
     end
 
   fun inv_fact (a: mat) : int list =
