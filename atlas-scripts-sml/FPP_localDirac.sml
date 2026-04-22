@@ -744,6 +744,81 @@ structure FPP_localDirac = struct
   fun params_for_local_faces (g: group, x: int, lambda: ratvec) : param list =
     params_for_local_faces_limit (g, x, lambda, ~1)
 
+  (* Enumerate final parameters from barycenters of a given list of local faces. *)
+  fun params_for_given_local_faces_thetaPlusHalf
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, faces: face_key list) : param list =
+    let
+      fun addFinal ((q, mult), acc) =
+        if mult = 0 then
+          (AtlasFFI.atlas_param_free q; acc)
+        else
+          AllParameters.addUniqueByEquivalent (q, acc)
+
+      fun addFromFace (face: face_key, acc: param list) : param list =
+        let
+          val gammaLocal = VertexData.face_bary (Lvd, face)
+          val nu = Lattice.ratvecSub (gammaLocal, thetaPlusHalf)
+          val p0 = Representations.parameter (g, x, lambda, nu)
+          val p1 = AtlasFFI.atlas_param_normalise p0
+          val () = AtlasFFI.atlas_param_free p0
+          val () =
+            if p1 = Foreign.Memory.null then
+              raise Fail ("params_for_given_local_faces: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+          val finals = ParamFinals.finals p1
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          List.foldl addFinal acc finals
+        end
+    in
+      List.foldl addFromFace [] faces
+    end
+
+  (* Baseline “GEO-hash2” style output: use face-closure filtering to select
+     unitary faces, then return unitary final parameters at their barycenters. *)
+  fun unitary_params_from_unitary_faces_by_dim_exact_limit_ctx_cached
+    (cache: unitary_cache)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    let
+      val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val fd = localFD_Lvd_simple (g, x, lambda, vd)
+      val Lvd = #Lvd fd
+
+      val keptFacesByDim = unitary_local_faces_by_dim_exact_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim)
+      val faces = List.concat (Array.foldr (op ::) [] keptFacesByDim)
+      val ps0 = params_for_given_local_faces_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, faces)
+      fun keepUnitary (ps: param list) : param list =
+        let
+          fun step (p, acc) =
+            if AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1 then
+              p :: acc
+            else
+              (AtlasFFI.atlas_param_free p; acc)
+        in
+          List.rev (List.foldl step [] ps)
+        end
+    in
+      keepUnitary ps0
+    end
+
+  fun unitary_params_from_unitary_faces_by_dim_exact_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    let
+      val cache = BigUnitaryCache.create 1024
+      val ps =
+        unitary_params_from_unitary_faces_by_dim_exact_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim)
+      val () = BigUnitaryCache.freeAll cache
+    in
+      ps
+    end
+
   (* Filter a list of owned parameters by exact Atlas unitarity, freeing the
      rejected ones. *)
   fun keep_unitary_and_free_rest (ps: param list) : param list =
