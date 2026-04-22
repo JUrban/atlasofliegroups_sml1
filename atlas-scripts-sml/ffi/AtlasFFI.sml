@@ -151,7 +151,9 @@ structure AtlasFFI = struct
   val atlas_param_equivalent_sym = Foreign.getSymbol lib "atlas_param_equivalent"
   val atlas_param_is_hermitian_sym = Foreign.getSymbol lib "atlas_param_is_hermitian"
   val atlas_param_finals_sym = Foreign.getSymbol lib "atlas_param_finals"
+  val atlas_param_block_survivors_sym = Foreign.getSymbol lib "atlas_param_block_survivors"
   val atlas_paramlist_size_sym = Foreign.getSymbol lib "atlas_paramlist_size"
+  val atlas_paramlist_start_pos_sym = Foreign.getSymbol lib "atlas_paramlist_start_pos"
   val atlas_paramlist_mult_sym = Foreign.getSymbol lib "atlas_paramlist_mult"
   val atlas_paramlist_get_param_clone_sym =
     Foreign.getSymbol lib "atlas_paramlist_get_param_clone"
@@ -545,8 +547,14 @@ structure AtlasFFI = struct
   val atlas_param_finals =
     Foreign.buildCall1 (atlas_param_finals_sym, Foreign.cPointer, Foreign.cPointer)
 
+  val atlas_param_block_survivors =
+    Foreign.buildCall1 (atlas_param_block_survivors_sym, Foreign.cPointer, Foreign.cPointer)
+
   val atlas_paramlist_size =
     Foreign.buildCall1 (atlas_paramlist_size_sym, Foreign.cPointer, Foreign.cLong)
+
+  val atlas_paramlist_start_pos =
+    Foreign.buildCall1 (atlas_paramlist_start_pos_sym, Foreign.cPointer, Foreign.cLong)
 
   val atlas_paramlist_mult =
     Foreign.buildCall2 (atlas_paramlist_mult_sym, (Foreign.cPointer, Foreign.cLong), Foreign.cLong)

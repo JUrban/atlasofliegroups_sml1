@@ -16,6 +16,7 @@
 #include "innerclass.h"
 #include "realredgp.h"
 #include "repr.h"
+#include "blocks.h"
 #include "K_repr.h"
 #include "alcoves.h"
 #include "bitmap.h"
@@ -223,9 +224,10 @@ struct ParamListHandle
 {
   GroupHandle* group; // non-owning
   std::vector<std::pair<atlas::repr::StandardRepr, int>> terms;
+  long start_pos; // for block() results; -1 if not applicable
 
   explicit ParamListHandle(GroupHandle* group)
-    : group(group), terms()
+    : group(group), terms(), start_pos(-1)
   {}
 };
 
@@ -398,6 +400,65 @@ extern "C" void* atlas_param_finals(void* p_handle)
   }
 }
 
+extern "C" void* atlas_param_block_survivors(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_block_survivors: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_block_survivors: null group/Rep_table";
+      return nullptr;
+    }
+
+    auto& G = p->group->G;
+    auto& rt = *p->group->rt;
+    atlas::repr::Rep_context rc(G);
+
+    auto sr = p->sr; // local copy; lookup_full_block normalises in-place
+    if (!rc.is_standard(sr))
+    {
+      g_last_error = "atlas_param_block_survivors: parameter is not standard";
+      return nullptr;
+    }
+
+    atlas::BlockElt start;
+    atlas::repr::block_modifier bm;
+    auto& block = rt.lookup_full_block(sr, start, bm);
+    const auto& gamma = sr.gamma();
+
+    const atlas::RankFlags singular = block.singular(bm, gamma);
+    long start_pos = -1;
+
+    auto* out = new ParamListHandle(p->group);
+    out->terms.reserve(block.size());
+    for (atlas::BlockElt z = 0; z < block.size(); ++z)
+      if (block.survives(z, singular))
+      {
+        if (z == start)
+          start_pos = static_cast<long>(out->terms.size());
+        out->terms.emplace_back(rc.sr(block.representative(z), bm, gamma), 1);
+      }
+    out->start_pos = start_pos;
+    return static_cast<void*>(out);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_paramlist_size(void* list_handle)
 {
   try
@@ -409,6 +470,30 @@ extern "C" long atlas_paramlist_size(void* list_handle)
     }
     const auto* h = static_cast<const ParamListHandle*>(list_handle);
     return static_cast<long>(h->terms.size());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" long atlas_paramlist_start_pos(void* list_handle)
+{
+  try
+  {
+    if (list_handle == nullptr)
+    {
+      g_last_error = "atlas_paramlist_start_pos: null list handle";
+      return -1;
+    }
+    const auto* h = static_cast<const ParamListHandle*>(list_handle);
+    return static_cast<long>(h->start_pos);
   }
   catch (const std::exception& e)
   {

@@ -6,6 +6,7 @@ use "atlas-scripts-sml/RootDatum.sml";
 use "atlas-scripts-sml/WeylWord.sml";
 use "atlas-scripts-sml/FromDominant.sml";
 use "atlas-scripts-sml/cross_W_orbit.sml";
+use "atlas-scripts-sml/ParamBlocks.sml";
 
 (*
   File: atlas-scripts-sml/representations.sml
@@ -194,6 +195,41 @@ structure Representations = struct
 
   (* Build `x_open(G)` from `basic.at`: `KGB(G,G.KGB_size-1)`. *)
   fun x_open (g: group) : int = AtlasFFI.atlas_group_kgb_size g - 1
+
+  (* Trivial representation parameter (mirrors `basic.at`’s `trivial(G)`).
+
+     Ownership: returns an owned `AtlasFFI.param` handle; caller must free it. *)
+  fun trivial (g: group) : param =
+    let
+      val p = AtlasFFI.atlas_param_trivial g
+    in
+      if p = Foreign.Memory.null then
+        raise Fail ("Representations.trivial: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        p
+    end
+
+  (* Full block (survivors) of a parameter, returning the parameter list only
+     (mirrors `basic.at`’s `block_of`). Returned parameters are cloned and owned. *)
+  fun block_of (p: param) : param list =
+    let
+      val (terms, _) = ParamBlocks.block_survivors p
+      val ps = List.map #1 terms
+      val () = List.app (fn (_, _) => ()) terms
+    in
+      (* caller owns the cloned params *)
+      ps
+    end
+
+  (* Trivial block: survivors in the block of the trivial parameter. *)
+  fun trivial_block (g: group) : param list =
+    let
+      val p = trivial g
+      val (terms, _) = ParamBlocks.block_survivors p
+      val () = AtlasFFI.atlas_param_free p
+    in
+      List.map #1 terms
+    end
 
   (* Discrete series parameter with given Harish-Chandra parameter `lambda`,
      with respect to a chosen KGB element `x`.
