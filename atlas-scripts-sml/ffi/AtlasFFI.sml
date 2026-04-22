@@ -176,6 +176,7 @@ structure AtlasFFI = struct
   val atlas_ktypepol_term_text_sym = Foreign.getSymbol lib "atlas_ktypepol_term_text"
   val atlas_ktypepol_is_typewise_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_typewise_pure"
   val atlas_ktypepol_is_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_pure"
+  val atlas_ktypepol_to_ht_sym = Foreign.getSymbol lib "atlas_ktypepol_to_ht"
   val atlas_param_is_unitary_c_form_sym = Foreign.getSymbol lib "atlas_param_is_unitary_c_form"
   val atlas_param_is_unitary_sym = Foreign.getSymbol lib "atlas_param_is_unitary"
   val atlas_param_good_range_induced_from_first_text_sym =
@@ -638,6 +639,9 @@ structure AtlasFFI = struct
 
   val atlas_ktypepol_is_pure =
     Foreign.buildCall1 (atlas_ktypepol_is_pure_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_ktypepol_to_ht =
+    Foreign.buildCall2 (atlas_ktypepol_to_ht_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)
 
   val atlas_param_is_unitary_c_form =
     Foreign.buildCall1 (atlas_param_is_unitary_c_form_sym, Foreign.cPointer, Foreign.cInt)

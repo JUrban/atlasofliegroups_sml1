@@ -3835,6 +3835,41 @@ extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
   }
 }
 
+extern "C" void* atlas_ktypepol_to_ht(void* kt_handle, int cutoff)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_to_ht: null handle";
+      return nullptr;
+    }
+    if (cutoff < 0)
+    {
+      g_last_error = "atlas_ktypepol_to_ht: negative cutoff";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    atlas::K_repr::K_type_pol result;
+    for (const auto& term : kt->poly)
+    {
+      if (static_cast<int>(term.first.height()) <= cutoff)
+        result.add_term(term.first, term.second);
+    }
+    return static_cast<void*>(new KTypePolHandle(kt->group, std::move(result)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" void* atlas_intmat_echelon(const char* mat_text)
 {
   try

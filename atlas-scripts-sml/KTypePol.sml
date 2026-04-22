@@ -103,4 +103,16 @@ structure KTypePol = struct
     in
       "(" ^ Int.toString a ^ "," ^ Int.toString b ^ "," ^ Int.toString c ^ ")"
     end
+
+  (* Truncate a `KTypePol` by term height, analogous to `to_ht(KTypePol,HT)` in
+     the `.at` scripts. Returns a new owned handle (caller must free it). *)
+  fun toHT (pol: ktypepol, cutoff: int) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_to_ht (pol, cutoff)
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.toHT: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
 end
