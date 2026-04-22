@@ -3567,6 +3567,109 @@ extern "C" void atlas_intmat_echelon_free(void* handle)
   }
 }
 
+// Forward declaration: defined later alongside `atlas_param_is_unitary`.
+static atlas::arithmetic::RatNum mu_ktype_convert_cform_hermitian(const atlas::repr::Rep_table& rt,
+                                                                  const atlas::K_repr::K_type& t);
+
+extern "C" void* atlas_param_hermitian_form_irreducible(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_hermitian_form_irreducible: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_hermitian_form_irreducible: null group/Rep_table";
+      return nullptr;
+    }
+
+    // Only defined (for now) in the same equal-rank path used by `atlas_param_is_unitary`.
+    atlas::repr::Rep_table& rt = *p->group->rt;
+    const atlas::repr::StandardRepr& sr = p->sr;
+
+    atlas::repr::StandardRepr tw = rt.inner_twisted(sr);
+    if (!rt.equivalent(tw, sr))
+    {
+      g_last_error = "atlas_param_hermitian_form_irreducible: parameter not hermitian";
+      return nullptr;
+    }
+
+    if (!rt.is_standard(sr))
+    {
+      g_last_error = "atlas_param_hermitian_form_irreducible: parameter not standard";
+      return nullptr;
+    }
+    if (!rt.is_final(sr))
+    {
+      g_last_error = "atlas_param_hermitian_form_irreducible: parameter not final";
+      return nullptr;
+    }
+
+    const unsigned int ori_p = rt.orientation_number(sr);
+    atlas::repr::SR_poly kl = rt.KL_column_at_s(sr);
+
+    atlas::K_repr::K_type_pol c_form;
+    for (const auto& term : kl)
+    {
+      atlas::Split_integer c = term.second;
+      const auto& q = term.first;
+      const unsigned int ori_q = rt.orientation_number(q);
+      const unsigned int d = (ori_p - ori_q) & 3u;
+      if (d == 2u)
+        c = c.times_s();
+      else if (d != 0u)
+      {
+        g_last_error = "atlas_param_hermitian_form_irreducible: odd orientation difference";
+        return nullptr;
+      }
+
+      atlas::repr::StandardRepr qc = atlas::weyl::alcove_center(rt, q);
+      atlas::K_repr::K_type_pol cfq = full_deform_stdrep(rt, qc);
+      c_form.add_multiple(std::move(cfq), c);
+    }
+
+    // convert_cform_hermitian: multiply each term by s^(mu(t)-mu(t0)).
+    if (c_form.is_zero())
+      return new KTypePolHandle(p->group, atlas::K_repr::K_type_pol{});
+
+    const atlas::arithmetic::RatNum mu0 =
+      mu_ktype_convert_cform_hermitian(rt, c_form.front().first);
+
+    atlas::K_repr::K_type_pol herm_form;
+    for (const auto& term : c_form)
+    {
+      atlas::Split_integer c = term.second;
+      atlas::arithmetic::RatNum diff =
+        mu_ktype_convert_cform_hermitian(rt, term.first) - mu0;
+      diff.normalize();
+      if (diff.denominator() != 1)
+      {
+        g_last_error = "atlas_param_hermitian_form_irreducible: mu difference is not integral";
+        return nullptr;
+      }
+      if ((diff.numerator() & 1LL) != 0)
+        c = c.times_s();
+      herm_form.add_term(term.first, c);
+    }
+
+    return new KTypePolHandle(p->group, std::move(herm_form));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" int atlas_param_is_unitary_c_form(void* p_handle)
 {
   try
