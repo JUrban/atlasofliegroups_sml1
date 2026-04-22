@@ -54,6 +54,9 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_group_simple_coroots_text"
   val atlas_group_posroots_text_sym = Foreign.getSymbol lib "atlas_group_posroots_text"
   val atlas_group_num_real_forms_sym = Foreign.getSymbol lib "atlas_group_num_real_forms"
+  val atlas_group_distinguished_involution_text_sym =
+    Foreign.getSymbol lib "atlas_group_distinguished_involution_text"
+  val atlas_group_rootdatum_new_sym = Foreign.getSymbol lib "atlas_group_rootdatum_new"
   val atlas_group_kgb_involution_matrix_text_sym =
     Foreign.getSymbol lib "atlas_group_kgb_involution_matrix_text"
   val atlas_group_kgb_involution_is_minus_identity_sym =
@@ -273,6 +276,12 @@ structure AtlasFFI = struct
 
   val atlas_group_num_real_forms =
     Foreign.buildCall1 (atlas_group_num_real_forms_sym, Foreign.cPointer, Foreign.cLong)
+
+  val atlas_group_distinguished_involution_text =
+    Foreign.buildCall1 (atlas_group_distinguished_involution_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_group_rootdatum_new =
+    Foreign.buildCall1 (atlas_group_rootdatum_new_sym, Foreign.cPointer, Foreign.cPointer)
 
   val atlas_group_kgb_involution_matrix_text =
     Foreign.buildCall2

@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/LatticeAT.sml";
 use "atlas-scripts-sml/LieType.sml";
 use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/diagram.sml";
@@ -285,6 +286,23 @@ structure RootDatum = struct
       SOME c => c
     | NONE => raise Fail "RootDatum.coroot: root not found"
 
+  fun rootOfCoroot (h: t) (coroot: int list) : int list option =
+    let
+      val rs = rootsCols h
+      val cs = corootsCols h
+      val () = if length rs = length cs then () else raise Fail "RootDatum.rootOfCoroot: mismatch"
+      fun loop ([], [], _) = NONE
+        | loop (r :: rs, c :: cs, i) = if c = coroot then SOME r else loop (rs, cs, i + 1)
+        | loop _ = raise Fail "RootDatum.rootOfCoroot: mismatch"
+    in
+      loop (rs, cs, 0)
+    end
+
+  fun root (h: t) (coroot: int list) : int list =
+    case rootOfCoroot h coroot of
+      SOME r => r
+    | NONE => raise Fail "RootDatum.root: coroot not found"
+
   fun semisimpleRank (h: t) : int =
     length (simpleRootsCols h)
 
@@ -333,6 +351,62 @@ structure RootDatum = struct
       fun row i = List.tabulate (n, fn j => entry (i, j))
     in
       List.tabulate (n, row)
+    end
+
+  fun fundamentalWeights (h: t) : Lattice.ratvec list =
+    let
+      val ssr = semisimpleRank h
+      val r = rank h
+      val () =
+        if ssr = r then ()
+        else raise Fail "RootDatum.fundamentalWeights: only implemented for semisimple root data"
+
+      val a = IntMatrix.transpose (simpleCorootsMat h) (* ssr x r; square here *)
+
+      fun gcdIntInf (x: IntInf.int, y: IntInf.int) : IntInf.int =
+        let
+          val x = IntInf.abs x
+          val y = IntInf.abs y
+          fun loop (u, 0) = u
+            | loop (u, v) = loop (v, IntInf.mod (u, v))
+        in
+          if x = 0 then y else loop (x, y)
+        end
+
+      fun lcmIntInf (x: IntInf.int, y: IntInf.int) : IntInf.int =
+        if x = 0 orelse y = 0 then 0 else IntInf.div (IntInf.abs (x * y), gcdIntInf (x, y))
+
+      fun ratvecOfBigRats (qs: LatticeAT.BigRat.t list) : Lattice.ratvec =
+        let
+          val qs = List.map LatticeAT.BigRat.normalize qs
+          val dens = List.map (fn q => #den q) qs
+          val d = List.foldl lcmIntInf 1 dens
+          val () = if d <> 0 then () else raise Fail "RootDatum.fundamentalWeights: zero lcm"
+          fun scaleOne q =
+            let
+              val mul = IntInf.div (d, #den q)
+              val n = #num q * mul
+            in
+              IntInf.toInt n handle _ => raise Fail "RootDatum.fundamentalWeights: numerator overflow"
+            end
+          val nums = List.map scaleOne qs
+          val den = IntInf.toInt d handle _ => raise Fail "RootDatum.fundamentalWeights: denominator overflow"
+        in
+          Lattice.ratvecNormalize {den = den, nums = nums}
+        end
+
+      fun eVec i = List.tabulate (ssr, fn j => if i = j then 1 else 0)
+
+      fun solveOne i =
+        let
+          val rhs = Lattice.ratvecNormalize {den = 1, nums = eVec i}
+        in
+          case LatticeAT.solve_ratvec (a, rhs) of
+            NONE => raise Fail "RootDatum.fundamentalWeights: solve failed"
+          | SOME qs => ratvecOfBigRats qs
+        end
+    in
+      List.tabulate (ssr, solveOne)
     end
 
   fun matColumns (m: IntMatrix.mat) : int list list =

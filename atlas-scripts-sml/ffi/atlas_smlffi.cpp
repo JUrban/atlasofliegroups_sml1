@@ -1721,6 +1721,56 @@ extern "C" const char* atlas_group_make_dominant_ratweight_text(void* group_hand
   }
 }
 
+extern "C" const char* atlas_group_distinguished_involution_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_distinguished_involution_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    const atlas::WeightInvolution& delta = h->ic.distinguished();
+    return store_result(int_matrix_to_text(delta));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_rootdatum_new(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_rootdatum_new: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    auto prd = h->prd; // copy
+    return new RootDatumHandle(std::move(prd));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" const char* atlas_group_kgb_involution_matrix_text(void* handle, int x)
 {
   try

@@ -18,6 +18,145 @@ structure LatticeAT = struct
 
   val vec_solve = Lattice.vec_solve
 
+  structure BigRat = struct
+    type t = {num: IntInf.int, den: IntInf.int}
+
+    fun gcd (a: IntInf.int, b: IntInf.int) : IntInf.int =
+      let
+        val a = IntInf.abs a
+        val b = IntInf.abs b
+        fun loop (x, 0) = x
+          | loop (x, y) = loop (y, IntInf.mod (x, y))
+      in
+        if a = 0 then b else loop (a, b)
+      end
+
+    fun normalize (q: t) : t =
+      let
+        val den0 = #den q
+        val num0 = #num q
+        val () = if den0 = 0 then raise Fail "BigRat.normalize: zero denom" else ()
+        val sign = if den0 < 0 then ~1 else 1
+        val den1 = den0 * sign
+        val num1 = num0 * sign
+        val g = gcd (den1, num1)
+      in
+        if g <= 1 then {num = num1, den = den1} else {num = IntInf.div (num1, g), den = IntInf.div (den1, g)}
+      end
+
+    val zero : t = {num = 0, den = 1}
+
+    fun add (a: t, b: t) : t =
+      normalize
+        { num = #num a * #den b + #num b * #den a
+        , den = #den a * #den b
+        }
+
+    fun mulInt (a: t, k: int) : t = normalize {num = #num a * IntInf.fromInt k, den = #den a}
+
+    fun divInt (a: t, k: int) : t =
+      if k = 0 then raise Fail "BigRat.divInt: divide by zero"
+      else normalize {num = #num a, den = #den a * IntInf.fromInt k}
+
+    fun isZero (a: t) : bool = #num (normalize a) = 0
+
+    fun isInteger (a: t) : bool = #den (normalize a) = 1
+
+    fun toIntOption (a: t) : int option =
+      let
+        val a = normalize a
+      in
+        if #den a <> 1 then NONE
+        else SOME (IntInf.toInt (#num a)) handle _ => NONE
+      end
+  end
+
+  (* Solve A*x=b over Q using diagonalisation (row*A*col is diagonal).
+     Returns one rational solution vector (as BigRat list) when it exists. *)
+  fun solve_ratvec (a: mat, b: ratvec) : BigRat.t list option =
+    let
+      val (n, m) = IntMatrix.matShape a
+      val (diag, row, col) = IntMatrix.diagonalize a
+      val (nr, nc) = IntMatrix.matShape row
+      val (mr, mc) = IntMatrix.matShape col
+      val () = if nr = n andalso nc = n then () else raise Fail "LatticeAT.solve_ratvec: bad row shape"
+      val () = if mr = m andalso mc = m then () else raise Fail "LatticeAT.solve_ratvec: bad col shape"
+      val nums = #nums b
+      val den = #den b
+      val () = if length nums = n then () else raise Fail "LatticeAT.solve_ratvec: rhs length mismatch"
+      val denQ = IntInf.fromInt den
+
+      fun dotIntInf (xs: int list, ys: IntInf.int list) : IntInf.int =
+        let
+          fun loop ([], [], acc) = acc
+            | loop (x :: xs', y :: ys', acc) = loop (xs', ys', acc + IntInf.fromInt x * y)
+            | loop _ = raise Fail "LatticeAT.solve_ratvec: dot mismatch"
+        in
+          loop (xs, ys, 0)
+        end
+
+      fun matVecMulIntInf (mat: mat, vecInf: IntInf.int list) : IntInf.int list =
+        let
+          val (_, mm) = IntMatrix.matShape mat
+          val () = if length vecInf = mm then () else raise Fail "LatticeAT.solve_ratvec: matVec dim mismatch"
+        in
+          List.map (fn r => dotIntInf (r, vecInf)) mat
+        end
+
+      val numsInf = List.map IntInf.fromInt nums
+      val bPrimeNums = matVecMulIntInf (row, numsInf) (* row*b = bPrimeNums/den *)
+
+      val t = length diag
+      fun needZeroFrom i =
+        if i >= n then ()
+        else if List.nth (bPrimeNums, i) = 0 then needZeroFrom (i + 1)
+        else raise Fail "LatticeAT.solve_ratvec: inconsistent (zero-row) constraint"
+      val () = needZeroFrom t
+
+      fun yAt i =
+        if i < t then
+          let
+            val d = List.nth (diag, i)
+            val bi = List.nth (bPrimeNums, i)
+          in
+            if d = 0 then
+              if bi = 0 then BigRat.zero else raise Fail "LatticeAT.solve_ratvec: inconsistent (zero diagonal)"
+            else
+              BigRat.normalize {num = bi, den = denQ * IntInf.fromInt d}
+          end
+        else
+          BigRat.zero
+      val y = List.tabulate (m, yAt)
+
+      fun mulRowByY (r: int list) : BigRat.t =
+        let
+          val () = if length r = m then () else raise Fail "LatticeAT.solve_ratvec: col row mismatch"
+          fun step ((aij, yi), acc) = BigRat.add (acc, BigRat.mulInt (yi, aij))
+        in
+          List.foldl step BigRat.zero (ListPair.zipEq (r, y))
+        end
+
+      val x = List.map mulRowByY col
+    in
+      SOME x
+    end
+    handle Fail _ => NONE
+
+  (* Solve A*x=b over Q, but only succeed when there is an integral solution x. *)
+  fun solve_ratvec_as_vec (a: mat, b: ratvec) : vec option =
+    case solve_ratvec (a, b) of
+      NONE => NONE
+    | SOME xs =>
+        let
+          fun loop ([], acc) = SOME (List.rev acc)
+            | loop (q :: qs, acc) =
+                (case BigRat.toIntOption q of
+                   NONE => NONE
+                 | SOME n => loop (qs, n :: acc))
+        in
+          loop (xs, [])
+        end
+
   fun matColumns (a: mat) : vec list =
     let
       val (_, m) = IntMatrix.matShape a
