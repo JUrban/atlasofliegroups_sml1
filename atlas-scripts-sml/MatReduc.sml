@@ -27,6 +27,15 @@ structure MatReduc = struct
       val dText = AtlasFFI.atlas_intmat_adapted_basis_diag_text h
       val () = AtlasFFI.atlas_intmat_adapted_basis_free h
 
+      val () =
+        (case parseInts mText of
+           [~1] => raise Fail ("MatReduc.adaptedBasis: matrix_text failed: " ^ AtlasFFI.atlas_last_error ())
+         | _ => ())
+      val () =
+        (case parseInts dText of
+           [~1] => raise Fail ("MatReduc.adaptedBasis: diag_text failed: " ^ AtlasFFI.atlas_last_error ())
+         | _ => ())
+
       val m = IntMatrix.parseMatText mText
       val ds = parseInts dText
     in
@@ -47,4 +56,3 @@ structure MatReduc = struct
       | _ => IntMatrix.parseMatText out
     end
 end
-

@@ -470,7 +470,7 @@ extern "C" const char* atlas_intmat_adapted_basis_matrix_text(void* handle)
     if (handle == nullptr)
     {
       g_last_error = "atlas_intmat_adapted_basis_matrix_text: null handle";
-      return nullptr;
+      return store_result("-1");
     }
     const auto* h = static_cast<const AdaptedBasisHandle*>(handle);
     return store_result(int_matrix_to_text(h->basis));
@@ -478,12 +478,12 @@ extern "C" const char* atlas_intmat_adapted_basis_matrix_text(void* handle)
   catch (const std::exception& e)
   {
     g_last_error = e.what();
-    return nullptr;
+    return store_result("-1");
   }
   catch (...)
   {
     g_last_error = "unknown C++ exception";
-    return nullptr;
+    return store_result("-1");
   }
 }
 
@@ -494,7 +494,7 @@ extern "C" const char* atlas_intmat_adapted_basis_diag_text(void* handle)
     if (handle == nullptr)
     {
       g_last_error = "atlas_intmat_adapted_basis_diag_text: null handle";
-      return nullptr;
+      return store_result("-1");
     }
     const auto* h = static_cast<const AdaptedBasisHandle*>(handle);
     std::ostringstream out;
@@ -506,12 +506,12 @@ extern "C" const char* atlas_intmat_adapted_basis_diag_text(void* handle)
   catch (const std::exception& e)
   {
     g_last_error = e.what();
-    return nullptr;
+    return store_result("-1");
   }
   catch (...)
   {
     g_last_error = "unknown C++ exception";
-    return nullptr;
+    return store_result("-1");
   }
 }
 
