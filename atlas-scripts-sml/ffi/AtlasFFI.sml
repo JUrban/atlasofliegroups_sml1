@@ -20,6 +20,8 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_group_kgb_involution_matrix_text"
   val atlas_group_kgb_involution_is_minus_identity_sym =
     Foreign.getSymbol lib "atlas_group_kgb_involution_is_minus_identity"
+  val atlas_kgb_all_lambda_differential_0_text_sym =
+    Foreign.getSymbol lib "atlas_kgb_all_lambda_differential_0_text"
 
   val atlas_param_trivial_sym = Foreign.getSymbol lib "atlas_param_trivial"
   val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
@@ -120,6 +122,13 @@ structure AtlasFFI = struct
       ( atlas_group_kgb_involution_is_minus_identity_sym
       , (Foreign.cPointer, Foreign.cInt)
       , Foreign.cInt
+      )
+
+  val atlas_kgb_all_lambda_differential_0_text =
+    Foreign.buildCall2
+      ( atlas_kgb_all_lambda_differential_0_text_sym
+      , (Foreign.cPointer, Foreign.cInt)
+      , Foreign.cString
       )
 
   type param = Foreign.Memory.voidStar

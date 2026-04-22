@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
+use "atlas-scripts-sml/LambdaDifferential0.sml";
 
 structure G2_unitary_dual = struct
   type rat = {num: int, den: int}
@@ -242,6 +243,80 @@ structure G2_unitary_dual = struct
           end
     end
 
+  fun all_parameters_x_gamma (g: AtlasFFI.group, x: int, gamma: {den: int, nums: int list}) :
+    AtlasFFI.param list =
+    let
+      fun addUnique (p: AtlasFFI.param, acc: AtlasFFI.param list) : AtlasFFI.param list =
+        if List.exists (fn q => AtlasFFI.atlas_param_equivalent (p, q) = 1) acc then
+          (AtlasFFI.atlas_param_free p; acc)
+        else
+          p :: acc
+
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val th1 = Lattice.matAdd (Lattice.identity rank, theta)
+      val rho = parseRatWeightText (AtlasFFI.atlas_group_rho_text g)
+      val u = Lattice.matVecMulRatvec th1 (Lattice.ratvecSub (gamma, rho))
+      val lrOpt = Lattice.vec_solve (th1, u)
+    in
+      case lrOpt of
+        NONE => []
+      | SOME lr =>
+          let
+            val lambda = ratvecAddIntVec (rho, lr)
+            val oneMinusTheta =
+              ListPair.mapEq
+                (fn (ri, ti) => ListPair.mapEq (op -) (ri, ti))
+                (Lattice.identity rank, theta)
+            val nu = Lattice.ratvecScale (Lattice.matVecMulRatvec oneMinusTheta gamma, 1, 2)
+
+            val twists = LambdaDifferential0.all (g, x)
+
+            fun addTwist (v: int list, acc: AtlasFFI.param list) =
+              let
+                val lambda2 = ratvecAddIntVec (lambda, v)
+                val p0 =
+                  AtlasFFI.atlas_param_new_from_lambda_nu_text
+                    (g, x, intsToCText (#nums lambda2), #den lambda2, intsToCText (#nums nu), #den nu)
+                val () =
+                  if p0 = Foreign.Memory.null then
+                    raise Fail ("G2_unitary_dual: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
+                  else
+                    ()
+                val p1 = AtlasFFI.atlas_param_normalise p0
+                val () = AtlasFFI.atlas_param_free p0
+                val () =
+                  if p1 = Foreign.Memory.null then
+                    raise Fail ("G2_unitary_dual: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+                  else
+                    ()
+                val finals = ParamFinals.finals p1
+                val () = AtlasFFI.atlas_param_free p1
+
+                fun addFinal ((q, mult), acc2) =
+                  if mult = 0 then
+                    (AtlasFFI.atlas_param_free q; acc2)
+                  else
+                    let
+                      val q1 = AtlasFFI.atlas_param_normalise q
+                      val () = AtlasFFI.atlas_param_free q
+                      val () =
+                        if q1 = Foreign.Memory.null then
+                          raise Fail ("G2_unitary_dual: normalise(final) failed: " ^ AtlasFFI.atlas_last_error ())
+                        else
+                          ()
+                    in
+                      addUnique (q1, acc2)
+                    end
+              in
+                List.foldl addFinal acc finals
+              end
+          in
+            List.rev (List.foldl addTwist [] twists)
+          end
+    end
+
   fun ps (g: AtlasFFI.group) (epsilon: int, nu: {den: int, nums: int list}) : AtlasFFI.param =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -311,20 +386,30 @@ structure G2_unitary_dual = struct
       val gl = gamma_l ({num = 2, den = 1}, {num = 0, den = 1})
 
       val () =
-        (case all_parameters_x_gamma_one (g, x_s, gs) of
-           NONE => print "p_s: none\n"
-         | SOME q =>
-             (print ("p_s.gamma=" ^ AtlasFFI.atlas_param_gamma_text q ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
-                     ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
-              AtlasFFI.atlas_param_free q))
+        let
+          val ps = all_parameters_x_gamma (g, x_s, gs)
+        in
+          case ps of
+            [] => print "p_s: none\n"
+          | q :: rest =>
+              (print ("p_s.count=" ^ Int.toString (length ps) ^ " gamma=" ^ AtlasFFI.atlas_param_gamma_text q
+                      ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
+                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
+               List.app AtlasFFI.atlas_param_free (q :: rest))
+        end
 
       val () =
-        (case all_parameters_x_gamma_one (g, x_l, gl) of
-           NONE => print "p_l: none\n"
-         | SOME q =>
-             (print ("p_l.gamma=" ^ AtlasFFI.atlas_param_gamma_text q ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
-                     ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
-              AtlasFFI.atlas_param_free q))
+        let
+          val ps = all_parameters_x_gamma (g, x_l, gl)
+        in
+          case ps of
+            [] => print "p_l: none\n"
+          | q :: rest =>
+              (print ("p_l.count=" ^ Int.toString (length ps) ^ " gamma=" ^ AtlasFFI.atlas_param_gamma_text q
+                      ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
+                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
+               List.app AtlasFFI.atlas_param_free (q :: rest))
+        end
 
       val () = ParamFinals.freeTerms finals
       val () = AtlasFFI.atlas_group_free g

@@ -8,6 +8,7 @@
 
 #include "Atlas.h"
 #include "matreduc.h"
+#include "lattice.h"
 #include "lietype.h"
 #include "prerootdata.h"
 #include "rootdata.h"
@@ -798,6 +799,115 @@ extern "C" void* atlas_param_normalise(void* p_handle)
     atlas::repr::StandardRepr sr = p->sr;
     rc.normalise(sr);
     return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_kgb_all_lambda_differential_0_text(void* group_handle, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_all_lambda_differential_0_text: null group handle";
+      return nullptr;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    if (x < 0 || static_cast<unsigned int>(x) >= g->G.KGB_size())
+    {
+      g_last_error = "atlas_kgb_all_lambda_differential_0_text: invalid KGB index";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(g->G);
+    const unsigned int rank = rc.rank();
+
+    const auto& theta = rc.kgb().involution_matrix(static_cast<atlas::KGBElt>(x));
+    atlas::int_Matrix th1 = identity_matrix(rank); // (1+theta)
+    th1 += theta;
+    atlas::int_Matrix thm = identity_matrix(rank); // (1-theta)
+    thm -= theta;
+
+    // columns of K span ker(1+theta)
+    const atlas::int_Matrix K = atlas::lattice::kernel(th1);
+    const unsigned int m = K.n_columns();
+
+    // C = in_lattice_basis(K, 1-theta): solve K * c_j = (1-theta).col(j)
+    atlas::int_Matrix C(m, rank);
+    for (unsigned int j = 0; j < rank; ++j)
+    {
+      atlas::int_Vector b(rank);
+      for (unsigned int i = 0; i < rank; ++i)
+        b[i] = thm(i, j);
+      if (!atlas::matreduc::has_solution(K, b))
+      {
+        g_last_error = "atlas_kgb_all_lambda_differential_0_text: internal error: (1-theta) not in ker(1+theta)";
+        return nullptr;
+      }
+      atlas::int_Vector sol = atlas::matreduc::find_solution(K, std::move(b));
+      for (unsigned int i = 0; i < m; ++i)
+        C(i, j) = sol[i];
+    }
+
+    std::vector<int> diagonal;
+    const atlas::int_Matrix A = atlas::matreduc::adapted_basis(C, diagonal);
+
+    std::vector<unsigned int> gens;
+    gens.reserve(diagonal.size());
+    for (unsigned int j = 0; j < diagonal.size(); ++j)
+      if (diagonal[j] == 2)
+        gens.push_back(j);
+
+    const unsigned int k = static_cast<unsigned int>(gens.size());
+
+    atlas::int_Matrix basis(rank, k);
+    for (unsigned int t = 0; t < k; ++t)
+    {
+      const unsigned int j = gens[t];
+      for (unsigned int i = 0; i < rank; ++i)
+      {
+        long long acc = 0;
+        for (unsigned int u = 0; u < m; ++u)
+          acc += static_cast<long long>(K(i, u)) * static_cast<long long>(A(u, j));
+        basis(i, t) = static_cast<int>(acc);
+      }
+    }
+
+    // enumerate all {0,1}-combinations of basis columns
+    std::vector<atlas::int_Vector> out;
+    out.reserve(static_cast<std::size_t>(1) << k);
+    out.emplace_back(rank);
+    for (unsigned int i = 0; i < rank; ++i)
+      out.back()[i] = 0;
+
+    for (unsigned int col = 0; col < k; ++col)
+    {
+      const std::size_t cur = out.size();
+      out.reserve(cur * 2);
+      for (std::size_t idx = 0; idx < cur; ++idx)
+      {
+        atlas::int_Vector v = out[idx];
+        for (unsigned int i = 0; i < rank; ++i)
+          v[i] += basis(i, col);
+        out.push_back(std::move(v));
+      }
+    }
+
+    std::ostringstream s;
+    s << out.size() << ' ' << rank;
+    for (const auto& v : out)
+      for (unsigned int i = 0; i < rank; ++i)
+        s << ' ' << v[i];
+    return store_result(s.str());
   }
   catch (const std::exception& e)
   {
