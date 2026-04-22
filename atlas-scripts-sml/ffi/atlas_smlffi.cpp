@@ -218,6 +218,80 @@ extern "C" const char* atlas_group_rho_text(void* handle)
   }
 }
 
+extern "C" const char* atlas_group_simple_coroots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_simple_coroots_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    atlas::repr::Rep_context rc(h->G);
+    const auto& rd = rc.root_datum();
+    const auto ss_rank = rd.semisimple_rank();
+    const auto rank = rd.rank();
+
+    std::ostringstream out;
+    out << ss_rank << ' ' << rank;
+    for (unsigned int s = 0; s < ss_rank; ++s)
+    {
+      const auto& cor = rd.simpleCoroot(static_cast<atlas::weyl::Generator>(s));
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << cor[i];
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_group_posroots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_posroots_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    atlas::repr::Rep_context rc(h->G);
+    const auto& rd = rc.root_datum();
+    const auto rank = rd.rank();
+    const auto n = rd.numPosRoots();
+
+    std::ostringstream out;
+    out << n << ' ' << rank;
+    for (unsigned int j = 0; j < n; ++j)
+    {
+      const auto& r = rd.posRoot(static_cast<atlas::RootNbr>(j));
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << r[i];
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_kgb_size_F4_s()
 {
   try
@@ -296,6 +370,44 @@ extern "C" long atlas_group_num_real_forms(void* handle)
   {
     g_last_error = "unknown C++ exception";
     return -1;
+  }
+}
+
+extern "C" const char* atlas_group_kgb_involution_matrix_text(void* handle, int x)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_kgb_involution_matrix_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    if (x < 0 || static_cast<unsigned int>(x) >= h->G.KGB_size())
+    {
+      g_last_error = "atlas_group_kgb_involution_matrix_text: invalid KGB index";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(h->G);
+    const auto rank = rc.rank();
+    const auto& m = rc.kgb().involution_matrix(static_cast<atlas::KGBElt>(x));
+
+    std::ostringstream out;
+    out << rank;
+    for (unsigned int i = 0; i < rank; ++i)
+      for (unsigned int j = 0; j < rank; ++j)
+        out << ' ' << m(i, j);
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
   }
 }
 
