@@ -182,7 +182,7 @@ structure Induction = struct
        - the corresponding Levi parameter `p_L` is final and weakly good for `G`
        - `theta_induce_irreducible(p_L,G)` contains `p` (checked by `finals_for`)
      Returns a compact, stable string for tests and script output. *)
-  fun good_range_induced_from_first_text (p: param, G: group) : string =
+  fun good_range_induced_from_texts (p: param, G: group) : string list =
     let
       val x = AtlasFFI.atlas_param_x p
       val thetaText = AtlasFFI.atlas_group_kgb_involution_matrix_text (G, x)
@@ -257,8 +257,11 @@ structure Induction = struct
 
       val tsp = Parabolics.theta_stable_parabolics_with G x
     in
-      case List.mapPartial tryOne tsp of
-        [] => "0|||"
-      | txt :: _ => txt
+      List.mapPartial tryOne tsp
     end
+
+  fun good_range_induced_from_first_text (p: param, G: group) : string =
+    (case good_range_induced_from_texts (p, G) of
+       [] => "0|||"
+     | txt :: _ => txt)
 end

@@ -173,6 +173,12 @@ structure Parabolics = struct
       loop x
     end
 
+  (* Parabolic equivalence (K-orbit on G/P_S):
+     `(S,x) = (T,y)` iff `S=T` and `maximal(S,x)=maximal(S,y)`.
+     This mirrors `parabolics.at`’s `=` definition for `KGPElt`. *)
+  fun eq (g: group) ((S, x): parabolic, (T, y): parabolic) : bool =
+    S = T andalso maximal g (S, x) = maximal g (T, y)
+
   (* A (not necessarily unique) minimal element in the `S`-equivalence class. *)
   fun x_min (g: group) (S: int list, x: kgbelt) : kgbelt =
     let
@@ -216,17 +222,12 @@ structure Parabolics = struct
     List.concat (List.map (theta_stable_parabolics_of_type g) (twist_stable_subsets g))
 
   (* `theta_stable_parabolics_with(x)` analog from `induction.at`, but computed directly.
-     Returns theta-stable parabolics (S, maximal(S,x)) for twist-stable S whose orbit is closed. *)
+     Returns those theta-stable parabolics `P` for which `(S,x)=(S,representative(P))`. *)
   fun theta_stable_parabolics_with (g: group) (x: kgbelt) : parabolic list =
     let
-      fun one S =
-        let
-          val y = maximal g (S, x)
-          val P = (S, y)
-        in
-          if is_closed g P then SOME P else NONE
-        end
+      val tsp = theta_stable_parabolics g
+      fun keep (P as (S, y)) = eq g ((S, x), P)
     in
-      List.mapPartial one (twist_stable_subsets g)
+      List.filter keep tsp
     end
 end
