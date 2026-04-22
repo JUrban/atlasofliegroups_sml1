@@ -137,6 +137,32 @@ structure RootDatum = struct
         IntMatrix.parseMatText s
     end
 
+  fun columnsOfMat (m: IntMatrix.mat) : int list list =
+    let
+      val (nRows, nCols) = IntMatrix.matShape m
+      fun col j = List.map (fn row => List.nth (row, j)) m
+    in
+      List.tabulate (nCols, col)
+    end
+
+  fun coradicalBasisCols (h: t) : int list list =
+    let
+      val ssr = length (simpleRootsCols h)
+      val m = rootCoradicalMat h
+      val cols = columnsOfMat m
+    in
+      List.drop (cols, ssr)
+    end
+
+  fun radicalBasisCols (h: t) : int list list =
+    let
+      val ssr = length (simpleRootsCols h)
+      val m = corootRadicalMat h
+      val cols = columnsOfMat m
+    in
+      List.drop (cols, ssr)
+    end
+
   fun posRootsCols (h: t) : int list list =
     parseColumnVectorsText (AtlasFFI.atlas_rootdatum_posroots_text h)
 
