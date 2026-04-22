@@ -8,6 +8,39 @@ use "atlas-scripts-sml/IntMatrix.sml";
 structure SimpleFactors = struct
   type rootdatum = RootDatum.t
 
+  type ratvec = Lattice.ratvec
+
+  fun mapi f ys =
+    let
+      fun loop (_, [], acc) = List.rev acc
+        | loop (i, z :: zs, acc) = loop (i + 1, zs, f (i, z) :: acc)
+    in
+      loop (0, ys, [])
+    end
+
+  fun ratvecZero (n: int) : ratvec = {den = 1, nums = List.tabulate (n, fn _ => 0)}
+
+  val ratvecNormalize = Lattice.ratvecNormalize
+
+  fun ratvecSub (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, v)
+
+  fun ratvecDotIntVec (u: ratvec, a: int list) : ratvec =
+    let
+      val () = if length (#nums u) = length a then () else raise Fail "SimpleFactors: dot length mismatch"
+      val num = List.foldl (op +) 0 (ListPair.mapEq (op *) (#nums u, a))
+    in
+      ratvecNormalize {den = #den u, nums = [num]}
+    end
+
+  fun ratIsZero (u: ratvec) : bool =
+    let
+      val u = ratvecNormalize u
+    in
+      List.all (fn x => x = 0) (#nums u)
+    end
+
+  fun ratvecIsZero (u: ratvec) : bool = ratIsZero u
+
   fun parseCartanMatrixTypeText (s: string) : LieType.t * int list =
     let
       val parts = String.fields (fn c => c = #"|") s
@@ -130,6 +163,12 @@ structure SimpleFactors = struct
   fun number_simple_factors (rd: rootdatum) : int =
     length (diagram_components rd)
 
+  fun root_coradical (rd: rootdatum) : IntMatrix.mat =
+    RootDatum.rootCoradicalMat rd
+
+  fun coroot_radical (rd: rootdatum) : IntMatrix.mat =
+    RootDatum.corootRadicalMat rd
+
   (* RootDatum with simple roots those indexed by S (in that order). *)
   fun sub_datum (rd: rootdatum, s: int list) : rootdatum =
     let
@@ -152,4 +191,74 @@ structure SimpleFactors = struct
 
   fun simple_factors (rd: rootdatum) : rootdatum list =
     List.map (fn s => sub_datum (rd, s)) (diagram_components rd)
+
+  (* Port of the cheap comparison predicates from `atlas-scripts/simple_factors.at`. *)
+  fun same_weight_projection_simple_factor (rd: rootdatum, i: int) : ratvec * ratvec -> bool =
+    let
+      val comp = diagram_component (rd, i)
+      val coroots = RootDatum.simpleCorootsCols rd
+      val picked = List.map (fn j => List.nth (coroots, j)) comp
+
+      fun ok (v0: ratvec, w0: ratvec) : bool =
+        let
+          val diff = ratvecSub (v0, w0)
+          fun test a = ratIsZero (ratvecDotIntVec (diff, a))
+        in
+          List.all test picked
+        end
+    in
+      ok
+    end
+
+  fun same_coweight_projection_simple_factor (rd: rootdatum, i: int) : ratvec * ratvec -> bool =
+    let
+      val comp = diagram_component (rd, i)
+      val roots = RootDatum.simpleRootsCols rd
+      val picked = List.map (fn j => List.nth (roots, j)) comp
+
+      fun ok (v0: ratvec, w0: ratvec) : bool =
+        let
+          val diff = ratvecSub (v0, w0)
+          fun test a = ratIsZero (ratvecDotIntVec (diff, a))
+        in
+          List.all test picked
+        end
+    in
+      ok
+    end
+
+  (* Project a weight to the Q-span of roots in the simple factor containing node i.
+     This is the direct analogue of `project_on_simple_factor(rd,i,wt)` in `simple_factors.at`,
+     but returns a `ratvec` directly. *)
+  fun project_on_simple_factor_weight (rd: rootdatum, i: int, wt: ratvec) : ratvec =
+    let
+      val comp = diagram_component (rd, i)
+      val r = RootDatum.rank rd
+      val ssr = RootDatum.semisimpleRank rd
+
+      val M = root_coradical rd (* r x r *)
+      val (J, d) = MatrixAT.weak_left_inverse M (* J*M = d*I, so J = d*M^{-1} *)
+
+      val coordsNum = IntMatrix.matVecMul (J, #nums wt)
+      val coordsDen = #den wt * d
+
+      fun keepIndex j = List.exists (fn k => k = j) comp
+      fun prune (j, x) = if j < ssr andalso keepIndex j then x else 0
+      val coordsNum' = mapi prune coordsNum
+
+      val projNum = IntMatrix.matVecMul (M, coordsNum')
+    in
+      ratvecNormalize {den = coordsDen, nums = projNum}
+    end
+
+  (* Dual approach: project a coweight in rd by projecting the same coordinate vector
+     as a weight in the dual root datum. *)
+  fun project_on_simple_factor_coweight (rd: rootdatum, i: int, cwt: ratvec) : ratvec =
+    let
+      val rdDual = RootDatum.dual rd
+      val proj = project_on_simple_factor_weight (rdDual, i, cwt)
+      val () = RootDatum.free rdDual
+    in
+      proj
+    end
 end

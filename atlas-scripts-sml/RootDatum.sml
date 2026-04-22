@@ -117,6 +117,26 @@ structure RootDatum = struct
   fun simpleCorootsMat (h: t) : IntMatrix.mat =
     matFromColumns (simpleCorootsCols h)
 
+  fun rootCoradicalMat (h: t) : IntMatrix.mat =
+    let
+      val s = AtlasFFI.atlas_rootdatum_root_coradical_text h
+    in
+      if s = "-1" then
+        raise Fail ("RootDatum.rootCoradicalMat: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        IntMatrix.parseMatText s
+    end
+
+  fun corootRadicalMat (h: t) : IntMatrix.mat =
+    let
+      val s = AtlasFFI.atlas_rootdatum_coroot_radical_text h
+    in
+      if s = "-1" then
+        raise Fail ("RootDatum.corootRadicalMat: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        IntMatrix.parseMatText s
+    end
+
   fun posRootsCols (h: t) : int list list =
     parseColumnVectorsText (AtlasFFI.atlas_rootdatum_posroots_text h)
 
