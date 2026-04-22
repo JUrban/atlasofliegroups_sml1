@@ -3,6 +3,7 @@ use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/basic.sml";
@@ -349,4 +350,60 @@ structure FPP_localDirac = struct
     in
       List.mapPartial one (gammas_for_x_lambda (g, x, lambda))
     end
+
+  (*
+    Enumerate final parameters associated to the barycenters of *local* faces.
+
+    Atlas `.at` correspondence
+    - In `FPP_localDirac.at`, after computing local faces (as vertex-index lists
+      in `Lvd`), the scripts form
+        `p = parameter(x,lambda, face_bary(Lvd, faceVerts))`
+      and then finalize and add all final terms to a unitary hash.
+
+    This is a baseline SML analogue: it performs the parameter construction and
+    calls `ParamFinals.finals` to obtain final parameters.
+
+    Notes
+    - This does not (yet) implement any of the unitarity pruning logic; it only
+      enumerates the candidates.
+    - For testing/performance, `*_limit` variants allow restricting the number
+      of faces processed.
+  *)
+
+  fun params_for_local_faces_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
+    let
+      val faceCtx = FPPFaceKey.create g
+      val vd = #vd faceCtx
+      val fd = localFD_Lvd_simple (g, x, lambda, vd)
+      val facesAll = local_faces_for_x_lambda (g, x, lambda)
+      val faces = if maxFaces < 0 then facesAll else List.take (facesAll, Int.min (maxFaces, length facesAll))
+
+      fun addFinal ((q, mult), acc) =
+        if mult = 0 then
+          (AtlasFFI.atlas_param_free q; acc)
+        else
+          AllParameters.addUniqueByEquivalent (q, acc)
+
+      fun addFromFace ({local_face, ...}: local_face, acc: param list) : param list =
+        let
+          val gammaLocal = VertexData.face_bary (#Lvd fd, local_face)
+          val p0 = parameter_x_lambda_gamma (g, x, lambda, gammaLocal)
+          val p1 = AtlasFFI.atlas_param_normalise p0
+          val () = AtlasFFI.atlas_param_free p0
+          val () =
+            if p1 = Foreign.Memory.null then
+              raise Fail ("params_for_local_faces_limit: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+          val finals = ParamFinals.finals p1
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          List.foldl addFinal acc finals
+        end
+    in
+      List.foldl addFromFace [] faces
+    end
+
+  fun params_for_local_faces (g: group, x: int, lambda: ratvec) : param list =
+    params_for_local_faces_limit (g, x, lambda, ~1)
 end
