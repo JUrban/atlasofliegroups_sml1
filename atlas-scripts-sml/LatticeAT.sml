@@ -191,4 +191,53 @@ structure LatticeAT = struct
     in
       m
     end
+
+  fun inv_fact (a: mat) : int list =
+    let
+      val (_, ds) = IntMatrix.smithBasis a
+    in
+      ds
+    end
+
+  fun is_sublattice (l: mat, m: mat) : bool =
+    let
+      val (nrL, _) = IntMatrix.matShape l
+      val (nrM, _) = IntMatrix.matShape m
+      val () = if nrL = nrM then () else raise Fail "LatticeAT.is_sublattice: row mismatch"
+      val colsL = matColumns l
+      fun ok v =
+        (case Lattice.solve (m, v) of
+           NONE => false
+         | SOME _ => true)
+    in
+      List.all ok colsL
+    end
+
+  fun is_lattice_equal (l: mat, m: mat) : bool =
+    is_sublattice (l, m) andalso is_sublattice (m, l)
+
+  fun is_saturated (a: mat, b: mat) : bool =
+    let
+      val () = if is_sublattice (b, a) then () else raise Fail "LatticeAT.is_saturated: not a sublattice"
+      val a1 = image_lattice a
+      val b1 = image_lattice b
+      val (_, ca) = IntMatrix.matShape a1
+      val n = IntMatrix.kernel (IntMatrix.hcat (a1, b1))
+      val m = IntMatrix.firstRows (ca, n)
+      val w = inv_fact m
+    in
+      List.all (fn d => d = 1) w
+    end
+
+  fun quotient (a: mat, b: mat) : int list =
+    let
+      val () = if is_sublattice (a, b) then () else raise Fail "LatticeAT.quotient: not a sublattice"
+      val a1 = image_lattice a
+      val b1 = image_lattice b
+      val (_, ca) = IntMatrix.matShape a1
+      val n = IntMatrix.kernel (IntMatrix.hcat (b1, a1))
+      val m = IntMatrix.firstRows (ca, n)
+    in
+      inv_fact m
+    end
 end

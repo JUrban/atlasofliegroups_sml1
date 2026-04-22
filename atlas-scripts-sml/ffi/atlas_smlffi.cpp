@@ -459,6 +459,56 @@ extern "C" const char* atlas_intmat_eigen_lattice_text(const char* mat_text, int
   }
 }
 
+extern "C" const char* atlas_intmat_smith_basis_text(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return store_result("-1");
+    std::vector<int> diag;
+    atlas::int_Matrix basis = atlas::matreduc::Smith_basis(m, diag);
+    return store_result(int_matrix_to_text(basis));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_intmat_smith_diag_text(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return store_result("-1");
+    std::vector<int> diag;
+    (void)atlas::matreduc::Smith_basis(m, diag);
+    std::ostringstream out;
+    out << diag.size();
+    for (int d : diag)
+      out << ' ' << d;
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
 extern "C" void* atlas_intmat_adapted_basis(const char* mat_text)
 {
   try

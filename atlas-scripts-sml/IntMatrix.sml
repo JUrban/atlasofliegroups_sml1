@@ -141,6 +141,27 @@ structure IntMatrix = struct
       | _ => parseMatText out
     end
 
+  fun smithBasis (a: mat) : mat * int list =
+    let
+      val basisText = AtlasFFI.atlas_intmat_smith_basis_text (matToText a)
+      val diagText = AtlasFFI.atlas_intmat_smith_diag_text (matToText a)
+      val () =
+        if basisText = "-1" orelse diagText = "-1" then
+          raise Fail ("IntMatrix.smithBasis: C++ error: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val basis = parseMatText basisText
+      val ds = parseInts diagText
+    in
+      case ds of
+        k :: rest =>
+          if k < 0 orelse length rest <> k then
+            raise Fail "IntMatrix.smithBasis: bad diag length"
+          else
+            (basis, rest)
+      | _ => raise Fail "IntMatrix.smithBasis: bad diag header"
+    end
+
   type echelon = AtlasFFI.echelon
 
   fun echelon (a: mat) : mat * mat * int list * int =
