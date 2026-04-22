@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/MatReduc.sml";
 use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/MatrixAT.sml";
 
 (* Small compatibility layer for translating `.at` scripts that depend on
    `lattice.at` names into SML. *)
@@ -317,6 +318,27 @@ structure LatticeAT = struct
     in
       if is_saturated_image e then image_complement_basis e
       else raise Fail "LatticeAT.free_quotient_lattice_basis: sublattice is not a direct factor"
+    end
+
+  (* Port of `free_quotient_lattice_basis(L,M)` from `atlas-scripts/lattice_aux.at`. *)
+  fun free_quotient_lattice_basis_LM (l: mat, m: mat) : mat =
+    let
+      val l1 = image_lattice l
+      val (j, _) = MatrixAT.weak_left_inverse l1
+      val jm = IntMatrix.matMul (j, m)
+      val q = free_quotient_lattice_basis jm
+    in
+      IntMatrix.matMul (l1, q)
+    end
+
+  (* Port of `saturation_quotient_basis(M,L)` from `atlas-scripts/lattice_aux.at`. *)
+  fun saturation_quotient_basis_ML (m: mat, l: mat) : mat =
+    let
+      val q = saturation_quotient_basis l
+      val p = IntMatrix.matMul (q, IntMatrix.transpose q)
+      val m1 = image_lattice m
+    in
+      image_lattice (IntMatrix.matMul (p, m1))
     end
 
   fun inv_fact (a: mat) : int list =
