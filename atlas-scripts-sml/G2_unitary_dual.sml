@@ -4,6 +4,7 @@ use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/LambdaDifferential0.sml";
 use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/Coordinates.sml";
+use "atlas-scripts-sml/induction.sml";
 
 structure G2_unitary_dual = struct
   type rat = {num: int, den: int}
@@ -276,9 +277,9 @@ structure G2_unitary_dual = struct
       List.app (fn r => TextIO.print (joinRow r)) rows
     end
 
-  fun induced_conj_info (p: AtlasFFI.param) : (string * string) =
+  fun induced_conj_info (g: AtlasFFI.group) (p: AtlasFFI.param) : (string * string) =
     let
-      val txt = AtlasFFI.atlas_param_good_range_induced_from_first_text p
+      val txt = Induction.good_range_induced_from_first_text (p, g)
       val parts = String.fields (fn c => c = #"|") txt
     in
       case parts of
@@ -306,7 +307,7 @@ structure G2_unitary_dual = struct
                    val coords = coords_infchar g p
                    val inFPP = in_fpp_rat coords
                    val (check, L) =
-                     if inFPP orelse not unitary then ("", "") else induced_conj_info p
+                     if inFPP orelse not unitary then ("", "") else induced_conj_info g p
                    val out =
                      [ ratToString v
                      , ratListToString coords
@@ -349,7 +350,7 @@ structure G2_unitary_dual = struct
                    val coords = coords_infchar g p
                    val inFPP = in_fpp_rat coords
                    val (check, L) =
-                     if inFPP orelse not unitary then ("", "") else induced_conj_info p
+                     if inFPP orelse not unitary then ("", "") else induced_conj_info g p
                    val out =
                      [ ratToString v
                      , ratListToString coords

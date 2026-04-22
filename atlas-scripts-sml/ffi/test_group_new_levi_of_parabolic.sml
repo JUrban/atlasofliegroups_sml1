@@ -14,8 +14,9 @@ val () = assertTrue "expected Levi ambient rank matches G" (rL = rG);
 val () = assertTrue "expected Levi semisimple rank=1 for S=[0]" (ssL = 1);
 
 val () = assertTrue "expected Levi has nonempty KGB" (AtlasFFI.atlas_group_kgb_size L > 0);
+val rfL = AtlasFFI.atlas_group_real_form_number L;
+val () = assertTrue "expected non-negative real form number" (rfL >= 0);
 
 val () = AtlasFFI.atlas_group_free L;
 val () = AtlasFFI.atlas_group_free g;
 val () = print "OK\n";
-

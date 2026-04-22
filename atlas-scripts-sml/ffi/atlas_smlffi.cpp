@@ -1213,6 +1213,30 @@ extern "C" int atlas_group_semisimple_rank(void* handle)
   }
 }
 
+extern "C" int atlas_group_real_form_number(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_real_form_number: null handle";
+      return -1;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    return static_cast<int>(h->G.realForm());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 static const char* ratvec_to_text(const atlas::RatWeight& v)
 {
   std::ostringstream out;
@@ -4372,11 +4396,6 @@ extern "C" void* atlas_group_new_levi_of_parabolic(void* group_handle,
     std::vector<int> S_int;
     if (!parse_int_list(S_text, S_int))
       return nullptr;
-    if (S_int.empty())
-    {
-      g_last_error = "atlas_group_new_levi_of_parabolic: empty S";
-      return nullptr;
-    }
 
     const auto ss_rank = static_cast<unsigned int>(rdG.semisimple_rank());
     std::vector<uint8_t> seen(ss_rank, 0);

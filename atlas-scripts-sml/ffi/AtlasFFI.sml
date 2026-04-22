@@ -47,6 +47,7 @@ structure AtlasFFI = struct
   val atlas_group_kgb_size_sym = Foreign.getSymbol lib "atlas_group_kgb_size"
   val atlas_group_rank_sym = Foreign.getSymbol lib "atlas_group_rank"
   val atlas_group_semisimple_rank_sym = Foreign.getSymbol lib "atlas_group_semisimple_rank"
+  val atlas_group_real_form_number_sym = Foreign.getSymbol lib "atlas_group_real_form_number"
   val atlas_group_is_split_sym = Foreign.getSymbol lib "atlas_group_is_split"
   val atlas_group_is_compact_sym = Foreign.getSymbol lib "atlas_group_is_compact"
   val atlas_group_component_rank_sym = Foreign.getSymbol lib "atlas_group_component_rank"
@@ -272,6 +273,9 @@ structure AtlasFFI = struct
 
   val atlas_group_semisimple_rank =
     Foreign.buildCall1 (atlas_group_semisimple_rank_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_group_real_form_number =
+    Foreign.buildCall1 (atlas_group_real_form_number_sym, Foreign.cPointer, Foreign.cInt)
 
   val atlas_group_is_split =
     Foreign.buildCall1 (atlas_group_is_split_sym, Foreign.cPointer, Foreign.cInt)
