@@ -9,6 +9,15 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
   Ownership
   - `type ktypepol = AtlasFFI.ktypepol` is an opaque handle; free with `free`.
+
+  Atlas correspondence
+  - The `.at` language represents coefficients as “split integers” `a + s*b`.
+    In the FFI term text, we expose these components as `e` and `s`:
+      - `e`: the integer part `a`
+      - `s`: the `s`-part coefficient `b`
+  - The helper `purityCounts` mirrors `purity(KTypePol)` from `atlas-scripts/basic.at`:
+      returns a triple `(num_int,num_s,num_mixed)` counting coefficients of the
+      three forms `a`, `s*b`, and `a+s*b` with `a,b != 0`.
 *)
 structure KTypePol = struct
   type ktypepol = AtlasFFI.ktypepol
@@ -53,4 +62,45 @@ structure KTypePol = struct
 
   (* Free a KTypePol handle. *)
   fun free (pol: ktypepol) : unit = AtlasFFI.atlas_ktypepol_free pol
+
+  (* Test purity of a single split coefficient `(e,s)` as in `basic.at`:
+     “pure” means `e=0` or `s=0`. *)
+  fun coefIsPure (t: term) : bool = #e t = 0 orelse #s t = 0
+
+  (* Count coefficient purity classes, mirroring `purity(KTypePol)` in `basic.at`.
+     Returns `(num_int,num_s,num_mixed)` where:
+       - int: `s=0`
+       - s:   `e=0`
+       - mixed: otherwise *)
+  fun purityCounts (pol: ktypepol, rank: int) : int * int * int =
+    let
+      fun step (t: term, (nInt, nS, nMix)) =
+        if #s t = 0 then (nInt + 1, nS, nMix)
+        else if #e t = 0 then (nInt, nS + 1, nMix)
+        else (nInt, nS, nMix + 1)
+    in
+      List.foldl step (0, 0, 0) (terms (pol, rank))
+    end
+
+  (* Coefficient-wise purity test `is_pure(KTypePol)` from `basic.at`. *)
+  fun isPure (pol: ktypepol, rank: int) : bool =
+    List.all coefIsPure (terms (pol, rank))
+
+  (* Stronger “module purity” test from `basic.at`: pure if all coefficients
+     are integers (`s=0` for all terms) OR all are `s`-multiples (`e=0` for all). *)
+  fun isPureModule (pol: ktypepol, rank: int) : bool =
+    let
+      val ts = terms (pol, rank)
+      val allInt = List.all (fn t => #s t = 0) ts
+      val allS = List.all (fn t => #e t = 0) ts
+    in
+      allInt orelse allS
+    end
+
+  fun purityString (pol: ktypepol, rank: int) : string =
+    let
+      val (a, b, c) = purityCounts (pol, rank)
+    in
+      "(" ^ Int.toString a ^ "," ^ Int.toString b ^ "," ^ Int.toString c ^ ")"
+    end
 end
