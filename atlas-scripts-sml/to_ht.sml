@@ -22,6 +22,7 @@ use "atlas-scripts-sml/KTypePol.sml";
 
 structure ToHT = struct
   type ktypepol = AtlasFFI.ktypepol
+  type param = AtlasFFI.param
 
   (* `Foreign.cInt` marshaling requires the argument fit in a C `int`, so we
      use an explicit large cutoff rather than `Int.maxInt` (which can be 63-bit
@@ -33,4 +34,31 @@ structure ToHT = struct
       KTypePol.toHT (pol, hugeCutoff)
     else
       KTypePol.toHT (pol, ht)
+
+  (*
+    Unitarity “to height” predicates
+
+    The original `.at` code uses truncated hermitian/c-forms (and related
+    heuristics) to quickly DISPROVE unitarity at low height bounds.
+
+    In the SML port we currently expose these predicates as exact checks via
+    `AtlasFFI.atlas_param_is_unitary`, ignoring the height bounds. This is:
+    - sound: never discards a truly unitary parameter
+    - complete: returns the true Atlas unitarity answer
+    - potentially slower than the `.at`-side optimized truncation heuristics
+  *)
+
+  fun is_unitary_to_ht (p: param, ht: int) : bool =
+    let
+      val _ = ht
+    in
+      AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1
+    end
+
+  fun is_unitary_to_hts (p: param, hts: int list) : bool =
+    let
+      val _ = hts
+    in
+      AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1
+    end
 end
