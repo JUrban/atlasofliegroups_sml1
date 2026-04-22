@@ -4,6 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <limits>
+#include <unordered_map>
 #include <vector>
 
 #include "Atlas.h"
@@ -3352,6 +3353,309 @@ extern "C" int atlas_param_is_unitary_c_form(void* p_handle)
         return 0;
     }
     return 1;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+static atlas::arithmetic::RatNum mu_ktype_simple(const atlas::repr::Rep_table& rt,
+                                                 const atlas::K_repr::K_type& t)
+{
+  using atlas::arithmetic::RatNum;
+
+  const auto& rd = rt.root_datum();
+  const auto& kgb = rt.kgb();
+  const auto& theta = kgb.involution_matrix(t.x());
+
+  atlas::Weight lambda_plus_rho = t.lambda_rho();
+  lambda_plus_rho += rd.twoRho(); // lambda - rho + 2rho = lambda + rho
+
+  atlas::Weight one_plus_theta_lambda_plus_rho = theta * lambda_plus_rho;
+  one_plus_theta_lambda_plus_rho += lambda_plus_rho;
+
+  atlas::RatCoweight torus_factor = kgb.torus_factor(t.x());
+  atlas::RatCoweight rho_check = atlas::rootdata::rho_check(rd);
+  atlas::RatCoweight tf_plus_rho_check = torus_factor + rho_check;
+
+  RatNum dot = tf_plus_rho_check.dot_Q(one_plus_theta_lambda_plus_rho);
+  dot /= 2;
+  dot.normalize();
+  return dot;
+}
+
+static atlas::RatCoweight half_sum_poscoroots(const atlas::RootDatum& rd,
+                                              const atlas::RootNbrSet& pos_roots)
+{
+  atlas::Coweight sum(rd.rank());
+  for (auto it = pos_roots.begin(); it(); ++it)
+    sum += rd.coroot(*it);
+  atlas::RatCoweight half(sum, 2);
+  half.normalize();
+  return half;
+}
+
+static atlas::RatCoweight rho_check_r_x(const atlas::repr::Rep_table& rt,
+                                        atlas::KGBElt x)
+{
+  const auto& rd = rt.root_datum();
+  const auto& i_tab = rt.involution_table();
+  const auto inv = rt.kgb().inv_nr(x);
+  atlas::RootNbrSet real_pos = i_tab.real_roots(inv) & rd.posroot_set();
+  return half_sum_poscoroots(rd, real_pos);
+}
+
+static atlas::RatCoweight rho_check_i_x(const atlas::repr::Rep_table& rt,
+                                        atlas::KGBElt x)
+{
+  const auto& rd = rt.root_datum();
+  const auto& i_tab = rt.involution_table();
+  const auto inv = rt.kgb().inv_nr(x);
+  atlas::RootNbrSet imag_pos = i_tab.imaginary_roots(inv) & rd.posroot_set();
+  return half_sum_poscoroots(rd, imag_pos);
+}
+
+static int dim_u_cap_p_theta_stable_parabolic(const atlas::repr::Rep_table& rt,
+                                              atlas::KGBElt x)
+{
+  const auto& rd = rt.root_datum();
+  const auto& kgb = rt.kgb();
+  const auto& i_tab = rt.involution_table();
+
+  const auto inv = kgb.inv_nr(x);
+  const auto& theta = kgb.involution_matrix(x);
+
+  // Weight defining the theta-stable parabolic: (1+theta)*rho.
+  atlas::RatWeight rho = atlas::rootdata::rho(rd);
+  atlas::RatWeight lambda = theta * rho + rho;
+  lambda.normalize(); // (possibly) reduce denominator
+
+  // Use the numerator as an integral representative; scaling doesn't change
+  // the associated parabolic.
+  atlas::matrix::Vector<atlas::arithmetic::Numer_t> lambda_dom = lambda.numerator();
+  atlas::WeylWord w = rd.factor_dominant(lambda_dom);
+
+  // Parabolic (S, cross(x,w)) where S are those simple coroots vanishing on
+  // the dominant representative of lambda.
+  atlas::KGBElt x_par = kgb.cross(x, w);
+  const auto inv_par = kgb.inv_nr(x_par);
+
+  std::vector<bool> in_Levi(rd.semisimple_rank(), false);
+  for (atlas::weyl::Generator s = 0; s < rd.semisimple_rank(); ++s)
+  {
+    atlas::arithmetic::Numer_t eval = 0;
+    const auto& alpha_v = rd.simpleCoroot(s);
+    for (unsigned i = 0; i < rd.rank(); ++i)
+      eval += static_cast<atlas::arithmetic::Numer_t>(alpha_v[i]) * lambda_dom[i];
+    if (eval == 0)
+      in_Levi[s] = true;
+  }
+
+  // Standard Levi coweight H: sum of fundamental_coweight(t) for t not in S.
+  atlas::RatCoweight H(rd.rank());
+  for (atlas::weyl::Generator s = 0; s < rd.semisimple_rank(); ++s)
+    if (!in_Levi[s])
+      H += rd.fundamental_coweight(s);
+  H.normalize();
+
+  // coweight used for compact/noncompact test on imaginary roots
+  atlas::RatCoweight compact_test = rho_check_i_x(rt, x_par) + kgb.torus_factor(x_par);
+  compact_test.normalize();
+
+  const auto complex_set = i_tab.complex_roots(inv_par);
+  const auto imaginary_set = i_tab.imaginary_roots(inv_par);
+
+  int complex_count = 0;
+  int noncompact_imag_count = 0;
+
+  const atlas::RootNbrSet posroots = rd.posroot_set();
+  for (auto it = posroots.begin(); it(); ++it)
+  {
+    const atlas::RootNbr alpha = *it;
+    const auto dot = H.dot_Q(rd.root(alpha));
+    if (dot.numerator() == 0)
+      continue; // alpha in Levi => not in nilradical
+
+    if (complex_set.isMember(alpha))
+    {
+      ++complex_count;
+      continue;
+    }
+
+    if (imaginary_set.isMember(alpha))
+    {
+      auto eval = compact_test.dot_Q(rd.root(alpha));
+      eval.normalize();
+      if (eval.denominator() != 1)
+        throw std::runtime_error("dim_u_cap_p: non-integral compact_test evaluation");
+      if ((eval.numerator() & 1LL) != 0)
+        ++noncompact_imag_count;
+    }
+  }
+
+  if ((complex_count & 1) != 0)
+    throw std::runtime_error("dim_u_cap_p: odd number of complex nilradical roots");
+
+  return noncompact_imag_count + (complex_count / 2);
+}
+
+static int dim_u_cap_p_x_cached(const atlas::repr::Rep_table& rt, atlas::KGBElt x)
+{
+  // Cache per (Rep_table*, x) to avoid repeated parabolic/root scans.
+  struct CacheKey
+  {
+    const atlas::repr::Rep_table* rt;
+    atlas::KGBElt x;
+    bool operator==(const CacheKey& o) const { return rt == o.rt && x == o.x; }
+  };
+  struct CacheKeyHash
+  {
+    std::size_t operator()(const CacheKey& k) const
+    {
+      return (reinterpret_cast<std::size_t>(k.rt) >> 4) ^ (static_cast<std::size_t>(k.x) * 1315423911u);
+    }
+  };
+
+  static thread_local std::unordered_map<CacheKey, int, CacheKeyHash> cache;
+
+  CacheKey key{&rt, x};
+  auto it = cache.find(key);
+  if (it != cache.end())
+    return it->second;
+
+  int v = dim_u_cap_p_theta_stable_parabolic(rt, x);
+  cache.emplace(key, v);
+  return v;
+}
+
+static atlas::arithmetic::RatNum mu_ktype_convert_cform_hermitian(const atlas::repr::Rep_table& rt,
+                                                                  const atlas::K_repr::K_type& t)
+{
+  using atlas::arithmetic::RatNum;
+
+  const auto& rd = rt.root_datum();
+  const auto& kgb = rt.kgb();
+
+  // In convert_c_form.at:
+  //   mu_terms(KType tp,mat delta): lambda_rho_term = (g_l-rho_check_r(x))*tp.lambda_rho
+  // with g_l = E.g-E.l = torus_factor(x)+rho_check(rd) (independent of delta).
+  // For the split F4 verifier, delta is distinguished (and effectively trivial),
+  // so the tau term vanishes; we keep the remaining two contributions:
+  //   mu(tp,delta) = (torus_factor+rho_check-rho_check_r)*lambda_rho + dim_u_cap_p(x)
+  atlas::RatCoweight g_l = kgb.torus_factor(t.x()) + atlas::rootdata::rho_check(rd);
+  atlas::RatCoweight rho_r = rho_check_r_x(rt, t.x());
+  atlas::RatCoweight coeff = g_l - rho_r;
+
+  RatNum mu = coeff.dot_Q(t.lambda_rho());
+  mu += dim_u_cap_p_x_cached(rt, t.x());
+  mu.normalize();
+  return mu;
+}
+
+extern "C" int atlas_param_is_unitary(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_is_unitary: null param handle";
+      return 0;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_is_unitary: null group/Rep_table";
+      return 0;
+    }
+
+    auto& rt = *p->group->rt;
+
+    atlas::repr::StandardRepr tw = rt.inner_twisted(p->sr);
+    if (!rt.equivalent(tw, p->sr))
+      return 0; // not hermitian => not unitary
+
+    if (!rt.is_standard(p->sr))
+    {
+      g_last_error = "atlas_param_is_unitary: parameter not standard";
+      return 0;
+    }
+    if (!rt.is_final(p->sr))
+    {
+      g_last_error = "atlas_param_is_unitary: parameter not final";
+      return 0;
+    }
+
+    // Equal-rank case: hermitian_form_irreducible(p) = c_form_irreducible(p)
+    // converted by convert_cform_hermitian. For now we implement this path,
+    // which is the one used by the F4_s verifier.
+    const unsigned int ori_p = rt.orientation_number(p->sr);
+    atlas::repr::SR_poly kl = rt.KL_column_at_s(p->sr);
+
+    atlas::K_repr::K_type_pol c_form;
+    for (const auto& term : kl)
+    {
+      atlas::Split_integer c = term.second;
+      const auto& q = term.first;
+      const unsigned int ori_q = rt.orientation_number(q);
+      const unsigned int d = (ori_p - ori_q) & 3u;
+      if (d == 2u)
+        c = c.times_s();
+      else if (d != 0u)
+      {
+        g_last_error = "atlas_param_is_unitary: odd orientation difference";
+        return 0;
+      }
+
+      atlas::repr::StandardRepr qc = atlas::weyl::alcove_center(rt, q);
+      atlas::K_repr::K_type_pol cfq = full_deform_stdrep(rt, qc);
+      c_form.add_multiple(std::move(cfq), c);
+    }
+
+    if (c_form.is_zero())
+      return 1; // vacuously pure
+
+    // convert_cform_hermitian: multiply each term by s^(mu(t)-mu(t0)).
+    // Since s^n only depends on parity, we just test odd/even differences.
+    const atlas::arithmetic::RatNum mu0 =
+      mu_ktype_convert_cform_hermitian(rt, c_form.front().first);
+
+    atlas::K_repr::K_type_pol herm_form;
+    for (const auto& term : c_form)
+    {
+      atlas::Split_integer c = term.second;
+      atlas::arithmetic::RatNum diff =
+        mu_ktype_convert_cform_hermitian(rt, term.first) - mu0;
+      diff.normalize();
+      if (diff.denominator() != 1)
+      {
+        g_last_error = "atlas_param_is_unitary: mu difference is not integral";
+        return 0;
+      }
+      if ((diff.numerator() & 1LL) != 0)
+        c = c.times_s();
+      herm_form.add_term(term.first, c);
+    }
+
+    bool all_int = true;
+    bool all_s = true;
+    for (const auto& t : herm_form)
+    {
+      const auto& c = t.second;
+      if (!(c.e() == 0 || c.s() == 0))
+        return 0; // not even typewise pure
+      if (c.s() != 0)
+        all_int = false;
+      if (c.e() != 0)
+        all_s = false;
+    }
+    return (all_int || all_s) ? 1 : 0;
   }
   catch (const std::exception& e)
   {

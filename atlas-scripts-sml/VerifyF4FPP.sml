@@ -1,6 +1,5 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/ParamHash.sml";
-use "atlas-scripts-sml/F4_FPP_points.sml";
 use "atlas-scripts-sml/F4_FPP_points_compute.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/FPP_globalDirac.sml";
@@ -10,10 +9,6 @@ structure VerifyF4FPP = struct
     let
       val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0)
       val uhash = ParamHash.create 4096
-
-      val () = F4_FPP_points.loadIntoParamHash (g, uhash)
-
-      val () = TextIO.print (Bool.toString (ParamHash.size uhash = 1864) ^ "\n")
 
       val () = FPPFlags.test_bl_flag := false
       val () = FPPFlags.revert_flag := false
@@ -28,6 +23,10 @@ structure VerifyF4FPP = struct
       val () = FPPFlags.fund_face_verbose := true
       val () = FPPFlags.one_level_revert_flag := true
       val () = FPPFlags.final_verbose := true
+
+      val () = F4_FPP_points_compute.computeAllIntoParamHash (g, uhash)
+
+      val () = TextIO.print (Bool.toString (ParamHash.size uhash = 1864) ^ "\n")
 
       val () = FPP_globalDirac.FPP_unitary_hash_bottom_layer_param_hash (g, uhash)
 

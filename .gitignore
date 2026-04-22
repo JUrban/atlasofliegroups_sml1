@@ -12,3 +12,6 @@ atlas-scripts-out/
 atlas-scripts-bad/
 verify_f4_fpp
 00allat*
+
+# Downloaded external documentation (local reference only)
+doc/atlasofliegroups-docs/
