@@ -72,6 +72,18 @@ structure IntMatrix = struct
       if ar = 0 then [] else List.map rowMul a
     end
 
+  fun identity (n: int) : mat =
+    List.tabulate (n, fn i => List.tabulate (n, fn j => if i = j then 1 else 0))
+
+  fun matVecMul (a: mat, x: int list) : int list =
+    let
+      val (_, m) = matShape a
+      val () = if length x = m then () else raise Fail "IntMatrix.matVecMul: dim mismatch"
+      fun dot (xs, ys) = List.foldl (op +) 0 (ListPair.mapEq (op *) (xs, ys))
+    in
+      List.map (fn row => dot (row, x)) a
+    end
+
   fun firstRows (k: int, a: mat) : mat =
     let
       val (n, _) = matShape a

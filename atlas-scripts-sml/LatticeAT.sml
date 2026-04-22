@@ -61,6 +61,36 @@ structure LatticeAT = struct
       matFromColumnsN (n, picked)
     end
 
+  fun select_rows (rows: int list, m: mat) : mat =
+    IntMatrix.transpose (select_columns (rows, IntMatrix.transpose m))
+
+  fun solve_mat (a: mat, b: mat) : mat option =
+    let
+      val (na, _) = IntMatrix.matShape a
+      val (nb, mb) = IntMatrix.matShape b
+      val () = if na = nb then () else raise Fail "LatticeAT.solve_mat: row mismatch"
+      val (_, ma) = IntMatrix.matShape a
+      val bcols = matColumns b
+      fun loop ([], acc) = SOME (matFromColumns (List.rev acc))
+        | loop (v :: vs, acc) =
+            (case Lattice.solve (a, v) of
+               NONE => NONE
+             | SOME x => loop (vs, x :: acc))
+    in
+      if mb = 0 then SOME (List.tabulate (ma, fn _ => [])) else loop (bcols, [])
+    end
+
+  fun matInverseUnimodular (a: mat) : mat =
+    let
+      val (n, m) = IntMatrix.matShape a
+      val () = if n = m then () else raise Fail "LatticeAT.matInverseUnimodular: non-square"
+      val id = IntMatrix.identity n
+    in
+      case solve_mat (a, id) of
+        NONE => raise Fail "LatticeAT.matInverseUnimodular: not invertible over Z"
+      | SOME inv => inv
+    end
+
   fun adapted_direct_sum (m: mat) : int * mat =
     let
       val (r, diag) = MatReduc.adaptedBasis m
@@ -86,20 +116,66 @@ structure LatticeAT = struct
   val saturation = image_subspace
   val saturation_quotient_basis = image_complement_basis
 
-  fun solve_mat (a: mat, b: mat) : mat option =
+  fun projector_to_image (m: mat) : mat =
     let
-      val (na, _) = IntMatrix.matShape a
-      val (nb, mb) = IntMatrix.matShape b
-      val () = if na = nb then () else raise Fail "LatticeAT.solve_mat: row mismatch"
-      val (_, ma) = IntMatrix.matShape a
-      val bcols = matColumns b
-      fun loop ([], acc) = SOME (matFromColumns (List.rev acc))
-        | loop (v :: vs, acc) =
-            (case Lattice.solve (a, v) of
-               NONE => NONE
-             | SOME x => loop (vs, x :: acc))
+      val (c, r) = adapted_direct_sum m
+      val (n, _) = IntMatrix.matShape r
+      val invR = matInverseUnimodular r
+      val cols = select_columns (List.tabulate (c, fn i => i), r) (* n x c *)
+      val rows = select_rows (List.tabulate (c, fn i => i), invR) (* c x n *)
     in
-      if mb = 0 then SOME (List.tabulate (ma, fn _ => [])) else loop (bcols, [])
+      IntMatrix.matMul (cols, rows)
+    end
+
+  fun image_projector (m: mat) : mat =
+    let
+      val (c, r) = adapted_direct_sum m
+      val invR = matInverseUnimodular r
+    in
+      select_rows (List.tabulate (c, fn i => i), invR)
+    end
+
+  fun projector_mod_image (m: mat) : mat =
+    let
+      val (c, r) = adapted_direct_sum m
+      val (n, _) = IntMatrix.matShape r
+      val invR = matInverseUnimodular r
+      val cols = select_columns (List.tabulate (n - c, fn i => c + i), r) (* n x (n-c) *)
+      val rows = select_rows (List.tabulate (n - c, fn i => c + i), invR) (* (n-c) x n *)
+    in
+      IntMatrix.matMul (cols, rows)
+    end
+
+  fun mod_image_projector (m: mat) : mat =
+    let
+      val (c, r) = adapted_direct_sum m
+      val (n, _) = IntMatrix.matShape r
+      val invR = matInverseUnimodular r
+    in
+      select_rows (List.tabulate (n - c, fn i => c + i), invR)
+    end
+
+  fun decompose (m: mat, v: vec) : vec * vec =
+    let
+      val (c, r) = adapted_direct_sum m
+      val (n, _) = IntMatrix.matShape r
+      val () = if length v = n then () else raise Fail "LatticeAT.decompose: dim mismatch"
+      val invR = matInverseUnimodular r
+      val projIm = projector_to_image m
+      val projComp = projector_mod_image m
+    in
+      (IntMatrix.matVecMul (projIm, v), IntMatrix.matVecMul (projComp, v))
+    end
+
+  fun quotient_matrix (a: mat, m: mat) : mat =
+    let
+      val (c, r) = adapted_direct_sum m
+      val (n, _) = IntMatrix.matShape r
+      val invR = matInverseUnimodular r
+      val compCols = select_columns (List.tabulate (n - c, fn i => c + i), r) (* n x (n-c) *)
+      val compRows = select_rows (List.tabulate (n - c, fn i => c + i), invR) (* (n-c) x n *)
+    in
+      IntMatrix.matMul (compRows, IntMatrix.matMul (a, compCols))
     end
 
   (* Port of `restrict_action(A,M)` from `atlas-scripts/lattice.at`. *)
