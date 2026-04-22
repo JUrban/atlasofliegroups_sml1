@@ -47,6 +47,8 @@ static atlas::int_Matrix identity_matrix(unsigned int n)
   return m;
 }
 
+static atlas::RatWeight ratweight_from_int32(const int32_t* nums, std::size_t n, int denom);
+
 static bool parse_int_list(const char* text, std::vector<int>& out)
 {
   out.clear();
@@ -618,6 +620,75 @@ extern "C" long atlas_group_num_real_forms(void* handle)
   {
     g_last_error = "unknown C++ exception";
     return -1;
+  }
+}
+
+extern "C" const char* atlas_group_make_dominant_ratweight_text(void* group_handle, const char* ratweight_text)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_group_make_dominant_ratweight_text: null group handle";
+      return store_result("-1");
+    }
+    if (ratweight_text == nullptr)
+    {
+      g_last_error = "atlas_group_make_dominant_ratweight_text: null input";
+      return store_result("-1");
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+
+    std::vector<int> xs;
+    if (!parse_int_list(ratweight_text, xs))
+      return store_result("-1");
+    if (xs.size() != static_cast<std::size_t>(1 + rank))
+    {
+      g_last_error = "atlas_group_make_dominant_ratweight_text: wrong arity";
+      return store_result("-1");
+    }
+    const int denom = xs[0];
+    if (denom == 0)
+    {
+      g_last_error = "atlas_group_make_dominant_ratweight_text: zero denominator";
+      return store_result("-1");
+    }
+    std::vector<int32_t> nums;
+    nums.reserve(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const int v = xs[1 + i];
+      if (v < std::numeric_limits<int32_t>::min() || v > std::numeric_limits<int32_t>::max())
+      {
+        g_last_error = "atlas_group_make_dominant_ratweight_text: numerator out of int32 range";
+        return store_result("-1");
+      }
+      nums.push_back(static_cast<int32_t>(v));
+    }
+
+    atlas::RatWeight w = ratweight_from_int32(nums.data(), rank, denom);
+    rc.root_datum().make_dominant(w.numerator());
+    w.normalize();
+
+    std::ostringstream out;
+    out << w.denominator();
+    const auto& num = w.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
   }
 }
 
