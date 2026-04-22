@@ -677,6 +677,30 @@ extern "C" long atlas_group_rank(void* handle)
   }
 }
 
+extern "C" int atlas_group_is_split(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_is_split: null handle";
+      return 0;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    return h->G.isSplit() ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
 extern "C" const char* atlas_group_rho_text(void* handle)
 {
   try

@@ -40,6 +40,15 @@ structure K_highest_weights = struct
        den :: rest => {den = den, nums = rest}
      | _ => raise Fail ("K_highest_weights: bad ratweight text: " ^ s))
 
+  fun parseVecTextWithRankHeader s : int list =
+    (case parseInts s of
+       n :: rest =>
+         if length rest <> n then
+           raise Fail "K_highest_weights: parseVecTextWithRankHeader: bad length"
+         else
+           rest
+     | _ => raise Fail "K_highest_weights: parseVecTextWithRankHeader: empty")
+
   fun ratweightAddVec (w: ratweight, v: int list) : ratweight =
     let
       val den = #den w
@@ -68,6 +77,44 @@ structure K_highest_weights = struct
             List.tabulate (rank, row)
           end
       | _ => raise Fail "K_highest_weights: involutionMatrix: empty"
+    end
+
+  fun parseSimpleCorootsText s : int list list =
+    let
+      val ns = parseInts s
+    in
+      case ns of
+        ssRank :: rank :: rest =>
+          let
+            val need = ssRank * rank
+            val () =
+              if ssRank < 0 orelse rank < 0 orelse length rest <> need then
+                raise Fail "K_highest_weights: parseSimpleCorootsText: bad size"
+              else
+                ()
+            fun coroot i = List.take (List.drop (rest, i * rank), rank)
+          in
+            List.tabulate (ssRank, coroot)
+          end
+      | _ => raise Fail "K_highest_weights: parseSimpleCorootsText: truncated header"
+    end
+
+  fun dot (xs: int list, ys: int list) : int =
+    List.foldl (op +) 0 (ListPair.mapEq (op *) (xs, ys))
+
+  (* Port of `is_split_spherical` from `atlas-scripts/K_highest_weights.at`,
+     implemented for split real forms (uses `RealReductiveGroup::isSplit`). *)
+  fun is_split_spherical (g: AtlasFFI.group, t: KType.ktype) : bool =
+    let
+      val () = if KType.isFinal t then () else raise Fail "K_highest_weights.is_split_spherical: K-type not final"
+      val split = (AtlasFFI.atlas_group_is_split g = 1)
+      val xOpen = AtlasFFI.atlas_group_kgb_size g - 1
+      val xOk = (KType.x t = xOpen)
+      val coroots = parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
+      val lamRho = parseVecTextWithRankHeader (KType.lambdaRhoText t)
+      val parityOk = List.all (fn a => dot (a, lamRho) mod 2 = 0) coroots
+    in
+      split andalso xOk andalso parityOk
     end
 
   fun basis_lambda_differential_0_theta (theta: mat) : mat =
@@ -134,15 +181,6 @@ structure K_highest_weights = struct
      Returned params are freshly allocated and must be freed by caller. *)
   fun reduce_parameters (ps: AtlasFFI.param list) : AtlasFFI.param list =
     ParamReduce.reduce ps
-
-  fun parseVecTextWithRankHeader s : int list =
-    (case parseInts s of
-       n :: rest =>
-         if length rest <> n then
-           raise Fail "K_highest_weights: parseVecTextWithRankHeader: bad length"
-         else
-           rest
-     | _ => raise Fail "K_highest_weights: parseVecTextWithRankHeader: empty")
 
   (* Port of `all_equal_dlambda_K_parameters(t)` from `atlas-scripts/K_highest_weights.at`.
      Returned K_types are freshly allocated and must be freed by caller. *)
