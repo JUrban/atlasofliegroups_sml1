@@ -3,7 +3,17 @@ use "atlas-scripts-sml/KType.sml";
 use "atlas-scripts-sml/KTypePol.sml";
 
 structure LowestKTypes = struct
-  fun intsToText xs = String.concatWith " " (List.map Int.toString xs)
+  fun intToCText n =
+    let
+      val s = Int.toString n
+    in
+      if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+        "-" ^ String.extract (s, 1, NONE)
+      else
+        s
+    end
+
+  fun intsToCText xs = String.concatWith " " (List.map intToCText xs)
 
   fun LKTs_of_full_deform (g: AtlasFFI.group, pol: AtlasFFI.ktypepol) : KType.ktype list =
     let
@@ -18,7 +28,7 @@ structure LowestKTypes = struct
       val lows = List.filter (fn t => #height t = m) ts
 
       fun mk t =
-        KType.newFromXAndLambdaRhoText (g, #x t, intsToText (#lambdaRho t))
+        KType.newFromXAndLambdaRhoText (g, #x t, intsToCText (#lambdaRho t))
     in
       List.map mk lows
     end
@@ -62,4 +72,3 @@ structure LowestKTypes = struct
       low
     end
 end
-

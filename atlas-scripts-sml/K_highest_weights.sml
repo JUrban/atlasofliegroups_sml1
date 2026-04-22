@@ -11,6 +11,7 @@ structure K_highest_weights = struct
   type mat = IntMatrix.mat
   type ratweight = {den: int, nums: int list}
   type rat = Rat.rat
+  type param = AtlasFFI.param
 
   fun parseInts s =
     let
@@ -115,6 +116,21 @@ structure K_highest_weights = struct
       val parityOk = List.all (fn a => dot (a, lamRho) mod 2 = 0) coroots
     in
       split andalso xOk andalso parityOk
+    end
+
+  fun parameter (t: KType.ktype) : param =
+    KType.parameter t
+
+  fun infinitesimal_character (p: param) : ratweight =
+    parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
+
+  fun is_split_spherical_param (g: AtlasFFI.group, p: param) : bool =
+    let
+      val t = LowestKTypes.LKT_param (g, p)
+      val ok = is_split_spherical (g, t)
+      val () = KType.free t
+    in
+      ok
     end
 
   fun basis_lambda_differential_0_theta (theta: mat) : mat =
@@ -230,6 +246,32 @@ structure K_highest_weights = struct
 
   fun final (g: AtlasFFI.group, t: KType.ktype) : KType.ktype =
     LKT (g, t)
+
+  (* Port of `all_G_spherical_same_differential` from `atlas-scripts/K_highest_weights.at`. *)
+  fun all_G_spherical_same_differential (g: AtlasFFI.group, mu: KType.ktype) : KType.ktype list =
+    let
+      val p = parameter mu
+      val x = AtlasFFI.atlas_param_x p
+      val gamma = infinitesimal_character p
+      val () = AtlasFFI.atlas_param_free p
+
+      val qs = all_parameters_x_gamma (g, x, gamma)
+
+      fun one (q: param) =
+        if is_split_spherical_param (g, q) then
+          let
+            val t = LKT_param (g, q)
+            val () = AtlasFFI.atlas_param_free q
+          in
+            SOME t
+          end
+        else
+          (AtlasFFI.atlas_param_free q; NONE)
+
+      val ts = List.mapPartial one qs
+    in
+      reduce_K_parameters ts
+    end
 
   (* Port of `cone(limit,cs)` from `atlas-scripts/K_highest_weights.at`.
      Returns an `n x m` matrix (row-major) whose columns are the weight vectors. *)
