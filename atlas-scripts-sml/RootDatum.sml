@@ -362,4 +362,31 @@ structure RootDatum = struct
     in
       List.map (fn pi => MatrixAT.permutation_matrix pi) perms
     end
+
+  fun mul (a: t, b: t) : t =
+    let
+      val r = MatrixAT.block_matrix (simpleRootsMat a, simpleRootsMat b)
+      val cr = MatrixAT.block_matrix (simpleCorootsMat a, simpleCorootsMat b)
+    in
+      newFromSimpleMats (r, cr, false)
+    end
+
+  fun fromLieType (lt: LieType.t) : t =
+    let
+      fun fold ([], acc) = acc
+        | fold ((c, r) :: rest, NONE) = fold (rest, SOME (newSimple (c, r, false)))
+        | fold ((c, r) :: rest, SOME acc) =
+            let
+              val rd = newSimple (c, r, false)
+              val prod = mul (acc, rd)
+              val () = free acc
+              val () = free rd
+            in
+              fold (rest, SOME prod)
+            end
+    in
+      case fold (lt, NONE) of
+        NONE => raise Fail "RootDatum.fromLieType: empty"
+      | SOME rd => rd
+    end
 end
