@@ -105,33 +105,6 @@ structure Induction = struct
       loop 0
     end
 
-  fun powerSet (xs: int list) : int list list =
-    let
-      fun step (x, acc) = acc @ List.map (fn s => x :: s) acc
-    in
-      List.foldl step [[]] xs
-    end
-
-  fun theta_stable_parabolics_with (G: group) (x: int) : parabolic list =
-    let
-      val r = AtlasFFI.atlas_group_semisimple_rank G
-      val simples = List.tabulate (r, fn i => i)
-      fun keep S =
-        let
-          val y = Parabolics.maximal G (S, x)
-          val P = (S, y)
-        in
-          if Parabolics.is_closed G P then
-            (case tryLevi G P of
-               NONE => NONE
-             | SOME L => (AtlasFFI.atlas_group_free L; SOME P))
-          else
-            NONE
-        end
-    in
-      List.mapPartial keep (powerSet simples)
-    end
-
   fun induced_matches (p: param, G: group, xG: int) : bool =
     let
       val lambda = parseRatWeightText (AtlasFFI.atlas_param_lambda_text p)
@@ -239,7 +212,7 @@ structure Induction = struct
                    end)
         end
 
-      val tsp = theta_stable_parabolics_with G x
+      val tsp = Parabolics.theta_stable_parabolics_with G x
     in
       case List.mapPartial tryOne tsp of
         [] => "0|||"

@@ -1,4 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+use "atlas-scripts-sml/IntMatrix.sml";
+use "atlas-scripts-sml/RootDatum.sml";
+use "atlas-scripts-sml/sort.sml";
 
 (* Partial SML analogue of `atlas-scripts/parabolics.at`.
    This starts with the KGB-graph primitives needed for induction-related scripts. *)
@@ -6,6 +9,72 @@ structure Parabolics = struct
   type group = AtlasFFI.group
   type kgbelt = int
   type parabolic = int list * kgbelt (* (S, x) *)
+
+  fun distinguished_fiber (g: group) : kgbelt list =
+    let
+      val n = AtlasFFI.atlas_group_kgb_size g
+      fun loop (i, acc) =
+        if i >= n then
+          List.rev acc
+        else if AtlasFFI.atlas_kgb_length (g, i) = 0 then
+          loop (i + 1, i :: acc)
+        else
+          loop (i + 1, acc)
+    in
+      loop (0, [])
+    end
+
+  (* `twist(G)` from `basic.at`: diagram automorphism induced by the distinguished involution. *)
+  fun twist (g: group) : int list =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("Parabolics.twist: rootdatum_new failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val delta = IntMatrix.parseMatText (AtlasFFI.atlas_group_distinguished_involution_text g)
+      val simples = RootDatum.simpleRootsCols rd
+      val () = RootDatum.free rd
+
+      fun indexOfSimple v =
+        let
+          fun loop ([], _) = raise Fail "Parabolics.twist: delta(simple_root) not a simple root"
+            | loop (w :: ws, i) = if w = v then i else loop (ws, i + 1)
+        in
+          loop (simples, 0)
+        end
+
+      fun image alpha = IntMatrix.matVecMul (delta, alpha)
+    in
+      List.map (fn alpha => indexOfSimple (image alpha)) simples
+    end
+
+  fun twist_partition (tw: int list) : int list list =
+    let
+      val r = length tw
+      fun nth i = List.nth (tw, i)
+      fun one s =
+        let
+          val t = nth s
+        in
+          if t >= s then
+            if t = s then SOME [s] else SOME [s, t]
+          else
+            NONE
+        end
+    in
+      List.mapPartial one (List.tabulate (r, fn i => i))
+    end
+
+  fun twist_stable_subsets (g: group) : int list list =
+    let
+      val part = twist_partition (twist g)
+      fun flatten (xss: int list list) = List.concat xss
+      fun mk (parts: int list list) = Sort.sort (op <=) (flatten parts)
+    in
+      List.map mk (Basic.power_set part)
+    end
 
   fun ascents (g: group) (S: int list, x: kgbelt) : kgbelt list =
     let
@@ -62,5 +131,19 @@ structure Parabolics = struct
 
   fun is_closed (g: group) (P as (S, x): parabolic) : bool =
     AtlasFFI.atlas_kgb_length (g, x_min g (S, x)) = 0
-end
 
+  (* `theta_stable_parabolics_with(x)` analog from `induction.at`, but computed directly.
+     Returns theta-stable parabolics (S, maximal(S,x)) for twist-stable S whose orbit is closed. *)
+  fun theta_stable_parabolics_with (g: group) (x: kgbelt) : parabolic list =
+    let
+      fun one S =
+        let
+          val y = maximal g (S, x)
+          val P = (S, y)
+        in
+          if is_closed g P then SOME P else NONE
+        end
+    in
+      List.mapPartial one (twist_stable_subsets g)
+    end
+end
