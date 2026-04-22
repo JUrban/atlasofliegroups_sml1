@@ -3559,34 +3559,20 @@ static atlas::arithmetic::RatNum mu_ktype_convert_cform_hermitian(const atlas::r
   return mu;
 }
 
-extern "C" int atlas_param_is_unitary(void* p_handle)
+static int atlas_param_is_unitary_impl(atlas::repr::Rep_table& rt, const atlas::repr::StandardRepr& sr)
 {
   try
   {
-    if (p_handle == nullptr)
-    {
-      g_last_error = "atlas_param_is_unitary: null param handle";
-      return 0;
-    }
-    const auto* p = static_cast<const ParamHandle*>(p_handle);
-    if (p->group == nullptr || p->group->rt == nullptr)
-    {
-      g_last_error = "atlas_param_is_unitary: null group/Rep_table";
-      return 0;
-    }
-
-    auto& rt = *p->group->rt;
-
-    atlas::repr::StandardRepr tw = rt.inner_twisted(p->sr);
-    if (!rt.equivalent(tw, p->sr))
+    atlas::repr::StandardRepr tw = rt.inner_twisted(sr);
+    if (!rt.equivalent(tw, sr))
       return 0; // not hermitian => not unitary
 
-    if (!rt.is_standard(p->sr))
+    if (!rt.is_standard(sr))
     {
       g_last_error = "atlas_param_is_unitary: parameter not standard";
       return 0;
     }
-    if (!rt.is_final(p->sr))
+    if (!rt.is_final(sr))
     {
       g_last_error = "atlas_param_is_unitary: parameter not final";
       return 0;
@@ -3595,8 +3581,8 @@ extern "C" int atlas_param_is_unitary(void* p_handle)
     // Equal-rank case: hermitian_form_irreducible(p) = c_form_irreducible(p)
     // converted by convert_cform_hermitian. For now we implement this path,
     // which is the one used by the F4_s verifier.
-    const unsigned int ori_p = rt.orientation_number(p->sr);
-    atlas::repr::SR_poly kl = rt.KL_column_at_s(p->sr);
+    const unsigned int ori_p = rt.orientation_number(sr);
+    atlas::repr::SR_poly kl = rt.KL_column_at_s(sr);
 
     atlas::K_repr::K_type_pol c_form;
     for (const auto& term : kl)
@@ -3666,6 +3652,440 @@ extern "C" int atlas_param_is_unitary(void* p_handle)
   {
     g_last_error = "unknown C++ exception";
     return 0;
+  }
+}
+
+extern "C" int atlas_param_is_unitary(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_is_unitary: null param handle";
+      return 0;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_is_unitary: null group/Rep_table";
+      return 0;
+    }
+
+    return atlas_param_is_unitary_impl(*p->group->rt, p->sr);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+namespace {
+
+static std::string lie_type_to_short_string(const atlas::lietype::LieType& lt)
+{
+  std::ostringstream out;
+  bool first = true;
+  for (const auto& sf : lt)
+  {
+    if (!first)
+      out << " x ";
+    first = false;
+    out << sf.type() << sf.rank();
+  }
+  return out.str();
+}
+
+static std::string subset_to_string(const std::vector<atlas::weyl::Generator>& S)
+{
+  std::ostringstream out;
+  out << '[';
+  for (std::size_t i = 0; i < S.size(); ++i)
+  {
+    if (i)
+      out << ',';
+    out << static_cast<unsigned int>(S[i]);
+  }
+  out << ']';
+  return out.str();
+}
+
+static std::vector<atlas::KGBElt> down_neighbors(const atlas::kgb::KGB& kgb,
+                                                 const std::vector<atlas::weyl::Generator>& S,
+                                                 atlas::KGBElt x)
+{
+  std::vector<atlas::KGBElt> out;
+  out.reserve(S.size() * 2);
+  for (auto s : S)
+  {
+    const auto stat = kgb.status(s, x);
+    if (stat == atlas::gradings::Status::Complex)
+    {
+      if (kgb.isDescent(s, x))
+        out.push_back(kgb.cross(s, x)); // C-
+      // C+ contributes nothing
+    }
+    else if (stat == atlas::gradings::Status::Real)
+    {
+      atlas::KGBElt y = kgb.any_Cayley(s, x);
+      out.push_back(y);
+      out.push_back(kgb.cross(s, y));
+    }
+    // ImaginaryCompact / ImaginaryNoncompact contribute nothing
+  }
+  return out;
+}
+
+static std::vector<atlas::KGBElt> ascents(const atlas::kgb::KGB& kgb,
+                                         const std::vector<atlas::weyl::Generator>& S,
+                                         atlas::KGBElt x)
+{
+  std::vector<atlas::KGBElt> out;
+  out.reserve(S.size());
+  for (auto s : S)
+  {
+    const auto stat = kgb.status(s, x);
+    if (stat == atlas::gradings::Status::ImaginaryNoncompact)
+      out.push_back(kgb.any_Cayley(s, x)); // nc ascent
+    else if (stat == atlas::gradings::Status::Complex && !kgb.isDescent(s, x))
+      out.push_back(kgb.cross(s, x)); // C+ ascent
+  }
+  return out;
+}
+
+static atlas::KGBElt maximal_for_S(const atlas::kgb::KGB& kgb,
+                                  const std::vector<atlas::weyl::Generator>& S,
+                                  atlas::KGBElt x)
+{
+  while (true)
+  {
+    auto ups = ascents(kgb, S, x);
+    if (ups.empty())
+      return x;
+    x = ups.front();
+  }
+}
+
+static std::vector<atlas::KGBElt> equivalence_class_of(const atlas::kgb::KGB& kgb,
+                                                       const std::vector<atlas::weyl::Generator>& S,
+                                                       atlas::KGBElt x_max)
+{
+  const std::size_t n = kgb.size();
+  std::vector<uint8_t> seen(n, 0);
+  std::vector<atlas::KGBElt> todo;
+  todo.reserve(n);
+
+  seen[static_cast<std::size_t>(x_max)] = 1;
+  todo.push_back(x_max);
+
+  for (std::size_t i = 0; i < todo.size(); ++i)
+  {
+    atlas::KGBElt x = todo[i];
+    auto downs = down_neighbors(kgb, S, x);
+    for (auto y : downs)
+    {
+      const std::size_t idx = static_cast<std::size_t>(y);
+      if (idx < n && !seen[idx])
+      {
+        seen[idx] = 1;
+        todo.push_back(y);
+      }
+    }
+  }
+  return todo;
+}
+
+static atlas::KGBElt class_min_by_length_then_number(const atlas::kgb::KGB& kgb,
+                                                     const std::vector<atlas::KGBElt>& klass)
+{
+  atlas::KGBElt best = klass.front();
+  unsigned int best_len = kgb.length(best);
+  for (auto x : klass)
+  {
+    unsigned int len = kgb.length(x);
+    if (len < best_len || (len == best_len && x < best))
+    {
+      best = x;
+      best_len = len;
+    }
+  }
+  return best;
+}
+
+static bool has_theta_stable_Levi(const atlas::RootDatum& rd,
+                                  const atlas::WeightInvolution& theta,
+                                  const std::vector<atlas::weyl::Generator>& S)
+{
+  std::vector<uint8_t> inS(rd.semisimple_rank(), 0);
+  for (auto s : S)
+    inS[static_cast<std::size_t>(s)] = 1;
+
+  atlas::RatCoweight H(rd.rank());
+  for (atlas::weyl::Generator t = 0; t < rd.semisimple_rank(); ++t)
+    if (!inS[static_cast<std::size_t>(t)])
+      H += rd.fundamental_coweight(t);
+  H.normalize();
+
+  for (auto s : S)
+  {
+    atlas::Weight alpha = rd.simpleRoot(s);
+    atlas::Weight theta_alpha = theta * alpha;
+    auto eval = H.dot_Q(theta_alpha);
+    eval.normalize();
+    if (eval.numerator() != 0)
+      return false;
+  }
+  return true;
+}
+
+static bool is_dominant_for_G(const atlas::RootDatum& rdG, const atlas::RatWeight& v)
+{
+  const auto& num = v.numerator();
+  for (atlas::weyl::Generator s = 0; s < rdG.semisimple_rank(); ++s)
+  {
+    const auto& alpha_v = rdG.simpleCoroot(s);
+    atlas::arithmetic::Numer_t dot = 0;
+    for (unsigned int i = 0; i < rdG.rank(); ++i)
+      dot += static_cast<atlas::arithmetic::Numer_t>(alpha_v[i]) * num[i];
+    if (dot < 0)
+      return false;
+  }
+  return true;
+}
+
+static bool map_word_to_Levi(const atlas::WeylWord& wwG,
+                             const std::vector<atlas::weyl::Generator>& S,
+                             atlas::WeylWord& out)
+{
+  std::vector<int> map(64, -1);
+  for (std::size_t i = 0; i < S.size(); ++i)
+  {
+    const auto s = static_cast<unsigned int>(S[i]);
+    if (s >= map.size())
+      map.resize(s + 1, -1);
+    map[s] = static_cast<int>(i);
+  }
+
+  out.clear();
+  out.reserve(wwG.size());
+  for (auto s : wwG)
+  {
+    const auto si = static_cast<unsigned int>(s);
+    if (si >= map.size() || map[si] < 0)
+      return false;
+    out.push_back(static_cast<atlas::weyl::Generator>(map[si]));
+  }
+  return true;
+}
+
+static atlas::WeylWord map_word_from_Levi(const atlas::WeylWord& wwL,
+                                         const std::vector<atlas::weyl::Generator>& S)
+{
+  atlas::WeylWord wwG;
+  wwG.reserve(wwL.size());
+  for (auto sL : wwL)
+    wwG.push_back(S[static_cast<std::size_t>(sL)]);
+  return wwG;
+}
+
+} // namespace
+
+extern "C" const char* atlas_param_good_range_induced_from_first_text(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_good_range_induced_from_first_text: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_good_range_induced_from_first_text: null group/Rep_table";
+      return nullptr;
+    }
+
+    auto& G = p->group->G;
+    auto& rtG = *p->group->rt;
+    const auto& rdG = rtG.root_datum();
+    const auto& kgbG = rtG.kgb();
+    const atlas::KGBElt xG = p->sr.x();
+
+    atlas::repr::Rep_context rcG(G);
+    const atlas::RatWeight lambda_p = rcG.lambda(p->sr);
+    const atlas::RatWeight nu_p = rcG.nu(p->sr);
+    const atlas::RatWeight rhoG = atlas::rootdata::rho(rdG);
+
+    const auto r = static_cast<unsigned int>(rdG.semisimple_rank());
+    if (r > 20)
+    {
+      g_last_error = "atlas_param_good_range_induced_from_first_text: semisimple rank too large";
+      return nullptr;
+    }
+
+    // Enumerate all subsets S of simple roots (sufficient for G2; exponential in rank).
+    const std::size_t max_mask = static_cast<std::size_t>(1u) << r;
+    for (std::size_t mask = 0; mask < max_mask; ++mask)
+    {
+      std::vector<atlas::weyl::Generator> S;
+      for (unsigned int s = 0; s < r; ++s)
+        if ((mask >> s) & 1u)
+          S.push_back(static_cast<atlas::weyl::Generator>(s));
+
+      // For induction from a proper Levi, S must be nonempty; but keep full S
+      // since the .at script reports that case separately.
+      if (S.empty())
+        continue;
+
+      const atlas::KGBElt x_max = maximal_for_S(kgbG, S, xG);
+      const auto klass = equivalence_class_of(kgbG, S, x_max);
+      const atlas::KGBElt x_min = class_min_by_length_then_number(kgbG, klass);
+
+      if (kgbG.length(x_min) != 0)
+        continue; // not closed => not theta-stable
+
+      const auto& theta_xmax = kgbG.involution_matrix(x_max);
+      if (!has_theta_stable_Levi(rdG, theta_xmax, S))
+        continue;
+
+      // Build Levi root datum (same ambient coordinates).
+      atlas::int_Matrix sr_mat(rdG.rank(), static_cast<unsigned int>(S.size()));
+      atlas::int_Matrix scr_mat(rdG.rank(), static_cast<unsigned int>(S.size()));
+      for (std::size_t j = 0; j < S.size(); ++j)
+      {
+        const auto s = S[j];
+        const auto& alpha = rdG.simpleRoot(s);
+        const auto& alpha_v = rdG.simpleCoroot(s);
+        for (unsigned int i = 0; i < rdG.rank(); ++i)
+        {
+          sr_mat(i, static_cast<unsigned int>(j)) = alpha[i];
+          scr_mat(i, static_cast<unsigned int>(j)) = alpha_v[i];
+        }
+      }
+
+      atlas::prerootdata::PreRootDatum prdL(sr_mat, scr_mat, /*prefer_co=*/false);
+      const auto& theta0 = kgbG.involution_matrix(x_min); // should be distinguished
+      atlas::innerclass::InnerClass icL(prdL, theta0);
+
+      // Make sure involution table knows about the Cartan class at identity.
+      atlas::TwistedInvolution tw_id; // identity
+      atlas::CartanNbr cn = icL.class_number(tw_id);
+      icL.generate_Cartan_orbit(cn);
+      const atlas::BitMap& b = icL.Cartan_ordering().below(cn);
+      for (auto it = b.begin(); it(); ++it)
+        icL.generate_Cartan_orbit(*it);
+
+      atlas::RatCoweight torus_factor = kgbG.torus_factor(x_min);
+      // Project to theta-fixed subspace: (1+theta)/2.
+      {
+        auto& num = torus_factor.numerator();
+        num += theta0.right_prod(num);
+        torus_factor /= 2;
+        torus_factor.normalize();
+      }
+
+      atlas::RatCoweight coch(0);
+      atlas::RealFormNbr rf = atlas::innerclass::real_form_of(icL, tw_id, torus_factor, coch);
+      atlas::TorusPart tp = atlas::realredgp::minimal_torus_part(icL, rf, coch, tw_id, torus_factor);
+
+      atlas::realredgp::RealReductiveGroup L(icL, rf, coch, tp);
+      atlas::repr::Rep_table rtL(L);
+      atlas::repr::Rep_context rcL(L);
+      const auto& kgbL = rtL.kgb();
+      const auto& rdL = rtL.root_datum();
+      const atlas::RatWeight rhoL = atlas::rootdata::rho(rdL);
+
+      // Compute x_L = inverse_embed_KGB(x_G,L) by mapping the twisted involution word.
+      atlas::WeylWord wwG = G.Weyl_group().word(kgbG.involution(xG).w());
+      atlas::WeylWord wwL;
+      if (!map_word_to_Levi(wwG, S, wwL))
+        continue;
+
+      atlas::TwistedInvolution twL = L.Weyl_group().element(wwL);
+      atlas::TitsElt aL(icL.Tits_group(), kgbG.torus_part(xG), twL);
+      atlas::KGBElt xL = kgbL.lookup(aL);
+      if (xL == atlas::UndefKGB)
+        continue;
+
+      // Build p_L = parameter(x_L, lambda(p)-rho(G)+rho(L), nu(p)).
+      atlas::RatWeight lambda_L = lambda_p - rhoG + rhoL;
+      lambda_L.normalize();
+
+      atlas::RatWeight lam_minus_rho = lambda_L - rhoL;
+      lam_minus_rho.normalize();
+      if (lam_minus_rho.denominator() != 1)
+        continue; // not a valid parameter for L
+
+      atlas::Weight lambda_rho_L(rdL.rank());
+      for (unsigned int i = 0; i < rdL.rank(); ++i)
+        lambda_rho_L[i] = static_cast<int>(lam_minus_rho.numerator()[i]);
+
+      atlas::repr::StandardRepr srL = rcL.sr(xL, lambda_rho_L, nu_p);
+      if (!rtL.is_final(srL))
+        continue;
+
+      // Weakly good: v = infchar(p_L) + rho(G)-rho(L) is dominant for G.
+      atlas::RatWeight v = srL.gamma() + (rhoG - rhoL);
+      v.normalize();
+      if (!is_dominant_for_G(rdG, v))
+        continue;
+
+      // Induce back: construct x_G' by embedding x_L using the mapped word.
+      atlas::WeylWord wwG_back = map_word_from_Levi(L.Weyl_group().word(kgbL.involution(xL).w()), S);
+      atlas::TwistedInvolution twG_back = G.Weyl_group().element(wwG_back);
+      atlas::TitsElt aG(G.innerClass().Tits_group(), kgbL.torus_part(xL), twG_back);
+      atlas::KGBElt xG_back = kgbG.lookup(aG);
+      if (xG_back == atlas::UndefKGB)
+        continue;
+
+      // Induced parameter has the same (lambda,nu) as p; check it finalizes to p.
+      atlas::RatWeight lam_minus_rho_G = lambda_p - rhoG;
+      lam_minus_rho_G.normalize();
+      if (lam_minus_rho_G.denominator() != 1)
+        continue;
+      atlas::Weight lambda_rho_G(rdG.rank());
+      for (unsigned int i = 0; i < rdG.rank(); ++i)
+        lambda_rho_G[i] = static_cast<int>(lam_minus_rho_G.numerator()[i]);
+
+      atlas::repr::StandardRepr srG_back = rcG.sr(xG_back, lambda_rho_G, nu_p);
+      auto finals = rtG.finals_for(srG_back);
+      auto it = finals.begin();
+      if (finals.at_end(it))
+        continue;
+      const auto only = *it;
+      ++it;
+      if (!finals.at_end(it))
+        continue;
+      if (!(only.first == p->sr && only.second == 1))
+        continue;
+
+      const int same = (S.size() == static_cast<std::size_t>(rdG.semisimple_rank())) ? 1 : 0;
+      const int unitary = atlas_param_is_unitary_impl(rtL, srL);
+
+      std::ostringstream desc;
+      desc << "type=" << lie_type_to_short_string(rdL.type()) << " rf=" << rf << " S=" << subset_to_string(S);
+      std::ostringstream out;
+      out << "1|" << same << "|" << unitary << "|" << desc.str();
+      return store_result(out.str());
+    }
+
+    return store_result("0|||");
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
   }
 }
 

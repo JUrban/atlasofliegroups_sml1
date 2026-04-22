@@ -130,6 +130,8 @@ structure AtlasFFI = struct
   val atlas_ktypepol_is_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_pure"
   val atlas_param_is_unitary_c_form_sym = Foreign.getSymbol lib "atlas_param_is_unitary_c_form"
   val atlas_param_is_unitary_sym = Foreign.getSymbol lib "atlas_param_is_unitary"
+  val atlas_param_good_range_induced_from_first_text_sym =
+    Foreign.getSymbol lib "atlas_param_good_range_induced_from_first_text"
 
   val atlas_ktype_free_sym = Foreign.getSymbol lib "atlas_ktype_free"
   val atlas_param_K_type_sym = Foreign.getSymbol lib "atlas_param_K_type"
@@ -509,6 +511,13 @@ structure AtlasFFI = struct
 
   val atlas_param_is_unitary =
     Foreign.buildCall1 (atlas_param_is_unitary_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_param_good_range_induced_from_first_text =
+    Foreign.buildCall1
+      ( atlas_param_good_range_induced_from_first_text_sym
+      , Foreign.cPointer
+      , Foreign.cString
+      )
 
   type ktype = Foreign.Memory.voidStar
 

@@ -276,6 +276,18 @@ structure G2_unitary_dual = struct
       List.app (fn r => TextIO.print (joinRow r)) rows
     end
 
+  fun induced_conj_info (p: AtlasFFI.param) : (string * string) =
+    let
+      val txt = AtlasFFI.atlas_param_good_range_induced_from_first_text p
+      val parts = String.fields (fn c => c = #"|") txt
+    in
+      case parts of
+        "0" :: _ => ("false", "")
+      | "1" :: same :: unitary :: desc :: _ =>
+          if same = "1" then ("false", desc) else (Bool.toString (unitary = "1"), desc)
+      | _ => raise Fail ("G2_unitary_dual: unexpected induced info: " ^ txt)
+    end
+
   fun test_s (m: int, v0: rat, v1: rat, step_size: rat) : unit =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
@@ -293,8 +305,8 @@ structure G2_unitary_dual = struct
                    val unitary = AtlasFFI.atlas_param_is_unitary p = 1
                    val coords = coords_infchar g p
                    val inFPP = in_fpp_rat coords
-                   val check = "" (* TODO: is_good_range_induced_from *)
-                   val L = "" (* TODO: Levi real form *)
+                   val (check, L) =
+                     if inFPP orelse not unitary then ("", "") else induced_conj_info p
                    val out =
                      [ ratToString v
                      , ratListToString coords
@@ -336,8 +348,8 @@ structure G2_unitary_dual = struct
                    val unitary = AtlasFFI.atlas_param_is_unitary p = 1
                    val coords = coords_infchar g p
                    val inFPP = in_fpp_rat coords
-                   val check = "" (* TODO: is_good_range_induced_from *)
-                   val L = "" (* TODO: Levi real form *)
+                   val (check, L) =
+                     if inFPP orelse not unitary then ("", "") else induced_conj_info p
                    val out =
                      [ ratToString v
                      , ratListToString coords
