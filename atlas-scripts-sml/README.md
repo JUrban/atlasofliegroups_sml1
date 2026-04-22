@@ -78,7 +78,7 @@ Notes:
 - The build uses `-std=gnu++14` because this codebase currently fails to compile cleanly under newer language modes with newer libstdc++ in this environment.
 - The build script excludes `sources/io/interactive*.cpp` to avoid dependencies on the readline/input UI layer; the FFI layer should not depend on the interactive front-end.
 - The `Param` constructor used by the F4 point loader passes numerator vectors as **text** (space-separated ints) because pointer/array arguments over Poly/ML FFI were not reliable in this environment.
-- `atlas-scripts-sml/data/F4_FPP_barycenters.txt` and `atlas-scripts-sml/data/F4_FPP_lambdas.txt` are currently generated from Atlas `.at` helpers via `atlas-scripts-sml/data/gen_F4_FPP_aux_data.sh`, but the SML scripts only consume the `.txt` at runtime.
+- `atlas-scripts-sml/data/F4_FPP_barycenters.txt` and `atlas-scripts-sml/data/F4_FPP_lambdas.txt` can be regenerated purely from SML via `atlas-scripts-sml/data/gen_F4_FPP_aux_data_sml.sh` (legacy `.at`-based generator remains at `atlas-scripts-sml/data/gen_F4_FPP_aux_data.sh`).
 
 Run the F4 verifier script directly with the Poly/ML REPL:
 
