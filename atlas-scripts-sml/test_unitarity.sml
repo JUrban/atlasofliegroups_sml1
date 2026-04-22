@@ -171,16 +171,26 @@ structure TestUnitarity = struct
           NONE => nus
         | SOME n => List.take (nus, Int.min (n, length nus))
 
-      fun mk nu =
-        let
-          val p = Representations.minimal_spherical_principal_series (g, nu)
-        in
-          (p, 1)
-        end
+      fun showProgress (i: int, n: int) : unit =
+        if verbose andalso (i = 0 orelse (i + 1) mod 10 = 0 orelse i + 1 = n) then
+          TextIO.print ("progress " ^ Int.toString (i + 1) ^ "/" ^ Int.toString n ^ "\n")
+        else
+          ()
 
-      val ps = List.map mk nus
-      val ok = test (g, ps, verbose)
-      val () = List.app (fn (p, _) => AtlasFFI.atlas_param_free p) ps
+      val nTotal = length nus
+
+      fun loop ([], _, passed) = passed
+        | loop (nu :: rest, i, passed) =
+            let
+              val p = Representations.minimal_spherical_principal_series (g, nu)
+              val ok = test (g, [(p, 1)], verbose)
+              val () = AtlasFFI.atlas_param_free p
+              val () = showProgress (i, nTotal)
+            in
+              loop (rest, i + 1, passed andalso ok)
+            end
+
+      val ok = loop (nus, 0, true)
     in
       ok
     end
