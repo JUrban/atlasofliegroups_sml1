@@ -10,10 +10,8 @@ structure ParamReduce = struct
     else
       p :: acc
 
-  (* `.at`-style `reduce([Param])`:
-     - normalise each parameter
-     - expand into final parameters (`finals_for`)
-     - keep one representative per equivalence class
+  (* `.at`-style `reduce([Param])` from `atlas-scripts/K_highest_weights.at`:
+     keep one representative per equivalence class (after normalisation).
      The returned params are freshly allocated and must be freed by caller. *)
   fun reduce (ps: param list) : param list =
     let
@@ -23,6 +21,25 @@ structure ParamReduce = struct
           val () =
             if q = Foreign.Memory.null then
               raise Fail ("ParamReduce.reduce: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+        in
+          addUniqueByEquivalent (q, acc)
+        end
+    in
+      List.rev (List.foldl reduceOne [] ps)
+    end
+
+  (* Variant sometimes useful in script ports: expand each input into `finals_for`
+     and then deduplicate by equivalence (after normalisation). *)
+  fun reduceFinals (ps: param list) : param list =
+    let
+      fun reduceOne (p: param, acc: param list) : param list =
+        let
+          val q = AtlasFFI.atlas_param_normalise p
+          val () =
+            if q = Foreign.Memory.null then
+              raise Fail ("ParamReduce.reduceFinals: normalise failed: " ^ AtlasFFI.atlas_last_error ())
             else
               ()
           val finals = ParamFinals.finals q
@@ -37,7 +54,7 @@ structure ParamReduce = struct
                 val () = AtlasFFI.atlas_param_free r
                 val () =
                   if r2 = Foreign.Memory.null then
-                    raise Fail ("ParamReduce.reduce: normalise(final) failed: " ^ AtlasFFI.atlas_last_error ())
+                    raise Fail ("ParamReduce.reduceFinals: normalise(final) failed: " ^ AtlasFFI.atlas_last_error ())
                   else
                     ()
               in
@@ -53,4 +70,3 @@ structure ParamReduce = struct
   fun freeAll (ps: param list) : unit =
     List.app AtlasFFI.atlas_param_free ps
 end
-

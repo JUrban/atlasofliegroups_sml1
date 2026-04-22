@@ -15,16 +15,22 @@ val _ = assert "reduce([]) empty" (length rs0 = 0);
 val rs = ParamReduce.reduce [p, p2];
 val _ = print ("reduce([p,p]) count = " ^ Int.toString (length rs) ^ "\n");
 val _ = assert "reduce([p,p]) nonempty" (length rs > 0);
-
-val _ = assert "reduce outputs final" (List.all (fn q => AtlasFFI.atlas_param_is_final q = 1) rs);
+val _ =
+  case rs of
+    [] => raise Fail "impossible"
+  | q :: _ => assert "reduce representative equiv to p" (AtlasFFI.atlas_param_equivalent (p, q) = 1);
 
 fun pairwiseDistinct [] = true
   | pairwiseDistinct (x :: xs) =
       List.all (fn y => AtlasFFI.atlas_param_equivalent (x, y) = 0) xs andalso pairwiseDistinct xs;
 val _ = assert "reduce outputs inequivalent" (pairwiseDistinct rs);
 
+val rsF = ParamReduce.reduceFinals [p];
+val _ = assert "reduceFinals nonempty" (length rsF > 0);
+val _ = assert "reduceFinals outputs final" (List.all (fn q => AtlasFFI.atlas_param_is_final q = 1) rsF);
+val _ = ParamReduce.freeAll rsF;
+
 val _ = ParamReduce.freeAll rs;
 val _ = AtlasFFI.atlas_param_free p2;
 val _ = AtlasFFI.atlas_param_free p;
 val _ = AtlasFFI.atlas_group_free g;
-

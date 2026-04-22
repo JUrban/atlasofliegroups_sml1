@@ -162,6 +162,19 @@ structure K_highest_weights = struct
       List.mapPartial mk twists
     end
 
+  (* Port of `reduce([KType])` from `atlas-scripts/K_highest_weights.at`.
+     Returned K_types are freshly allocated and must be freed by caller. *)
+  fun reduce_K_parameters (kts: KType.ktype list) : KType.ktype list =
+    let
+      val ps = List.map KType.parameter kts
+      val rs = ParamReduce.reduce ps
+      val () = List.app AtlasFFI.atlas_param_free ps
+      val ts = List.map KType.ofParam rs
+      val () = List.app AtlasFFI.atlas_param_free rs
+    in
+      ts
+    end
+
   (* Port of `cone(limit,cs)` from `atlas-scripts/K_highest_weights.at`.
      Returns an `n x m` matrix (row-major) whose columns are the weight vectors. *)
   fun cone (limit: rat, cs: rat list) : mat =
