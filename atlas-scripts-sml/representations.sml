@@ -1,6 +1,8 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/Dominant.sml";
+use "atlas-scripts-sml/RootDatum.sml";
 
 (*
   File: atlas-scripts-sml/representations.sml
@@ -20,6 +22,14 @@ use "atlas-scripts-sml/AllParameters.sml";
   - `minimal_spherical_principal_series` mirrors:
       `minimal_spherical_principal_series (RealForm G,ratvec nu)`
     i.e. `minimal_principal_series(G,rho(G),nu)`.
+  - `finite_dimensional` mirrors:
+      `finite_dimensional (RealForm G,vec lambda)`
+    from `representations.at`:
+      `let gamma=dominant(G,lambda)+rho(G) in parameter(x_open(G),gamma,gamma)`
+  - `finite_dimensional_fundamental_weight_coordinates` mirrors:
+      `finite_dimensional_fundamental_weight_coordinates (RealForm G,vec tau)`
+    from `representations.at`: expand `tau` in the fundamental-weight basis and
+    call `finite_dimensional`.
 
   Ownership
   - Functions here allocate `AtlasFFI.param` handles and return them to the
@@ -39,6 +49,9 @@ structure Representations = struct
   (* Parse `atlas_group_rho_text` output. *)
   fun rho (g: group) : ratvec =
     AllParameters.parseRatWeightText (AtlasFFI.atlas_group_rho_text g)
+
+  fun ratvecNeg (u: ratvec) : ratvec = Lattice.ratvecScale (u, ~1, 1)
+  fun ratvecAdd (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, ratvecNeg v)
 
   fun assertSplit (g: group) : unit =
     if AtlasFFI.atlas_group_is_split g = 1 then
@@ -93,5 +106,76 @@ structure Representations = struct
 
   fun minimal_spherical_principal_series_default (g: group) : param =
     minimal_spherical_principal_series (g, rho g)
-end
 
+  (* Build `x_open(G)` from `basic.at`: `KGB(G,G.KGB_size-1)`. *)
+  fun x_open (g: group) : int = AtlasFFI.atlas_group_kgb_size g - 1
+
+  (* Construct a parameter `parameter(G,x,lambda,nu)` in `.at`-style where
+     `lambda`/`nu` are the usual “ratweight text” inputs (same as `p.lambda` /
+     `p.nu` printers). This is the SML-side analogue of the `.at` `parameter`
+     primitive (without additional normalization). *)
+  fun parameter (g: group, x: int, lambda: ratvec, nu: ratvec) : param =
+    let
+      val p =
+        AtlasFFI.atlas_param_new_from_lambda_nu_text
+          ( g
+          , x
+          , AllParameters.intsToCText (#nums lambda)
+          , #den lambda
+          , AllParameters.intsToCText (#nums nu)
+          , #den nu
+          )
+    in
+      if p = Foreign.Memory.null then
+        raise Fail ("Representations.parameter: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        p
+    end
+
+  (* Make a rational weight dominant for `g`. *)
+  fun dominant (g: group) (v: ratvec) : ratvec =
+    AllParameters.parseRatWeightText
+      (Dominant.makeDominantText g (Int.toString (#den v) ^ " " ^ String.concatWith " " (List.map Int.toString (#nums v))))
+
+  (* Finite dimensional representation with highest weight `lambda`.
+     Here `lambda` should be integral (as in `representations.at`), but we accept
+     it as a `ratvec` for convenience. *)
+  fun finite_dimensional (g: group, lambda: ratvec) : param =
+    let
+      val gamma = ratvecAdd (dominant g lambda, rho g)
+    in
+      parameter (g, x_open g, gamma, gamma)
+    end
+
+  (* Finite-dimensional constructor where `tau` is given in fundamental-weight
+     coordinates (an integral vector of coefficients).
+
+     Raises if `tau` does not define an integral weight in the group’s weight
+     lattice (mirrors the `.at` assertion). *)
+  fun finite_dimensional_fundamental_weight_coordinates (g: group, tau: int list) : param =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("Representations.finite_dimensional_fundamental_weight_coordinates: rootdatum_new failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val fws = RootDatum.fundamentalWeights rd
+      val () = RootDatum.free rd
+      val () =
+        if length tau = length fws then
+          ()
+        else
+          raise Fail "Representations.finite_dimensional_fundamental_weight_coordinates: length mismatch"
+
+      fun scale (w: ratvec, k: int) : ratvec = Lattice.ratvecScale (w, k, 1)
+      val ws = ListPair.mapEq (fn (k, w) => scale (w, k)) (tau, fws)
+      val sum = List.foldl ratvecAdd (Lattice.ratvecNormalize {den = 1, nums = List.tabulate (length tau, fn _ => 0)}) ws
+      val () =
+        (case Lattice.ratvecToIntegral sum of
+           SOME _ => ()
+         | NONE => raise Fail "Representations.finite_dimensional_fundamental_weight_coordinates: weight not integral")
+    in
+      finite_dimensional (g, sum)
+    end
+end

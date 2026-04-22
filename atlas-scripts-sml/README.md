@@ -99,6 +99,20 @@ poly -q < atlas-scripts-sml/test_unitarity_main.sml -- D4 10
 poly -q < atlas-scripts-sml/test_unitarity_main.sml -- E7 5 verbose
 ```
 
+Larger runs are gated behind a `heavy` flag:
+
+```sh
+poly -q < atlas-scripts-sml/test_unitarity_main.sml -- F4 49 heavy
+poly -q < atlas-scripts-sml/test_unitarity_main.sml -- E7 100 heavy verbose
+```
+
+There are also `.at`-style presets:
+
+```sh
+poly -q < atlas-scripts-sml/test_unitarity_main.sml -- test7 heavy   # F4 first 49
+poly -q < atlas-scripts-sml/test_unitarity_main.sml -- test8 heavy   # E7 first 100
+```
+
 Build a standalone executable with `polyc`:
 
 ```sh

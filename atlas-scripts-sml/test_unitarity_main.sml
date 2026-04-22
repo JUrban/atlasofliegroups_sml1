@@ -18,6 +18,10 @@ use "atlas-scripts-sml/test_unitarity.sml";
   - Select the table by passing one of `F4`, `D4`, `E7` anywhere in the args:
       `poly -q < atlas-scripts-sml/test_unitarity_main.sml`                  (defaults to F4)
       `poly -q < atlas-scripts-sml/test_unitarity_main.sml -- E7 100 verbose`
+
+  Presets (mirroring `test_unitarity.at`)
+  - `test7`: first 49 F4 spherical unitary points (requires `heavy`)
+  - `test8`: first 100 E7 spherical unitary points (requires `heavy`)
 *)
 
 val args = CommandLine.arguments ();
@@ -38,7 +42,18 @@ fun pickTable (xs: string list) : string =
   else if List.exists (fn s => s = "D4") xs then "D4"
   else "F4";
 
-val table = pickTable args;
+val heavy = List.exists (fn s => s = "heavy") args;
+
+fun pickPreset (xs: string list) : (string * int) option =
+  if List.exists (fn s => s = "test7") xs then SOME ("F4", 49)
+  else if List.exists (fn s => s = "test8") xs then SOME ("E7", 100)
+  else NONE;
+
+val (table, maxN) =
+  case pickPreset args of
+    NONE => (pickTable args, maxN)
+  | SOME (t, n) =>
+      (if heavy then (t, n) else raise Fail ("preset " ^ t ^ " " ^ Int.toString n ^ " requires 'heavy' arg"));
 
 val (typeLetter, rank, nus) =
   case table of
@@ -46,6 +61,12 @@ val (typeLetter, rank, nus) =
   | "D4" => (#"D", 4, Unitary.D4_spherical_unitary_fundamental)
   | "E7" => (#"E", 7, Unitary.E7_spherical_unitary)
   | _ => raise Fail "unreachable";
+
+val () =
+  if maxN > 20 andalso not heavy then
+    raise Fail ("refusing to run maxN=" ^ Int.toString maxN ^ " without 'heavy' arg")
+  else
+    ();
 
 val g = AtlasFFI.atlas_group_new_simple (typeLetter, rank, #"s", 0);
 val ok =

@@ -3352,7 +3352,9 @@ extern "C" long atlas_ktypepol_num_terms(void* kt_handle)
       return -1;
     }
     const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
-    return static_cast<long>(kt->poly.size());
+    // `Free_Abelian_light::size()` is only an *upper bound* (it counts storage,
+    // including zero coefficients). We want the number of nonzero terms.
+    return static_cast<long>(kt->poly.count_terms());
   }
   catch (const std::exception& e)
   {
@@ -3382,7 +3384,8 @@ extern "C" const char* atlas_ktypepol_term_text(void* kt_handle, long index)
     }
     const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
     const std::size_t i = static_cast<std::size_t>(index);
-    if (i >= kt->poly.size())
+    const std::size_t n_terms = kt->poly.count_terms();
+    if (i >= n_terms)
     {
       g_last_error = "atlas_ktypepol_term_text: index out of range";
       return store_result("-1");
