@@ -1,6 +1,9 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/LieType.sml";
+use "atlas-scripts-sml/MatrixAT.sml";
+use "atlas-scripts-sml/diagram.sml";
 
 structure RootDatum = struct
   type t = AtlasFFI.rootdatum
@@ -316,5 +319,47 @@ structure RootDatum = struct
       val () = List.app free factors
     in
       hsrs
+    end
+
+  fun lieType (h: t) : LieType.t =
+    let
+      val toks = String.tokens Char.isSpace (AtlasFFI.atlas_rootdatum_simple_factors_text h)
+    in
+      case toks of
+        [] => raise Fail "RootDatum.lieType: empty"
+      | kTok :: rest =>
+          (case Int.fromString kTok of
+             NONE => raise Fail "RootDatum.lieType: bad header"
+           | SOME k =>
+               let
+                 fun loop (0, xs, acc) = if null xs then List.rev acc else raise Fail "RootDatum.lieType: extra tokens"
+                   | loop (n, cTok :: rTok :: xs, acc) =
+                       let
+                         val () = if String.size cTok = 1 then () else raise Fail "RootDatum.lieType: bad letter"
+                         val c = String.sub (cTok, 0)
+                         val r =
+                           (case Int.fromString rTok of
+                              SOME rr => rr
+                            | NONE => raise Fail "RootDatum.lieType: bad rank")
+                       in
+                         loop (n - 1, xs, (c, r) :: acc)
+                       end
+                   | loop _ = raise Fail "RootDatum.lieType: truncated"
+               in
+                 loop (k, rest, [])
+               end)
+    end
+
+  fun diagramAutomorphismMatrices (h: t) : IntMatrix.mat list =
+    let
+      val lt = lieType h
+      val perms = Diagram.diagram_automorphisms lt
+      val ss = LieType.semisimple_rank lt
+      val r = rank h
+      val () =
+        if r = ss then ()
+        else raise Fail "RootDatum.diagramAutomorphismMatrices: unsupported (rank != semisimple_rank)"
+    in
+      List.map (fn pi => MatrixAT.permutation_matrix pi) perms
     end
 end

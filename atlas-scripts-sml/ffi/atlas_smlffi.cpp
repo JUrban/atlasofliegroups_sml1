@@ -1287,6 +1287,35 @@ extern "C" const char* atlas_rootdatum_poscoroots_text(void* handle)
   }
 }
 
+extern "C" const char* atlas_rootdatum_simple_factors_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_simple_factors_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const atlas::lietype::LieType lt = h->rd.type();
+    std::ostringstream out;
+    out << lt.size();
+    for (const auto& slt : lt)
+      out << ' ' << slt.type() << ' ' << slt.rank();
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" const char* atlas_rootdatum_roots_text(void* handle)
 {
   try

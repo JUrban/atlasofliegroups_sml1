@@ -71,6 +71,8 @@ structure AtlasFFI = struct
   val atlas_rootdatum_posroots_text_sym = Foreign.getSymbol lib "atlas_rootdatum_posroots_text"
   val atlas_rootdatum_poscoroots_text_sym =
     Foreign.getSymbol lib "atlas_rootdatum_poscoroots_text"
+  val atlas_rootdatum_simple_factors_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_simple_factors_text"
   val atlas_rootdatum_roots_text_sym = Foreign.getSymbol lib "atlas_rootdatum_roots_text"
   val atlas_rootdatum_coroots_text_sym = Foreign.getSymbol lib "atlas_rootdatum_coroots_text"
 
@@ -315,6 +317,9 @@ structure AtlasFFI = struct
 
   val atlas_rootdatum_poscoroots_text =
     Foreign.buildCall1 (atlas_rootdatum_poscoroots_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_simple_factors_text =
+    Foreign.buildCall1 (atlas_rootdatum_simple_factors_text_sym, Foreign.cPointer, Foreign.cString)
 
   val atlas_rootdatum_roots_text =
     Foreign.buildCall1 (atlas_rootdatum_roots_text_sym, Foreign.cPointer, Foreign.cString)

@@ -274,4 +274,17 @@ structure TwistedRootDatum = struct
     in
       {affine_coroots = affine_coroots, rd = frd, affine_roots = affine_roots}
     end
+
+  (* Lightweight analogue of `folded(rd,n)` from `twisted_root_datum.at`:
+     enumerates diagram automorphisms and returns the first of order `n`.
+     This currently only supports root data where `rank = semisimple_rank`. *)
+  fun folded_by_order (rd: rootdatum, n: int) : t =
+    let
+      val autos = RootDatum.diagramAutomorphismMatrices rd
+      fun pick [] = raise Fail ("TwistedRootDatum.folded_by_order: no automorphism of order " ^ Int.toString n)
+        | pick (m :: ms) = if MatrixAT.order m = n then m else pick ms
+      val delta = pick autos
+    in
+      {rd = rd, delta = delta}
+    end
 end
