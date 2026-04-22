@@ -2,10 +2,13 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/LambdaDifferential0.sml";
 use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/ParamReduce.sml";
+use "atlas-scripts-sml/Rat.sml";
 
 structure K_highest_weights = struct
   type mat = IntMatrix.mat
   type ratweight = {den: int, nums: int list}
+  type rat = Rat.rat
 
   fun parseInts s =
     let
@@ -123,5 +126,52 @@ structure K_highest_weights = struct
         end
     in
       List.map mk twists
+    end
+
+  (* Port of `reduce([Param])` from `atlas-scripts/K_highest_weights.at`.
+     Returned params are freshly allocated and must be freed by caller. *)
+  fun reduce_parameters (ps: AtlasFFI.param list) : AtlasFFI.param list =
+    ParamReduce.reduce ps
+
+  (* Port of `cone(limit,cs)` from `atlas-scripts/K_highest_weights.at`.
+     Returns an `n x m` matrix (row-major) whose columns are the weight vectors. *)
+  fun cone (limit: rat, cs: rat list) : mat =
+    let
+      val limit = Rat.normalize limit
+      val cs = List.map Rat.normalize cs
+      val n = length cs
+
+      fun cn (lim: rat, csRemaining: rat list) : int list list =
+        (case csRemaining of
+           [] => [[]]
+         | c :: rest =>
+             let
+               val () =
+                 if #num c <= 0 then
+                   raise Fail "K_highest_weights.cone: non-positive coefficient"
+                 else
+                   ()
+               val maxFirst = Rat.divFloor (lim, c)
+               fun oneFirst first =
+                 let
+                   val lim2 = Rat.sub (lim, Rat.mulInt (c, first))
+                   val () = if Rat.isNonNeg lim2 then () else raise Fail "K_highest_weights.cone: negative remainder"
+                 in
+                   List.map (fn tail => first :: tail) (cn (lim2, rest))
+                 end
+             in
+               List.concat (List.tabulate (maxFirst + 1, oneFirst))
+             end)
+
+      val cols = cn (limit, cs)
+      val () =
+        if List.all (fn col => length col = n) cols then
+          ()
+        else
+          raise Fail "K_highest_weights.cone: internal length mismatch"
+
+      fun row i = List.map (fn col => List.nth (col, i)) cols
+    in
+      List.tabulate (n, row)
     end
 end
