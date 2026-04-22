@@ -74,11 +74,11 @@ structure BigUnitaryHashStore = struct
       BigUnitaryCache.nulookup cache p
     end
 
-  fun check_unitary_c_form (store: t) (p: param, j: int) : bool =
+  fun check_unitary (store: t) (p: param, j: int) : bool =
     let
       val {cache, ...} = entry_by_number store j
     in
-      BigUnitaryCache.check_unitary_c_form cache p
+      BigUnitaryCache.check_unitary cache p
     end
 
   fun clear (store: t) =

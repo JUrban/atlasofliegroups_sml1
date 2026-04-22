@@ -49,7 +49,7 @@ fun checkRow row =
         raise Fail ("param construction failed: " ^ AtlasFFI.atlas_last_error ())
       else
         ()
-    val u = AtlasFFI.atlas_param_is_unitary_c_form p
+    val u = AtlasFFI.atlas_param_is_unitary p
     val () = AtlasFFI.atlas_param_free p
   in
     total := !total + 1;
@@ -76,4 +76,3 @@ val () = (loop (); TextIO.closeIn input) handle e => (TextIO.closeIn input; rais
 val () = AtlasFFI.atlas_group_free g;
 
 val () = print ("total=" ^ Int.toString (!total) ^ " bad=" ^ Int.toString (!bad) ^ "\n");
-

@@ -48,7 +48,6 @@ structure BigUnitaryCache = struct
         ok
       end
 
-  fun check_unitary_c_form (t: t) (p: param) : bool =
-    check t (fn q => AtlasFFI.atlas_param_is_unitary_c_form q = 1) p
+  fun check_unitary (t: t) (p: param) : bool =
+    check t (fn q => AtlasFFI.atlas_param_is_unitary q = 1) p
 end
-

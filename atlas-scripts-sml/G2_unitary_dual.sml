@@ -290,7 +290,7 @@ structure G2_unitary_dual = struct
              | SOME ps =>
                  let
                    val p = hd ps
-                   val unitary = AtlasFFI.atlas_param_is_unitary_c_form p = 1
+                   val unitary = AtlasFFI.atlas_param_is_unitary p = 1
                    val coords = coords_infchar g p
                    val inFPP = in_fpp_rat coords
                    val check = "" (* TODO: is_good_range_induced_from *)
@@ -333,7 +333,7 @@ structure G2_unitary_dual = struct
              | SOME ps =>
                  let
                    val p = hd ps
-                   val unitary = AtlasFFI.atlas_param_is_unitary_c_form p = 1
+                   val unitary = AtlasFFI.atlas_param_is_unitary p = 1
                    val coords = coords_infchar g p
                    val inFPP = in_fpp_rat coords
                    val check = "" (* TODO: is_good_range_induced_from *)
@@ -384,8 +384,8 @@ structure G2_unitary_dual = struct
                 ^ Int.toString (AtlasFFI.atlas_param_is_final q)
                 ^ " hermitian="
                 ^ Int.toString (AtlasFFI.atlas_param_is_hermitian q)
-                ^ " unitary_c_form="
-                ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q)
+                ^ " unitary="
+                ^ Int.toString (AtlasFFI.atlas_param_is_unitary q)
                 ^ " in_fpp="
                 ^ Bool.toString (in_fpp_param g q)
                 ^ "\n"))
@@ -403,7 +403,7 @@ structure G2_unitary_dual = struct
           | q :: rest =>
               (print ("p_s.count=" ^ Int.toString (length ps) ^ " gamma=" ^ AtlasFFI.atlas_param_gamma_text q
                       ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
-                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
+                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary q) ^ "\n");
                List.app AtlasFFI.atlas_param_free (q :: rest))
         end
 
@@ -416,7 +416,7 @@ structure G2_unitary_dual = struct
           | q :: rest =>
               (print ("p_l.count=" ^ Int.toString (length ps) ^ " gamma=" ^ AtlasFFI.atlas_param_gamma_text q
                       ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
-                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
+                      ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary q) ^ "\n");
                List.app AtlasFFI.atlas_param_free (q :: rest))
         end
 

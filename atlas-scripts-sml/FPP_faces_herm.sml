@@ -13,6 +13,5 @@ structure FPP_faces_herm = struct
     if AtlasFFI.atlas_param_is_hermitian p <> 1 then
       false
     else
-      BigUnitaryCache.check_unitary_c_form cache p
+      BigUnitaryCache.check_unitary cache p
 end
-

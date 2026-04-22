@@ -219,7 +219,7 @@ structure FPP_globalDirac = struct
         raise Fail ("hermitian check: non-hermitian params: " ^ Int.toString (length bad))
     end
 
-  fun verify_all_unitary_c_form_set (set: param_set) : unit =
+  fun verify_all_unitary_set (set: param_set) : unit =
     let
       val ps = #list set ()
       val total = length ps
@@ -227,13 +227,13 @@ structure FPP_globalDirac = struct
       fun loop ([], checked, bad) = (checked, bad)
         | loop (p :: rest, checked, bad) =
             let
-              val u = AtlasFFI.atlas_param_is_unitary_c_form p
+              val u = AtlasFFI.atlas_param_is_unitary p
               val bad' = if u = 1 then bad else bad + 1
               val checked' = checked + 1
               val () =
                 if !FPPFlags.final_verbose andalso checked' mod 100 = 0 then
                   TextIO.print
-                    ("unitary(c-form) progress: " ^ Int.toString checked' ^ "/" ^ Int.toString total
+                    ("unitary progress: " ^ Int.toString checked' ^ "/" ^ Int.toString total
                      ^ " bad=" ^ Int.toString bad' ^ "\n")
                 else
                   ()
@@ -244,9 +244,9 @@ structure FPP_globalDirac = struct
       val (_, bad) = loop (ps, 0, 0)
     in
       if bad = 0 then
-        if !FPPFlags.final_verbose then TextIO.print "unitary(c-form) check: OK\n" else ()
+        if !FPPFlags.final_verbose then TextIO.print "unitary check: OK\n" else ()
       else
-        raise Fail ("unitary(c-form) check: non-unitary params: " ^ Int.toString bad)
+        raise Fail ("unitary check: non-unitary params: " ^ Int.toString bad)
     end
 
   fun verify_unitary_dual_set (set: param_set) : unit =
@@ -285,7 +285,7 @@ structure FPP_globalDirac = struct
         raise Fail ("hermitian check: non-hermitian params: " ^ Int.toString (length bad))
     end
 
-  fun verify_all_unitary_c_form (hash: BigUnitaryHash.t) : unit =
+  fun verify_all_unitary (hash: BigUnitaryHash.t) : unit =
     let
       val ps = BigUnitaryHash.list hash
       val total = length ps
@@ -293,13 +293,13 @@ structure FPP_globalDirac = struct
       fun loop ([], checked, bad) = (checked, bad)
         | loop (p :: rest, checked, bad) =
             let
-              val u = AtlasFFI.atlas_param_is_unitary_c_form p
+              val u = AtlasFFI.atlas_param_is_unitary p
               val bad' = if u = 1 then bad else bad + 1
               val checked' = checked + 1
               val () =
                 if !FPPFlags.final_verbose andalso checked' mod 100 = 0 then
                   TextIO.print
-                    ("unitary(c-form) progress: " ^ Int.toString checked' ^ "/" ^ Int.toString total
+                    ("unitary progress: " ^ Int.toString checked' ^ "/" ^ Int.toString total
                      ^ " bad=" ^ Int.toString bad' ^ "\n")
                 else
                   ()
@@ -310,9 +310,9 @@ structure FPP_globalDirac = struct
       val (_, bad) = loop (ps, 0, 0)
     in
       if bad = 0 then
-        if !FPPFlags.final_verbose then TextIO.print "unitary(c-form) check: OK\n" else ()
+        if !FPPFlags.final_verbose then TextIO.print "unitary check: OK\n" else ()
       else
-        raise Fail ("unitary(c-form) check: non-unitary params: " ^ Int.toString bad)
+        raise Fail ("unitary check: non-unitary params: " ^ Int.toString bad)
     end
 
   fun verify_unitary_dual (hash: BigUnitaryHash.t) : unit =
@@ -353,7 +353,7 @@ structure FPP_globalDirac = struct
       val () = verify_all_hermitian_set set
       val () =
         if !FPPFlags.Dirac_flag then
-          verify_all_unitary_c_form_set set
+          verify_all_unitary_set set
         else
           ()
       val () = verify_unitary_dual_set set
