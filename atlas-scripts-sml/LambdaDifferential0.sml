@@ -80,17 +80,16 @@ structure LambdaDifferential0 = struct
       List.map row m
     end
 
-  fun allTheta (theta: mat) : int list list =
+  fun basisTheta (theta: mat) : mat =
     let
       val (n, n2) = matShape theta
-      val () = if n = n2 then () else raise Fail "LambdaDifferential0.allTheta: expected square theta"
+      val () = if n = n2 then () else raise Fail "LambdaDifferential0.basisTheta: expected square theta"
 
       val e = IntMatrix.eigenLattice (theta, ~1) (* n x k *)
       val (_, k) = matShape e
-      val zero = List.tabulate (n, fn _ => 0)
     in
       if k = 0 then
-        [zero]
+        List.tabulate (n, fn _ => [])
       else
         let
           val oneMinusTheta = matSub (identity n, theta) (* n x n *)
@@ -107,22 +106,40 @@ structure LambdaDifferential0 = struct
             end
 
           val a2 = selectColumns (colsWith2, a) (* k x t *)
-          val basis = matMul (e, a2) (* n x t *)
-          val (_, t) = matShape basis
-
-          fun vecAdd (xs, ys) = ListPair.mapEq (op +) (xs, ys)
-          fun col j = List.map (fn row => List.nth (row, j)) basis
-          val basisCols = List.tabulate (t, col)
-
-          fun enum [] acc = acc
-            | enum (bcol :: rest) acc =
-                let
-                  val withCol = List.map (fn v => vecAdd (v, bcol)) acc
-                in
-                  enum rest (acc @ withCol)
-                end
         in
-          enum basisCols [zero]
+          matMul (e, a2) (* n x t *)
         end
+    end
+
+  fun columns (m: mat) : int list list =
+    let
+      val (r, c) = matShape m
+      fun col j = List.map (fn row => List.nth (row, j)) m
+    in
+      List.tabulate (c, col)
+    end
+
+  fun charactersOrder2Theta (theta: mat) : int list list =
+    columns (basisTheta theta)
+
+  fun allTheta (theta: mat) : int list list =
+    let
+      val (n, n2) = matShape theta
+      val () = if n = n2 then () else raise Fail "LambdaDifferential0.allTheta: expected square theta"
+
+      val zero = List.tabulate (n, fn _ => 0)
+      val basisCols = charactersOrder2Theta theta
+
+      fun vecAdd (xs, ys) = ListPair.mapEq (op +) (xs, ys)
+
+      fun enum [] acc = acc
+        | enum (bcol :: rest) acc =
+            let
+              val withCol = List.map (fn v => vecAdd (v, bcol)) acc
+            in
+              enum rest (acc @ withCol)
+            end
+    in
+      enum basisCols [zero]
     end
 end

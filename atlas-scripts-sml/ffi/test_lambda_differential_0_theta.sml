@@ -37,6 +37,23 @@ structure TestLambdaDifferential0Theta = struct
     length xs = length ys
     andalso List.all (fn x => List.exists (fn y => x = y) ys) xs
 
+  fun isPowerOfTwo n =
+    n > 0 andalso
+    let
+      fun loop m =
+        m = 1 orelse (m mod 2 = 0 andalso loop (m div 2))
+    in
+      loop n
+    end
+
+  fun pow2 k =
+    let
+      fun loop (0, acc) = acc
+        | loop (n, acc) = loop (n - 1, acc * 2)
+    in
+      if k < 0 then 0 else loop (k, 1)
+    end
+
   fun run () =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
@@ -45,6 +62,22 @@ structure TestLambdaDifferential0Theta = struct
           val vsKGB = LambdaDifferential0.all (g, x)
           val theta = parseThetaMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
           val vsTheta = LambdaDifferential0.allTheta theta
+          val basis = LambdaDifferential0.basisTheta theta
+          val t =
+            (case basis of
+               [] => 0
+             | r :: _ => length r)
+          val () =
+            if length vsTheta = 1 andalso t = 0 then
+              ()
+            else if length vsTheta = 1 then
+              raise Fail "test_lambda_differential_0_theta: basis has columns but allTheta singleton"
+            else if not (isPowerOfTwo (length vsTheta)) then
+              raise Fail "test_lambda_differential_0_theta: allTheta count not power of two"
+            else if length vsTheta <> pow2 t then
+              raise Fail "test_lambda_differential_0_theta: allTheta count doesn't match basis columns"
+            else
+              ()
         in
           if sameSet (vsKGB, vsTheta) then () else raise Fail ("test_lambda_differential_0_theta: mismatch at x=" ^ Int.toString x)
         end
@@ -57,4 +90,3 @@ structure TestLambdaDifferential0Theta = struct
 end
 
 val () = TestLambdaDifferential0Theta.run ();
-
