@@ -3870,6 +3870,91 @@ extern "C" void* atlas_ktypepol_to_ht(void* kt_handle, int cutoff)
   }
 }
 
+extern "C" void* atlas_ktypepol_clone(void* kt_handle)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_clone: null handle";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    atlas::K_repr::K_type_pol poly = kt->poly.copy();
+    return static_cast<void*>(new KTypePolHandle(kt->group, std::move(poly)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_ktypepol_add(void* a_handle, void* b_handle)
+{
+  try
+  {
+    if (a_handle == nullptr || b_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_add: null handle";
+      return nullptr;
+    }
+    const auto* a = static_cast<const KTypePolHandle*>(a_handle);
+    const auto* b = static_cast<const KTypePolHandle*>(b_handle);
+    if (a->group != b->group)
+    {
+      g_last_error = "atlas_ktypepol_add: polynomials belong to different groups";
+      return nullptr;
+    }
+
+    atlas::K_repr::K_type_pol result = a->poly.copy();
+    result.add_multiple(b->poly, atlas::arithmetic::Split_integer(1, 0));
+    return static_cast<void*>(new KTypePolHandle(a->group, std::move(result)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_ktypepol_scale_split(void* kt_handle, int e, int s)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_scale_split: null handle";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    atlas::arithmetic::Split_integer c(e, s);
+    atlas::K_repr::K_type_pol result(kt->poly.cmp());
+    result.add_multiple(kt->poly, c);
+    return static_cast<void*>(new KTypePolHandle(kt->group, std::move(result)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" void* atlas_intmat_echelon(const char* mat_text)
 {
   try

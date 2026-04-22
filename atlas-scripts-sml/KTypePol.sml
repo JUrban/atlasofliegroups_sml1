@@ -63,6 +63,39 @@ structure KTypePol = struct
   (* Free a KTypePol handle. *)
   fun free (pol: ktypepol) : unit = AtlasFFI.atlas_ktypepol_free pol
 
+  (* Clone a polynomial (new owned handle). *)
+  fun clone (pol: ktypepol) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_clone pol
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.clone: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
+  (* Add two polynomials (new owned handle). *)
+  fun add (a: ktypepol, b: ktypepol) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_add (a, b)
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.add: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
+  (* Scale by a split integer `e + s*s` (new owned handle). *)
+  fun scaleSplit (pol: ktypepol, e: int, s: int) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_scale_split (pol, e, s)
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.scaleSplit: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
   (* Test purity of a single split coefficient `(e,s)` as in `basic.at`:
      “pure” means `e=0` or `s=0`. *)
   fun coefIsPure (t: term) : bool = #e t = 0 orelse #s t = 0
