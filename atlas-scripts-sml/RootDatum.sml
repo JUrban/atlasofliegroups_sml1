@@ -409,6 +409,36 @@ structure RootDatum = struct
       List.tabulate (ssr, solveOne)
     end
 
+  fun ratvecToText (u: Lattice.ratvec) : string =
+    let
+      val u = Lattice.ratvecNormalize u
+      val den = #den u
+      val nums = #nums u
+      fun intToCText n =
+        let
+          val s = Int.toString n
+        in
+          if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+            "-" ^ String.extract (s, 1, NONE)
+          else
+            s
+        end
+    in
+      String.concatWith " " (intToCText den :: List.map intToCText nums)
+    end
+
+  (* Matrix whose rows are numerators of the FPP-orbit of gamma (all with the same denominator).
+     gamma must lie in the fundamental alcove for rd. *)
+  fun FPP_orbit_numers (h: t, gamma: Lattice.ratvec) : IntMatrix.mat =
+    let
+      val out = AtlasFFI.atlas_rootdatum_FPP_orbit_numers_text (h, ratvecToText gamma)
+    in
+      if out = "-1" then
+        raise Fail ("RootDatum.FPP_orbit_numers: C++ error: " ^ AtlasFFI.atlas_last_error ())
+      else
+        IntMatrix.parseMatText out
+    end
+
   fun matColumns (m: IntMatrix.mat) : int list list =
     let
       val (_, nCols) = IntMatrix.matShape m

@@ -86,6 +86,8 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_rootdatum_root_coradical_text"
   val atlas_rootdatum_coroot_radical_text_sym =
     Foreign.getSymbol lib "atlas_rootdatum_coroot_radical_text"
+  val atlas_rootdatum_FPP_orbit_numers_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_FPP_orbit_numers_text"
 
   val atlas_param_trivial_sym = Foreign.getSymbol lib "atlas_param_trivial"
   val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
@@ -358,6 +360,13 @@ structure AtlasFFI = struct
 
   val atlas_rootdatum_coroot_radical_text =
     Foreign.buildCall1 (atlas_rootdatum_coroot_radical_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_FPP_orbit_numers_text =
+    Foreign.buildCall2
+      ( atlas_rootdatum_FPP_orbit_numers_text_sym
+      , (Foreign.cPointer, Foreign.cString)
+      , Foreign.cString
+      )
 
   type param = Foreign.Memory.voidStar
 

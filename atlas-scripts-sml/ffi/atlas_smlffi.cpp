@@ -1554,6 +1554,79 @@ extern "C" const char* atlas_rootdatum_coroots_text(void* handle)
   }
 }
 
+extern "C" const char* atlas_rootdatum_FPP_orbit_numers_text(void* handle, const char* ratweight_text)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_FPP_orbit_numers_text: null handle";
+      return store_result("-1");
+    }
+    if (ratweight_text == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_FPP_orbit_numers_text: null input";
+      return store_result("-1");
+    }
+
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto rank = h->rd.rank();
+
+    std::vector<int> xs;
+    if (!parse_int_list(ratweight_text, xs))
+      return store_result("-1");
+    if (xs.size() != static_cast<std::size_t>(1 + rank))
+    {
+      g_last_error = "atlas_rootdatum_FPP_orbit_numers_text: wrong arity";
+      return store_result("-1");
+    }
+    const int denom = xs[0];
+    if (denom == 0)
+    {
+      g_last_error = "atlas_rootdatum_FPP_orbit_numers_text: zero denominator";
+      return store_result("-1");
+    }
+    std::vector<int32_t> nums;
+    nums.reserve(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+    {
+      const int v = xs[1 + i];
+      if (v < std::numeric_limits<int32_t>::min() || v > std::numeric_limits<int32_t>::max())
+      {
+        g_last_error = "atlas_rootdatum_FPP_orbit_numers_text: numerator out of int32 range";
+        return store_result("-1");
+      }
+      nums.push_back(static_cast<int32_t>(v));
+    }
+
+    atlas::RatWeight gamma = ratweight_from_int32(nums.data(), rank, denom);
+    gamma.normalize();
+
+    atlas::weyl::WeylGroup W(h->rd.Cartan_matrix());
+    auto list = atlas::weyl::FPP_orbit_numers(h->rd, W, gamma);
+
+    atlas::int_Matrix out(static_cast<unsigned int>(list.size()), rank);
+    unsigned int r = 0;
+    for (auto&& v : list)
+    {
+      for (unsigned int i = 0; i < rank; ++i)
+        out(r, i) = v[i];
+      ++r;
+    }
+    return store_result(int_matrix_to_text(out));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
 extern "C" long atlas_kgb_size_F4_s()
 {
   try
