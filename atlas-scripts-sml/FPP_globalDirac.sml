@@ -1,7 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/BigUnitaryHash.sml";
 use "atlas-scripts-sml/AllParameters.sml";
-use "atlas-scripts-sml/F4_FPP_lambdas.sml";
+use "atlas-scripts-sml/FPP_lambdas_fold.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/ParamHash.sml";
 
@@ -40,14 +40,21 @@ structure FPP_globalDirac = struct
         ()
       else
         let
-          fun rvText ({numsText, denom}: {numsText: string, denom: int}) = Int.toString denom ^ " " ^ numsText
+          fun intToCText n =
+            let
+              val s = Int.toString n
+            in
+              if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+                "-" ^ String.extract (s, 1, NONE)
+              else
+                s
+            end
 
-          val lambdasByX = F4_FPP_lambdas.load kgbSize
-          val lambdaTextsByX =
-            Array.tabulate
-              ( kgbSize
-              , fn x => List.map rvText (Array.sub (lambdasByX, x))
-              )
+          fun ratvecText ({den, nums}: {den: int, nums: int list}) : string =
+            String.concatWith " " (intToCText den :: List.map intToCText nums)
+
+          val lambdasByX = FPP_lambdas_fold.FPP_lambdas_table g
+          val lambdaTextsByX = Array.tabulate (kgbSize, fn x => List.map ratvecText (Array.sub (lambdasByX, x)))
 
           val ps = BigUnitaryHash.list hash
 
@@ -89,14 +96,21 @@ structure FPP_globalDirac = struct
         ()
       else
         let
-          fun rvText ({numsText, denom}: {numsText: string, denom: int}) = Int.toString denom ^ " " ^ numsText
+          fun intToCText n =
+            let
+              val s = Int.toString n
+            in
+              if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+                "-" ^ String.extract (s, 1, NONE)
+              else
+                s
+            end
 
-          val lambdasByX = F4_FPP_lambdas.load kgbSize
-          val lambdaTextsByX =
-            Array.tabulate
-              ( kgbSize
-              , fn x => List.map rvText (Array.sub (lambdasByX, x))
-              )
+          fun ratvecText ({den, nums}: {den: int, nums: int list}) : string =
+            String.concatWith " " (intToCText den :: List.map intToCText nums)
+
+          val lambdasByX = FPP_lambdas_fold.FPP_lambdas_table g
+          val lambdaTextsByX = Array.tabulate (kgbSize, fn x => List.map ratvecText (Array.sub (lambdasByX, x)))
 
           val ps = #list set ()
 
