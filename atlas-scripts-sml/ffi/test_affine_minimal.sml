@@ -9,6 +9,8 @@ val ad = Affine.affine_datum rd;
 val _ = assert "affine_root is highestRoot" (#affine_roots ad = [[2]]);
 val _ = assert "affine_coroot is [1]" (#affine_coroots ad = [[1]]);
 
+val ad2 = Affine.dual ad;
+val _ = assert "dual swaps roots/coroots" (#affine_roots ad2 = [[1]] andalso #affine_coroots ad2 = [[2]]);
+
 val () = RootDatum.free rd;
 val _ = print "ok\n";
-

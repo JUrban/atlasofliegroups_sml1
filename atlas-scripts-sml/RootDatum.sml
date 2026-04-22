@@ -295,4 +295,26 @@ structure RootDatum = struct
     in
       List.map factor comps
     end
+
+  fun derived_is_simple (h: t) : bool =
+    numberSimpleFactors h = 1
+
+  (* One highest root per simple factor, in ambient coordinates. *)
+  fun highestRoots (h: t) : int list list =
+    let
+      val factors = simpleFactorsEmbedded h
+      val hrs = List.map highestRoot factors
+      val () = List.app free factors
+    in
+      hrs
+    end
+
+  fun highestShortRoots (h: t) : int list list =
+    let
+      val factors = simpleFactorsEmbedded h
+      val hsrs = List.map highestShortRoot factors
+      val () = List.app free factors
+    in
+      hsrs
+    end
 end
