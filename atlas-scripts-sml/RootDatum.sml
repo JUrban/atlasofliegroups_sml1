@@ -98,5 +98,22 @@ structure RootDatum = struct
 
   fun posCorootsCols (h: t) : int list list =
     parseColumnVectorsText (AtlasFFI.atlas_rootdatum_poscoroots_text h)
-end
 
+  fun rootsCols (h: t) : int list list =
+    parseColumnVectorsText (AtlasFFI.atlas_rootdatum_roots_text h)
+
+  fun corootsCols (h: t) : int list list =
+    parseColumnVectorsText (AtlasFFI.atlas_rootdatum_coroots_text h)
+
+  fun corootOfRoot (h: t) (root: int list) : int list option =
+    let
+      val rs = rootsCols h
+      val cs = corootsCols h
+      val () = if length rs = length cs then () else raise Fail "RootDatum.corootOfRoot: mismatch"
+      fun loop ([], [], _) = NONE
+        | loop (r :: rs, c :: cs, i) = if r = root then SOME c else loop (rs, cs, i + 1)
+        | loop _ = raise Fail "RootDatum.corootOfRoot: mismatch"
+    in
+      loop (rs, cs, 0)
+    end
+end
