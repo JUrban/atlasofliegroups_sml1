@@ -158,6 +158,66 @@ extern "C" long atlas_group_kgb_size(void* handle)
   }
 }
 
+extern "C" long atlas_group_rank(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_rank: null handle";
+      return -1;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    atlas::repr::Rep_context rc(h->G);
+    return static_cast<long>(rc.rank());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" const char* atlas_group_rho_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_rho_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    atlas::repr::Rep_context rc(h->G);
+    const auto& rd = rc.root_datum();
+    const auto rank = rc.rank();
+    atlas::RatWeight rho = atlas::rootdata::rho(rd);
+    rho.normalize();
+
+    std::ostringstream out;
+    out << rho.denominator();
+    const auto& num = rho.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_kgb_size_F4_s()
 {
   try
