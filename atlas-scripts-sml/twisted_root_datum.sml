@@ -181,6 +181,39 @@ structure TwistedRootDatum = struct
       (matFromColumns roots, matFromColumns coroots)
     end
 
-  fun folded (_: t) : rootdatum * mat =
-    raise Fail "TwistedRootDatum.folded: unimplemented"
+  fun matColumns (m: mat) : int list list =
+    let
+      val (_, nCols) = IntMatrix.matShape m
+      fun col j = List.map (fn row => List.nth (row, j)) m
+    in
+      List.tabulate (nCols, col)
+    end
+
+  fun folded (trd: t) : rootdatum * mat =
+    let
+      val (rootsMat, corootsMat) = pre_folded trd
+      val rd = #rd trd
+      val delta = #delta trd
+      val tMat = IntMatrix.eigenLattice (IntMatrix.transpose delta, 1)
+
+      val roots = matColumns rootsMat
+      val coroots = matColumns corootsMat
+      val () = if length roots = length coroots then () else raise Fail "TwistedRootDatum.folded: mismatched pre_folded"
+
+      val rootCor = ListPair.zipEq (roots, coroots)
+
+      fun isSum alpha =
+        List.exists
+          (fn beta => List.exists (fn gamma => vecAdd (beta, gamma) = alpha) roots)
+          roots
+
+      fun isSimple alpha = not (isSum alpha)
+      val simplePairs = List.filter (fn (r, _) => isSimple r) rootCor
+      val simpleRoots = List.map #1 simplePairs
+      val simpleCoroots = List.map #2 simplePairs
+
+      val foldedRd = RootDatum.newFromSimpleMats (matFromColumns simpleRoots, matFromColumns simpleCoroots, false)
+    in
+      (foldedRd, tMat)
+    end
 end
