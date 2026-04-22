@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/ParamHash.sml";
 use "atlas-scripts-sml/F4_FPP_points.sml";
+use "atlas-scripts-sml/F4_FPP_points_compute.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/FPP_globalDirac.sml";
 
