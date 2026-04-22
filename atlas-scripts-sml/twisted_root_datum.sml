@@ -3,6 +3,7 @@ use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/sort.sml";
+use "atlas-scripts-sml/affine.sml";
 
 (* Minimal SML analogue of `atlas-scripts/twisted_root_datum.at`:
    currently only implements `cyclic_twist`. *)
@@ -261,5 +262,16 @@ structure TwistedRootDatum = struct
       val () = if ord <= 3 then () else raise Fail "TwistedRootDatum.affine_root_of_factor: order > 3"
     in
       if ord = 1 then RootDatum.highestRoot foldedFactor else RootDatum.highestShortRoot foldedFactor
+    end
+
+  fun affine_datum (trd: t) : Affine.affine_datum =
+    let
+      val (frd, tMat) = folded trd
+      val factors = RootDatum.simpleFactorsEmbedded frd
+      val affine_roots = List.map (fn f => affine_root_of_factor (trd, f, tMat)) factors
+      val affine_coroots = List.map (RootDatum.coroot frd) affine_roots
+      val () = List.app RootDatum.free factors
+    in
+      {affine_coroots = affine_coroots, rd = frd, affine_roots = affine_roots}
     end
 end

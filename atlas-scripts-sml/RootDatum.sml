@@ -192,6 +192,37 @@ structure RootDatum = struct
       List.tabulate (n, row)
     end
 
+  fun matColumns (m: IntMatrix.mat) : int list list =
+    let
+      val (_, nCols) = IntMatrix.matShape m
+      fun col j = List.map (fn row => List.nth (row, j)) m
+    in
+      List.tabulate (nCols, col)
+    end
+
+  fun matFromColumns (cols: int list list) : IntMatrix.mat =
+    (case cols of
+       [] => []
+     | c0 :: cs =>
+         let
+           val n = length c0
+           val () = if List.all (fn c => length c = n) cs then () else raise Fail "RootDatum.matFromColumns: ragged"
+           fun row i = List.map (fn c => List.nth (c, i)) cols
+         in
+           List.tabulate (n, row)
+         end)
+
+  fun selectColumns (cols: int list, m: IntMatrix.mat) : IntMatrix.mat =
+    let
+      val (nRows, nCols) = IntMatrix.matShape m
+      val () =
+        if List.all (fn j => 0 <= j andalso j < nCols) cols then () else raise Fail "RootDatum.selectColumns: oob"
+      val allCols = matColumns m
+      val picked = List.map (fn j => List.nth (allCols, j)) cols
+    in
+      if null picked then List.tabulate (nRows, fn _ => []) else matFromColumns picked
+    end
+
   fun numberSimpleFactors (h: t) : int =
     let
       val c = cartanMatrix h
@@ -220,5 +251,48 @@ structure RootDatum = struct
         else (bfs [i]; loop (i + 1, count + 1))
     in
       if n = 0 then 0 else loop (0, 0)
+    end
+
+  fun simpleFactorIndexSets (h: t) : int list list =
+    let
+      val c = cartanMatrix h
+      val n = length c
+      fun entry i j = List.nth (List.nth (c, i), j)
+
+      val seen = Array.array (n, false)
+      fun neighbors i =
+        List.filter
+          (fn j => j <> i andalso (entry i j < 0 orelse entry j i < 0))
+          (List.tabulate (n, fn k => k))
+
+      fun bfs (queue: int list, acc: int list) : int list =
+        (case queue of
+           [] => List.rev acc
+         | i :: rest =>
+             if Array.sub (seen, i) then
+               bfs (rest, acc)
+             else
+               (Array.update (seen, i, true);
+                bfs (rest @ neighbors i, i :: acc)))
+
+      fun loop (i, comps) =
+        if i >= n then List.rev comps
+        else if Array.sub (seen, i) then loop (i + 1, comps)
+        else loop (i + 1, bfs ([i], []) :: comps)
+    in
+      if n = 0 then [] else loop (0, [])
+    end
+
+  (* Return simple factors as root data embedded in the same ambient lattice
+     (i.e. same `rank`, fewer simple roots). *)
+  fun simpleFactorsEmbedded (h: t) : t list =
+    let
+      val comps = simpleFactorIndexSets h
+      val roots = simpleRootsMat h
+      val coroots = simpleCorootsMat h
+      fun factor idxs =
+        newFromSimpleMats (selectColumns (idxs, roots), selectColumns (idxs, coroots), false)
+    in
+      List.map factor comps
     end
 end
