@@ -204,6 +204,16 @@ struct DiagonalizeHandle
   atlas::int_Matrix row;
   atlas::int_Matrix col;
 };
+
+struct RootDatumHandle
+{
+  atlas::prerootdata::PreRootDatum prd;
+  atlas::rootdata::RootDatum rd;
+
+  explicit RootDatumHandle(atlas::prerootdata::PreRootDatum&& prd)
+    : prd(std::move(prd)), rd(this->prd)
+  {}
+};
 } // namespace
 
 extern "C" void* atlas_param_finals(void* p_handle)
@@ -969,6 +979,272 @@ extern "C" const char* atlas_group_posroots_text(void* handle)
     for (unsigned int j = 0; j < n; ++j)
     {
       const auto& r = rd.posRoot(static_cast<atlas::RootNbr>(j));
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << r[i];
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_rootdatum_new_simple(char type_letter, int rank, int prefer_coroots)
+{
+  try
+  {
+    if (rank <= 0)
+    {
+      g_last_error = "atlas_rootdatum_new_simple: rank must be positive";
+      return nullptr;
+    }
+    atlas::lietype::LieType lt;
+    lt.push_back(atlas::lietype::SimpleLieType(type_letter, static_cast<unsigned int>(rank)));
+    atlas::prerootdata::PreRootDatum prd(lt, prefer_coroots != 0);
+    return static_cast<void*>(new RootDatumHandle(std::move(prd)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_rootdatum_new_from_simple_mats_text(const char* simple_roots_text,
+                                                          const char* simple_coroots_text,
+                                                          int prefer_coroots)
+{
+  try
+  {
+    if (simple_roots_text == nullptr || simple_coroots_text == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_new_from_simple_mats_text: null input";
+      return nullptr;
+    }
+    atlas::int_Matrix roots;
+    atlas::int_Matrix coroots;
+    if (!parse_int_matrix_text(simple_roots_text, roots))
+      return nullptr;
+    if (!parse_int_matrix_text(simple_coroots_text, coroots))
+      return nullptr;
+    atlas::prerootdata::PreRootDatum prd(roots, coroots, prefer_coroots != 0);
+    prd.test_Cartan_matrix();
+    return static_cast<void*>(new RootDatumHandle(std::move(prd)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void atlas_rootdatum_free(void* handle)
+{
+  try
+  {
+    delete static_cast<RootDatumHandle*>(handle);
+  }
+  catch (...)
+  {
+  }
+}
+
+extern "C" long atlas_rootdatum_rank(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_rank: null handle";
+      return -1;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    return static_cast<long>(h->rd.rank());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" const char* atlas_rootdatum_rho_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_rho_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto rank = h->rd.rank();
+    atlas::RatWeight rho = atlas::rootdata::rho(h->rd);
+    rho.normalize();
+    std::ostringstream out;
+    out << rho.denominator();
+    const auto& num = rho.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_rootdatum_simple_roots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_simple_roots_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto ss_rank = h->rd.semisimple_rank();
+    const auto rank = h->rd.rank();
+
+    std::ostringstream out;
+    out << ss_rank << ' ' << rank;
+    for (unsigned int s = 0; s < ss_rank; ++s)
+    {
+      const auto& r = h->rd.simpleRoot(static_cast<atlas::weyl::Generator>(s));
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << r[i];
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_rootdatum_simple_coroots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_simple_coroots_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto ss_rank = h->rd.semisimple_rank();
+    const auto rank = h->rd.rank();
+
+    std::ostringstream out;
+    out << ss_rank << ' ' << rank;
+    for (unsigned int s = 0; s < ss_rank; ++s)
+    {
+      const auto& cor = h->rd.simpleCoroot(static_cast<atlas::weyl::Generator>(s));
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << cor[i];
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_rootdatum_posroots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_posroots_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto rank = h->rd.rank();
+    const auto n = h->rd.numPosRoots();
+
+    std::ostringstream out;
+    out << n << ' ' << rank;
+    for (unsigned int j = 0; j < n; ++j)
+    {
+      const auto& r = h->rd.posRoot(static_cast<atlas::RootNbr>(j));
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << r[i];
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_rootdatum_poscoroots_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_poscoroots_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto rank = h->rd.rank();
+    const auto n = h->rd.numPosRoots();
+
+    std::ostringstream out;
+    out << n << ' ' << rank;
+    for (unsigned int j = 0; j < n; ++j)
+    {
+      const auto& r = h->rd.posCoroot(static_cast<atlas::RootNbr>(j));
       for (unsigned int i = 0; i < rank; ++i)
         out << ' ' << r[i];
     }

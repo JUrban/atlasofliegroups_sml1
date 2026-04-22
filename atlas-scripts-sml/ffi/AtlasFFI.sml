@@ -57,6 +57,20 @@ structure AtlasFFI = struct
   val atlas_kgb_all_lambda_differential_0_text_sym =
     Foreign.getSymbol lib "atlas_kgb_all_lambda_differential_0_text"
 
+  val atlas_rootdatum_new_simple_sym = Foreign.getSymbol lib "atlas_rootdatum_new_simple"
+  val atlas_rootdatum_new_from_simple_mats_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_new_from_simple_mats_text"
+  val atlas_rootdatum_free_sym = Foreign.getSymbol lib "atlas_rootdatum_free"
+  val atlas_rootdatum_rank_sym = Foreign.getSymbol lib "atlas_rootdatum_rank"
+  val atlas_rootdatum_rho_text_sym = Foreign.getSymbol lib "atlas_rootdatum_rho_text"
+  val atlas_rootdatum_simple_roots_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_simple_roots_text"
+  val atlas_rootdatum_simple_coroots_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_simple_coroots_text"
+  val atlas_rootdatum_posroots_text_sym = Foreign.getSymbol lib "atlas_rootdatum_posroots_text"
+  val atlas_rootdatum_poscoroots_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_poscoroots_text"
+
   val atlas_param_trivial_sym = Foreign.getSymbol lib "atlas_param_trivial"
   val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
   val atlas_param_clone_sym = Foreign.getSymbol lib "atlas_param_clone"
@@ -258,6 +272,43 @@ structure AtlasFFI = struct
       , (Foreign.cPointer, Foreign.cInt)
       , Foreign.cString
       )
+
+  type rootdatum = Foreign.Memory.voidStar
+
+  val atlas_rootdatum_new_simple =
+    Foreign.buildCall3
+      ( atlas_rootdatum_new_simple_sym
+      , (Foreign.cChar, Foreign.cInt, Foreign.cInt)
+      , Foreign.cPointer
+      )
+
+  val atlas_rootdatum_new_from_simple_mats_text =
+    Foreign.buildCall3
+      ( atlas_rootdatum_new_from_simple_mats_text_sym
+      , (Foreign.cString, Foreign.cString, Foreign.cInt)
+      , Foreign.cPointer
+      )
+
+  val atlas_rootdatum_free =
+    Foreign.buildCall1 (atlas_rootdatum_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_rootdatum_rank =
+    Foreign.buildCall1 (atlas_rootdatum_rank_sym, Foreign.cPointer, Foreign.cLong)
+
+  val atlas_rootdatum_rho_text =
+    Foreign.buildCall1 (atlas_rootdatum_rho_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_simple_roots_text =
+    Foreign.buildCall1 (atlas_rootdatum_simple_roots_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_simple_coroots_text =
+    Foreign.buildCall1 (atlas_rootdatum_simple_coroots_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_posroots_text =
+    Foreign.buildCall1 (atlas_rootdatum_posroots_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_poscoroots_text =
+    Foreign.buildCall1 (atlas_rootdatum_poscoroots_text_sym, Foreign.cPointer, Foreign.cString)
 
   type param = Foreign.Memory.voidStar
 
