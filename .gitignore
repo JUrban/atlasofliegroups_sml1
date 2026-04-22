@@ -6,3 +6,9 @@ sources/io/filekl.cpp
 sources/io/filekl.h
 sources/io/filekl_in.cpp
 sources/io/filekl_in.h
+
+# Local scratch / generated artifacts
+atlas-scripts-out/
+atlas-scripts-bad/
+verify_f4_fpp
+00allat*
