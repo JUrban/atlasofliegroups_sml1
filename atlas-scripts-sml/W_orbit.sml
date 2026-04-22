@@ -23,9 +23,11 @@ use "atlas-scripts-sml/sort.sml";
       - `generate_action_from_dom` (as above, also tracking action matrices)
       - `from_dominant_vec` (deterministic dominant factoring for integral vecs)
       - `W_orbit_dom` / `W_orbit` (orbit as row-matrix of vectors)
+      - `from_dominant_vec_gens` / `generate_from` / `stabiliser_quotient`:
+        parabolic-subgroup analogues parameterized by generator lists
+      - coweight analogues for the above core operations
       - a few convenience helpers (`allSimples`, `act_word_rtl`)
   - Not yet implemented:
-      - `stabiliser_quotient` / `Weyl_orbit_ws` analogues
       - iterators over parabolic subgroups and full W
 
   Terminology and conventions
@@ -80,7 +82,7 @@ structure WOrbit = struct
        s_i(x) = x - <x, alpha_i^vee> * alpha_i
      where pairing is implemented by integer dot product in the Atlas
      coordinate conventions. *)
-  fun reflectSimple (rd: rootdatum, i: int) (x: vec) : vec =
+  fun reflectSimpleWeight (rd: rootdatum, i: int) (x: vec) : vec =
     let
       val alpha = simpleRoot (rd, i)
       val av = simpleCoroot (rd, i)
@@ -89,9 +91,27 @@ structure WOrbit = struct
       vecSub (x, vecScale (m, alpha))
     end
 
+  (* Reflection of a coweight `x` through the simple coroot `i`:
+       s_i(x) = x - <alpha_i, x> * alpha_i^vee.
+  *)
+  fun reflectSimpleCoweight (rd: rootdatum, i: int) (x: vec) : vec =
+    let
+      val alpha = simpleRoot (rd, i)
+      val av = simpleCoroot (rd, i)
+      val m = RootDatum.dot (alpha, x)
+    in
+      vecSub (x, vecScale (m, av))
+    end
+
   (* Apply a word in the `.at` right-to-left convention. *)
+  fun act_word_rtl_with (reflect: rootdatum * int -> vec -> vec) (rd: rootdatum, w: word, start: vec) : vec =
+    List.foldl (fn (i, v) => reflect (rd, i) v) start (List.rev w)
+
   fun act_word_rtl (rd: rootdatum, w: word, start: vec) : vec =
-    List.foldl (fn (i, v) => reflectSimple (rd, i) v) start (List.rev w)
+    act_word_rtl_with reflectSimpleWeight (rd, w, start)
+
+  fun act_word_rtl_coweight (rd: rootdatum, w: word, start: vec) : vec =
+    act_word_rtl_with reflectSimpleCoweight (rd, w, start)
 
   (* ---------- orbit generation ---------- *)
 
@@ -135,7 +155,52 @@ structure WOrbit = struct
       fun loop (x: vec, appliedRev: int list) : word * vec =
         (case firstNegative x of
            NONE => (List.rev appliedRev, x)
-         | SOME i => loop (reflectSimple (rd, i) x, i :: appliedRev))
+         | SOME i => loop (reflectSimpleWeight (rd, i) x, i :: appliedRev))
+    in
+      loop (x_original, [])
+    end
+
+  (* Parabolic-subgroup variant: make `x` dominant with respect to the
+     generators `gens` (a list of simple indices).
+
+     Returns `(witnessWord, x_dom)` where:
+       - `x_dom` is `gens`-dominant: <x_dom, alpha_i^vee> >= 0 for all i in gens
+       - `act_word_rtl(rd, witnessWord, x_dom) = x_original`
+  *)
+  fun from_dominant_vec_gens (rd: rootdatum, gens: int list, x_original: vec) : word * vec =
+    let
+      fun firstNegativeInGens (x: vec) : int option =
+        let
+          fun loop [] = NONE
+            | loop (i :: is) =
+                if RootDatum.dot (x, simpleCoroot (rd, i)) < 0 then SOME i else loop is
+        in
+          loop gens
+        end
+
+      fun loop (x: vec, appliedRev: int list) : word * vec =
+        (case firstNegativeInGens x of
+           NONE => (List.rev appliedRev, x)
+         | SOME i => loop (reflectSimpleWeight (rd, i) x, i :: appliedRev))
+    in
+      loop (x_original, [])
+    end
+
+  fun from_dominant_vec_gens_coweight (rd: rootdatum, gens: int list, x_original: vec) : word * vec =
+    let
+      fun firstNegativeInGens (x: vec) : int option =
+        let
+          fun loop [] = NONE
+            | loop (i :: is) =
+                if RootDatum.dot (simpleRoot (rd, i), x) < 0 then SOME i else loop is
+        in
+          loop gens
+        end
+
+      fun loop (x: vec, appliedRev: int list) : word * vec =
+        (case firstNegativeInGens x of
+           NONE => (List.rev appliedRev, x)
+         | SOME i => loop (reflectSimpleCoweight (rd, i) x, i :: appliedRev))
     in
       loop (x_original, [])
     end
@@ -151,7 +216,18 @@ structure WOrbit = struct
     in
       fn x =>
         if RootDatum.dot (x, av) > 0 then
-          SOME (reflectSimple (rd, i) x)
+          SOME (reflectSimpleWeight (rd, i) x)
+        else
+          NONE
+    end
+
+  fun simple_actor_coweight (rd: rootdatum, i: int) : vec -> vec option =
+    let
+      val alpha = simpleRoot (rd, i)
+    in
+      fn x =>
+        if RootDatum.dot (alpha, x) > 0 then
+          SOME (reflectSimpleCoweight (rd, i) x)
         else
           NONE
     end
@@ -210,6 +286,53 @@ structure WOrbit = struct
   fun generate_from_dom_simples (rd: rootdatum, gens: int list, start: vec) : (vec * word) list =
     generate_from_dom (List.map (fn i => simple_actor (rd, i)) gens, gens, start)
 
+  fun generate_from_dom_simples_coweight (rd: rootdatum, gens: int list, start: vec) : (vec * word) list =
+    generate_from_dom (List.map (fn i => simple_actor_coweight (rd, i)) gens, gens, start)
+
+  (* Parabolic-subgroup analogue of `.at` `generate_from`:
+     given any `v`, first make it `gens`-dominant; then generate orbit of the
+     dominant representative; finally adjust witness words so that each word
+     maps the original `v` to the target.
+
+     Returned pairs `(b,w)` satisfy `act_word_rtl(rd,w,v)=b`.
+  *)
+  fun generate_from (rd: rootdatum, gens: int list, v: vec) : (vec * word) list =
+    let
+      val (chamber, domv) = from_dominant_vec_gens (rd, gens, v)
+      val to_dom = List.rev chamber (* inverse word; s_i^{-1}=s_i *)
+      val orbit = generate_from_dom_simples (rd, gens, domv)
+      fun adjust (b, w_dom) = (b, w_dom @ to_dom)
+    in
+      List.map adjust orbit
+    end
+
+  fun generate_from_coweight (rd: rootdatum, gens: int list, v: vec) : (vec * word) list =
+    let
+      val (chamber, domv) = from_dominant_vec_gens_coweight (rd, gens, v)
+      val to_dom = List.rev chamber
+      val orbit = generate_from_dom_simples_coweight (rd, gens, domv)
+      fun adjust (b, w_dom) = (b, w_dom @ to_dom)
+    in
+      List.map adjust orbit
+    end
+
+  (* “Minimal coset representatives” for the stabilizer of `v` in the subgroup
+     generated by `gens`, represented as words. This mirrors the
+     `stabiliser_quotient` functions in `W_orbit.at`, but returns words rather
+     than Atlas `WeylElt` values.
+  *)
+  fun stabiliser_quotient_of_dom (rd: rootdatum, gens: int list, v_dom: vec) : word list =
+    List.map #2 (generate_from_dom_simples (rd, gens, v_dom))
+
+  fun stabiliser_quotient (rd: rootdatum, gens: int list, v: vec) : word list =
+    List.map #2 (generate_from (rd, gens, v))
+
+  fun stabiliser_quotient_of_dom_coweight (rd: rootdatum, gens: int list, v_dom: vec) : word list =
+    List.map #2 (generate_from_dom_simples_coweight (rd, gens, v_dom))
+
+  fun stabiliser_quotient_coweight (rd: rootdatum, gens: int list, v: vec) : word list =
+    List.map #2 (generate_from_coweight (rd, gens, v))
+
   (* Orbit of a dominant integral weight under the full Weyl group, returned as
      a matrix of row vectors (matching the `.at` convention for `mat`). *)
   fun W_orbit_dom (rd: rootdatum, start_dom: vec) : mat =
@@ -227,10 +350,34 @@ structure WOrbit = struct
       W_orbit_dom (rd, x_dom)
     end
 
+  fun W_orbit_gens_dom (rd: rootdatum, gens: int list, start_dom: vec) : mat =
+    List.map #1 (generate_from_dom_simples (rd, gens, start_dom))
+
+  fun W_orbit_gens (rd: rootdatum, gens: int list, x: vec) : mat =
+    let
+      val (_, x_dom) = from_dominant_vec_gens (rd, gens, x)
+    in
+      W_orbit_gens_dom (rd, gens, x_dom)
+    end
+
+  fun W_orbit_coweight (rd: rootdatum, x: vec) : mat =
+    let
+      val (_, x_dom) = from_dominant_vec_gens_coweight (rd, allSimples rd, x)
+    in
+      List.map #1 (generate_from_dom_simples_coweight (rd, allSimples rd, x_dom))
+    end
+
+  fun W_orbit_gens_coweight (rd: rootdatum, gens: int list, x: vec) : mat =
+    let
+      val (_, x_dom) = from_dominant_vec_gens_coweight (rd, gens, x)
+    in
+      List.map #1 (generate_from_dom_simples_coweight (rd, gens, x_dom))
+    end
+
   (* Variant tracking action matrices.
 
      Each returned triple `(b, w, act)` satisfies:
-       - `b` is the orbit weight
+        - `b` is the orbit weight
        - `w` witnesses `start -> b` (right-to-left)
        - `act` is the product of representation matrices for the word, in the
          same right-to-left convention:

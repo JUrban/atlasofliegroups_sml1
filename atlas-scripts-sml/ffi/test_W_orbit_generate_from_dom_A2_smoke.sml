@@ -40,5 +40,39 @@ val () =
 val orb2 = WOrbit.W_orbit (rd, v);
 val () = if length orb2 = 6 then () else raise Fail "W_orbit size mismatch on non-dominant input";
 
+(* Parabolic-subgroup variants (gens = [0]) should give orbit size 2. *)
+val gens = [0];
+val orbG = WOrbit.generate_from_dom_simples (rd, gens, start);
+val () = if length orbG = 2 then () else raise Fail "A2 gens=[0] orbit size mismatch";
+val () =
+  List.app
+    (fn (b, w) =>
+      if WOrbit.act_word_rtl (rd, w, start) = b then () else raise Fail "gens witness failed")
+    orbG;
+
+val reps = WOrbit.stabiliser_quotient_of_dom (rd, gens, start);
+val () = if length reps = 2 then () else raise Fail "stabiliser_quotient_of_dom size mismatch";
+val () =
+  List.app
+    (fn w =>
+      let
+        val b = WOrbit.act_word_rtl (rd, w, start)
+      in
+        if List.exists (fn (b2, _) => b2 = b) orbG then () else raise Fail "stabiliser_quotient rep not in orbit"
+      end)
+    reps;
+
+val orbFrom = WOrbit.generate_from (rd, gens, v);
+val () = if length orbFrom = 2 then () else raise Fail "generate_from size mismatch";
+val () =
+  List.app
+    (fn (b, w) =>
+      if WOrbit.act_word_rtl (rd, w, v) = b then () else raise Fail "generate_from witness failed")
+    orbFrom;
+
+(* Coweight variant (A2 is simply laced, so sizes should match). *)
+val orbCo = WOrbit.W_orbit_coweight (rd, start);
+val () = if length orbCo = 6 then () else raise Fail "W_orbit_coweight size mismatch";
+
 val () = RootDatum.free rd;
 val () = print "OK\n";
