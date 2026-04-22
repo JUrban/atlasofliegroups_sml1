@@ -59,12 +59,33 @@ structure Lattice = struct
     let
       val (n, m) = matShape a
       val entries = List.concat a
+      fun intToCText n =
+        let
+          val s = Int.toString n
+        in
+          if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+            "-" ^ String.extract (s, 1, NONE)
+          else
+            s
+        end
     in
-      String.concatWith " " (Int.toString n :: Int.toString m :: List.map Int.toString entries)
+      String.concatWith " " (Int.toString n :: Int.toString m :: List.map intToCText entries)
     end
 
   fun vecToText (xs: vec) : string =
-    String.concatWith " " (Int.toString (length xs) :: List.map Int.toString xs)
+    let
+      fun intToCText n =
+        let
+          val s = Int.toString n
+        in
+          if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+            "-" ^ String.extract (s, 1, NONE)
+          else
+            s
+        end
+    in
+      String.concatWith " " (Int.toString (length xs) :: List.map intToCText xs)
+    end
 
   fun parseInts s =
     let
@@ -85,6 +106,7 @@ structure Lattice = struct
     in
       case ns of
         [0] => NONE
+      | [~1] => raise Fail ("Lattice.solve: C++ error: " ^ AtlasFFI.atlas_last_error ())
       | m :: rest =>
           if m < 0 then raise Fail "Lattice.solve: negative size"
           else if length rest <> m then raise Fail "Lattice.solve: truncated output"

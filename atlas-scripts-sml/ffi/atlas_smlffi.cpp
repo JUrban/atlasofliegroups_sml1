@@ -127,36 +127,36 @@ extern "C" const char* atlas_intmat_find_solution_text(const char* mat_text, con
     std::vector<int> mat;
     std::vector<int> vec;
     if (!parse_int_list(mat_text, mat))
-      return nullptr;
+      return store_result("-1");
     if (!parse_int_list(vec_text, vec))
-      return nullptr;
+      return store_result("-1");
     if (mat.size() < 2 || vec.size() < 1)
     {
       g_last_error = "atlas_intmat_find_solution_text: truncated input";
-      return nullptr;
+      return store_result("-1");
     }
     const int n_rows = mat[0];
     const int n_cols = mat[1];
     if (n_rows < 0 || n_cols < 0)
     {
       g_last_error = "atlas_intmat_find_solution_text: negative dimensions";
-      return nullptr;
+      return store_result("-1");
     }
     const std::size_t need = static_cast<std::size_t>(2 + n_rows * n_cols);
     if (mat.size() != need)
     {
       g_last_error = "atlas_intmat_find_solution_text: matrix entry count mismatch";
-      return nullptr;
+      return store_result("-1");
     }
     if (vec[0] != n_rows)
     {
       g_last_error = "atlas_intmat_find_solution_text: vector length mismatch";
-      return nullptr;
+      return store_result("-1");
     }
     if (vec.size() != static_cast<std::size_t>(1 + n_rows))
     {
       g_last_error = "atlas_intmat_find_solution_text: vector entry count mismatch";
-      return nullptr;
+      return store_result("-1");
     }
 
     atlas::int_Matrix A(static_cast<unsigned int>(n_rows), static_cast<unsigned int>(n_cols));
@@ -182,12 +182,12 @@ extern "C" const char* atlas_intmat_find_solution_text(const char* mat_text, con
   catch (const std::exception& e)
   {
     g_last_error = e.what();
-    return nullptr;
+    return store_result("-1");
   }
   catch (...)
   {
     g_last_error = "unknown C++ exception";
-    return nullptr;
+    return store_result("-1");
   }
 }
 
@@ -610,6 +610,38 @@ extern "C" void* atlas_param_clone(void* p_handle)
       return nullptr;
     }
     atlas::repr::StandardRepr sr = p->sr;
+    return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_param_normalise(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_normalise: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_normalise: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    atlas::repr::StandardRepr sr = p->sr;
+    rc.normalise(sr);
     return static_cast<void*>(new ParamHandle(p->group, std::move(sr)));
   }
   catch (const std::exception& e)

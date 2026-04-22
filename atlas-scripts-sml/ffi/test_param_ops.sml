@@ -59,5 +59,13 @@ val () =
     (showParam "cayley0(p)" pCay; AtlasFFI.atlas_param_free pCay);
 
 val () = AtlasFFI.atlas_param_free p0;
+
+val pN = AtlasFFI.atlas_param_normalise p;
+val () =
+  if pN = Foreign.Memory.null then
+    raise Fail ("normalise failed: " ^ AtlasFFI.atlas_last_error ())
+  else
+    (showParam "normalise(p)" pN; AtlasFFI.atlas_param_free pN);
+
 val () = AtlasFFI.atlas_param_free p;
 val () = AtlasFFI.atlas_group_free g;

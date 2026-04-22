@@ -1,6 +1,9 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+use "atlas-scripts-sml/Lattice.sml";
 
 structure G2_unitary_dual = struct
+  type rat = {num: int, den: int}
+
   fun parseInts s =
     let
       fun toInt tok =
@@ -18,6 +21,19 @@ structure G2_unitary_dual = struct
 
   fun intsToText xs =
     String.concatWith " " (List.map Int.toString xs)
+
+  fun intToCText n =
+    let
+      val s = Int.toString n
+    in
+      if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+        "-" ^ String.extract (s, 1, NONE)
+      else
+        s
+    end
+
+  fun intsToCText xs =
+    String.concatWith " " (List.map intToCText xs)
 
   fun ratWeightToText {den, nums} =
     Int.toString den ^ " " ^ intsToText nums
@@ -85,6 +101,137 @@ structure G2_unitary_dual = struct
       in_fpp_coords (#den gamma, evals)
     end
 
+  fun gcd (a: int, b: int) : int =
+    let
+      val a = Int.abs a
+      val b = Int.abs b
+      fun loop (x, 0) = x
+        | loop (x, y) = loop (y, x mod y)
+    in
+      if a = 0 then b else loop (a, b)
+    end
+
+  fun normRat ({num, den}: rat) : rat =
+    if den = 0 then
+      raise Fail "G2_unitary_dual: normRat: zero denom"
+    else
+      let
+        val sign = if den < 0 then ~1 else 1
+        val num' = num * sign
+        val den' = den * sign
+        val g = gcd (num', den')
+      in
+        {num = num' div g, den = den' div g}
+      end
+
+  fun addRat (a: rat, b: rat) : rat =
+    normRat {num = #num a * #den b + #num b * #den a, den = #den a * #den b}
+
+  fun subRat (a: rat, b: rat) : rat =
+    normRat {num = #num a * #den b - #num b * #den a, den = #den a * #den b}
+
+  fun mulRatInt (a: rat, k: int) : rat =
+    normRat {num = #num a * k, den = #den a}
+
+  fun divRatInt (a: rat, k: int) : rat =
+    if k = 0 then raise Fail "G2_unitary_dual: divRatInt: div by 0"
+    else normRat {num = #num a, den = #den a * k}
+
+  fun ratToRatvec2 (a: rat, b: rat) : {den: int, nums: int list} =
+    let
+      val a = normRat a
+      val b = normRat b
+      val den = #den a * #den b
+      val n1 = #num a * #den b
+      val n2 = #num b * #den a
+      val g = gcd (gcd (n1, n2), den)
+    in
+      {den = den div g, nums = [n1 div g, n2 div g]}
+    end
+
+  fun gamma_s (m: rat, v: rat) : {den: int, nums: int list} =
+    let
+      val v1 = v
+      val v2 = divRatInt (subRat (m, v), 2)
+    in
+      ratToRatvec2 (v1, v2)
+    end
+
+  fun gamma_l (m: rat, v: rat) : {den: int, nums: int list} =
+    let
+      val a1 = divRatInt (addRat (m, mulRatInt (v, 3)), 2)
+      val a2 = mulRatInt (v, ~1)
+    in
+      ratToRatvec2 (a1, a2)
+    end
+
+  fun parseInvolutionMatrixText s : Lattice.mat =
+    let
+      val ns = parseInts s
+    in
+      case ns of
+        rank :: rest =>
+          let
+            val need = rank * rank
+            val () =
+              if length rest <> need then
+                raise Fail "G2_unitary_dual: parseInvolutionMatrixText: bad size"
+              else
+                ()
+            fun row i =
+              List.take (List.drop (rest, i * rank), rank)
+          in
+            List.tabulate (rank, row)
+          end
+      | _ => raise Fail "G2_unitary_dual: parseInvolutionMatrixText: empty"
+    end
+
+  fun ratvecAddIntVec (u: {den: int, nums: int list}, v: int list) : {den: int, nums: int list} =
+    if #den u <> 1 then
+      raise Fail "G2_unitary_dual: ratvecAddIntVec: expected denom=1"
+    else
+      {den = 1, nums = ListPair.mapEq (op +) (#nums u, v)}
+
+  fun all_parameters_x_gamma_one (g: AtlasFFI.group, x: int, gamma: {den: int, nums: int list}) :
+    AtlasFFI.param option =
+    let
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val th1 = Lattice.matAdd (Lattice.identity rank, theta)
+      val rho = parseRatWeightText (AtlasFFI.atlas_group_rho_text g)
+      val u = Lattice.matVecMulRatvec th1 (Lattice.ratvecSub (gamma, rho))
+      val lrOpt = Lattice.vec_solve (th1, u)
+    in
+      case lrOpt of
+        NONE => NONE
+      | SOME lr =>
+          let
+            val lambda = ratvecAddIntVec (rho, lr)
+            val oneMinusTheta =
+              ListPair.mapEq
+                (fn (ri, ti) => ListPair.mapEq (op -) (ri, ti))
+                (Lattice.identity rank, theta)
+            val nu = Lattice.ratvecScale (Lattice.matVecMulRatvec oneMinusTheta gamma, 1, 2)
+            val p =
+              AtlasFFI.atlas_param_new_from_lambda_nu_text
+                (g, x, intsToCText (#nums lambda), #den lambda, intsToCText (#nums nu), #den nu)
+          in
+            if p = Foreign.Memory.null then
+              raise Fail ("G2_unitary_dual: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              let
+                val q = AtlasFFI.atlas_param_normalise p
+                val () = AtlasFFI.atlas_param_free p
+              in
+                if q = Foreign.Memory.null then
+                  raise Fail ("G2_unitary_dual: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+                else
+                  SOME q
+              end
+          end
+    end
+
   fun ps (g: AtlasFFI.group) (epsilon: int, nu: {den: int, nums: int list}) : AtlasFFI.param =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -132,6 +279,27 @@ structure G2_unitary_dual = struct
       val () = print ("hermitian=" ^ Int.toString (AtlasFFI.atlas_param_is_hermitian p) ^ "\n")
       val () = print ("unitary_c_form=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form p) ^ "\n")
       val () = print ("in_fpp=" ^ Bool.toString (in_fpp_param g p) ^ "\n")
+
+      val x_s = 4
+      val x_l = 3
+      val gs = gamma_s ({num = 2, den = 1}, {num = 0, den = 1})
+      val gl = gamma_l ({num = 2, den = 1}, {num = 0, den = 1})
+
+      val () =
+        (case all_parameters_x_gamma_one (g, x_s, gs) of
+           NONE => print "p_s: none\n"
+         | SOME q =>
+             (print ("p_s.gamma=" ^ AtlasFFI.atlas_param_gamma_text q ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
+                     ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
+              AtlasFFI.atlas_param_free q))
+
+      val () =
+        (case all_parameters_x_gamma_one (g, x_l, gl) of
+           NONE => print "p_l: none\n"
+         | SOME q =>
+             (print ("p_l.gamma=" ^ AtlasFFI.atlas_param_gamma_text q ^ " final=" ^ Int.toString (AtlasFFI.atlas_param_is_final q)
+                     ^ " unitary=" ^ Int.toString (AtlasFFI.atlas_param_is_unitary_c_form q) ^ "\n");
+              AtlasFFI.atlas_param_free q))
 
       val () = AtlasFFI.atlas_param_free p
       val () = AtlasFFI.atlas_group_free g
