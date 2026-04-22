@@ -13,6 +13,12 @@ As a first step, there is now a working Poly/ML FFI proof-of-concept that:
 - Loads `atlas-scripts-sml/data/F4_FPP_points.txt` and reproduces the expected `1864` “big unitary hash” size for `F4_s`.
 - Verifies the set is hermitian, twist-equivalent, unitary (equal-rank c-form), and closed under contragredient (unitary dual).
 
+The FFI layer also now exposes a handful of **built-in parameter operations** (mirroring interpreter primitives) so future `.at` translations can be more literal:
+
+- `Param` data: `gamma` (infinitesimal character), `lambda`, `nu`, `x`, `height`
+- Operations: `cross`, `Cayley`, `twist`, `scale(nu)`, `reducibility_points`
+- Some root/KGB data: `rho`, `simple_coroots`, `posroots`, `KGB involution matrix`
+
 Files:
 
 - C++ wrapper: `atlas-scripts-sml/ffi/atlas_smlffi.cpp`
@@ -24,6 +30,7 @@ Files:
 - FPP point loader: `atlas-scripts-sml/F4_FPP_points.sml`
 - Hash/set: `atlas-scripts-sml/BigUnitaryHash.sml`
 - Tests: `atlas-scripts-sml/ffi/test_kgb_size_F4_s.sml`, `atlas-scripts-sml/ffi/test_param_trivial.sml`, `atlas-scripts-sml/ffi/test_param_from_points.sml`
+  - More FFI tests: `atlas-scripts-sml/ffi/test_param_ops.sml`, `atlas-scripts-sml/ffi/test_group_rootdata.sml`
 
 ## How it works
 
