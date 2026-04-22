@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
@@ -74,6 +75,14 @@ structure FPP_localDirac = struct
   fun ratvecNeg (u: ratvec) : ratvec = Lattice.ratvecScale (u, ~1, 1)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, ratvecNeg v)
 
+  (* Stable key `[den, nums...]` after normalization (for fast equality tests). *)
+  fun ratvecKey (u: ratvec) : int list =
+    let
+      val u = Lattice.ratvecNormalize u
+    in
+      #den u :: #nums u
+    end
+
   (* ---------------------------------------------------------------------- *)
   (* `.at`-style parameter constructor from gamma (infinitesimal character). *)
   (* ---------------------------------------------------------------------- *)
@@ -97,6 +106,70 @@ structure FPP_localDirac = struct
       val nu = Lattice.ratvecSub (gamma, thetaPlusHalf)
     in
       Representations.parameter (g, x, lambda, nu)
+    end
+
+  (* ---------------------------------------------------------------------- *)
+  (* Gamma slices for a fixed (x,lambda).                                    *)
+  (* ---------------------------------------------------------------------- *)
+
+  (*
+    In the folded-FPP workflow, barycenters `gamma` are grouped by the affine
+    constraint:
+
+      (I+theta(x))*gamma = (I+theta(x))*lambda
+
+    which is the same “key match” used in `F4_FPP_points_compute`.
+  *)
+  fun gammas_for_x_lambda (g: group, x: int, lambda: ratvec) : ratvec list =
+    let
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val k = ratvecKey (Lattice.matVecMulRatvec onePlus lambda)
+      val barycenters = FPP_barycenters_fold.barycenters_all g
+
+      fun keep gamma =
+        ratvecKey (Lattice.matVecMulRatvec onePlus gamma) = k
+    in
+      List.filter keep barycenters
+    end
+
+  (*
+    Enumerate final standard parameters at a fixed `(x,lambda)` by running over
+    the compatible barycenters `gamma` and constructing:
+
+      p = normalise(parameter(G,x,lambda, nu = gamma - (I+theta)*lambda/2))
+
+    Returns newly allocated parameters; caller must free them.
+  *)
+  fun params_for_x_lambda (g: group, x: int, lambda: ratvec) : param list =
+    let
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+
+      fun mk gamma =
+        let
+          val nu = Lattice.ratvecSub (gamma, thetaPlusHalf)
+          val p0 = Representations.parameter (g, x, lambda, nu)
+          val p1 = AtlasFFI.atlas_param_normalise p0
+          val () = AtlasFFI.atlas_param_free p0
+          val () =
+            if p1 = Foreign.Memory.null then
+              raise Fail ("params_for_x_lambda: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+        in
+          if AtlasFFI.atlas_param_is_standard p1 = 1 andalso AtlasFFI.atlas_param_is_final p1 = 1 then
+            SOME p1
+          else
+            (AtlasFFI.atlas_param_free p1; NONE)
+        end
+    in
+      List.mapPartial mk (gammas_for_x_lambda (g, x, lambda))
     end
 
   (* ---------------------------------------------------------------------- *)
