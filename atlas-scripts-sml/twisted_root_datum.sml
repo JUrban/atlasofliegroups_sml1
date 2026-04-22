@@ -249,4 +249,17 @@ structure TwistedRootDatum = struct
     in
       rootdatum_from_positive (roots', coroots')
     end
+
+  fun affine_root_of_factor (trd: t, foldedFactor: rootdatum, tMat: mat) : int list =
+    let
+      val inv = inverse_image_simple_factor (trd, foldedFactor, tMat)
+      val orderUp = order_twist {rd = inv, delta = #delta trd}
+      val nf = RootDatum.numberSimpleFactors inv
+      val () = RootDatum.free inv
+      val () = if nf > 0 then () else raise Fail "TwistedRootDatum.affine_root_of_factor: zero factors"
+      val ord = orderUp div nf
+      val () = if ord <= 3 then () else raise Fail "TwistedRootDatum.affine_root_of_factor: order > 3"
+    in
+      if ord = 1 then RootDatum.highestRoot foldedFactor else RootDatum.highestShortRoot foldedFactor
+    end
 end

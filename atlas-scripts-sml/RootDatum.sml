@@ -5,6 +5,15 @@ use "atlas-scripts-sml/Lattice.sml";
 structure RootDatum = struct
   type t = AtlasFFI.rootdatum
 
+  fun dot (xs: int list, ys: int list) : int =
+    let
+      fun loop ([], [], acc) = acc
+        | loop (a :: as', b :: bs', acc) = loop (as', bs', acc + a * b)
+        | loop _ = raise Fail "RootDatum.dot: length mismatch"
+    in
+      loop (xs, ys, 0)
+    end
+
   fun dual (h: t) : t =
     let
       val d = AtlasFFI.atlas_rootdatum_dual h
@@ -169,5 +178,47 @@ structure RootDatum = struct
         | loop _ = raise Fail "RootDatum.highestShortRoot: mismatch"
     in
       loop (rs, cs, 0)
+    end
+
+  fun cartanMatrix (h: t) : int list list =
+    let
+      val roots = simpleRootsCols h
+      val coroots = simpleCorootsCols h
+      val n = length roots
+      val () = if length coroots = n then () else raise Fail "RootDatum.cartanMatrix: mismatch"
+      fun entry (i, j) = dot (List.nth (roots, i), List.nth (coroots, j))
+      fun row i = List.tabulate (n, fn j => entry (i, j))
+    in
+      List.tabulate (n, row)
+    end
+
+  fun numberSimpleFactors (h: t) : int =
+    let
+      val c = cartanMatrix h
+      val n = length c
+      fun entry i j = List.nth (List.nth (c, i), j)
+
+      val seen = Array.array (n, false)
+      fun neighbors i =
+        List.filter
+          (fn j => j <> i andalso (entry i j < 0 orelse entry j i < 0))
+          (List.tabulate (n, fn k => k))
+
+      fun bfs (queue: int list) =
+        (case queue of
+           [] => ()
+         | i :: rest =>
+             if Array.sub (seen, i) then
+               bfs rest
+             else
+               (Array.update (seen, i, true);
+                bfs (rest @ neighbors i)))
+
+      fun loop (i, count) =
+        if i >= n then count
+        else if Array.sub (seen, i) then loop (i + 1, count)
+        else (bfs [i]; loop (i + 1, count + 1))
+    in
+      if n = 0 then 0 else loop (0, 0)
     end
 end
