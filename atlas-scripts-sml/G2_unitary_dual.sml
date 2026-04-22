@@ -2,6 +2,8 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/LambdaDifferential0.sml";
+use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/Coordinates.sml";
 
 structure G2_unitary_dual = struct
   type rat = {num: int, den: int}
@@ -60,59 +62,14 @@ structure G2_unitary_dual = struct
       loop (xs, ys, 0)
     end
 
-  fun parseSimpleCorootsText s : int list list =
-    let
-      val ns = parseInts s
-    in
-      case ns of
-        ssRank :: rank :: rest =>
-          let
-            fun takeVec (0, xs, acc) = (List.rev acc, xs)
-              | takeVec (n, x :: xs, acc) = takeVec (n - 1, xs, x :: acc)
-              | takeVec _ = raise Fail "G2_unitary_dual: parseSimpleCorootsText: truncated"
-            fun loop (0, xs, acc) = (List.rev acc, xs)
-              | loop (k, xs, acc) =
-                  let
-                    val (v, xs') = takeVec (rank, xs, [])
-                  in
-                    loop (k - 1, xs', v :: acc)
-                  end
-            val (cors, leftover) = loop (ssRank, rest, [])
-          in
-            if null leftover then cors else raise Fail "G2_unitary_dual: parseSimpleCorootsText: extra ints"
-          end
-      | _ => raise Fail ("G2_unitary_dual: parseSimpleCorootsText: bad header: " ^ s)
-    end
-
-  fun coordsFromCoroots (coroots: int list list) (w: {den: int, nums: int list}) : int list =
-    let
-      val den = #den w
-      val nums = #nums w
-      val () = if den <= 0 then raise Fail "G2_unitary_dual: coords: non-positive denom" else ()
-    in
-      List.map (fn cor => dot (cor, nums)) coroots
-    end
-
-  fun in_fpp_coords (den: int, evals: int list) : bool =
-    List.all (fn e => 0 <= e andalso e <= den) evals
-
-  fun in_fpp_rat (xs: rat list) : bool =
-    let
-      fun leq (a: rat, b: rat) =
-        #num a * #den b <= #num b * #den a
-      val zero = ratOfInt 0
-      val one = ratOfInt 1
-    in
-      List.all (fn x => leq (zero, x) andalso leq (x, one)) xs
-    end
+  fun in_fpp_rat (xs: rat list) : bool = Coordinates.in_fpp_rat xs
 
   fun in_fpp_param (g: AtlasFFI.group) (p: AtlasFFI.param) : bool =
     let
-      val cors = parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
-      val gamma = parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
-      val evals = coordsFromCoroots cors gamma
+      val gamma = Coordinates.parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
+      val coords = Coordinates.coordsRat g gamma
     in
-      in_fpp_coords (#den gamma, evals)
+      Coordinates.in_fpp_rat coords
     end
 
   fun gcd (a: int, b: int) : int =
@@ -137,15 +94,6 @@ structure G2_unitary_dual = struct
       in
         {num = num' div g, den = den' div g}
       end
-
-  fun coordsRatFromCoroots (coroots: int list list) (w: {den: int, nums: int list}) : rat list =
-    let
-      val den = #den w
-      val nums = #nums w
-      val () = if den <= 0 then raise Fail "G2_unitary_dual: coordsRat: non-positive denom" else ()
-    in
-      List.map (fn cor => normRat {num = dot (cor, nums), den = den}) coroots
-    end
 
   fun addRat (a: rat, b: rat) : rat =
     normRat {num = #num a * #den b + #num b * #den a, den = #den a * #den b}
@@ -231,126 +179,13 @@ structure G2_unitary_dual = struct
 
   fun all_parameters_x_gamma_one (g: AtlasFFI.group, x: int, gamma: {den: int, nums: int list}) :
     AtlasFFI.param option =
-    let
-      val rank = AtlasFFI.atlas_group_rank g
-      val theta =
-        parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
-      val th1 = Lattice.matAdd (Lattice.identity rank, theta)
-      val rho = parseRatWeightText (AtlasFFI.atlas_group_rho_text g)
-      val u = Lattice.matVecMulRatvec th1 (Lattice.ratvecSub (gamma, rho))
-      val lrOpt = Lattice.vec_solve (th1, u)
-    in
-      case lrOpt of
-        NONE => NONE
-      | SOME lr =>
-          let
-            val lambda = ratvecAddIntVec (rho, lr)
-            val oneMinusTheta =
-              ListPair.mapEq
-                (fn (ri, ti) => ListPair.mapEq (op -) (ri, ti))
-                (Lattice.identity rank, theta)
-            val nu = Lattice.ratvecScale (Lattice.matVecMulRatvec oneMinusTheta gamma, 1, 2)
-            val p =
-              AtlasFFI.atlas_param_new_from_lambda_nu_text
-                (g, x, intsToCText (#nums lambda), #den lambda, intsToCText (#nums nu), #den nu)
-          in
-            if p = Foreign.Memory.null then
-              raise Fail ("G2_unitary_dual: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
-            else
-              let
-                val q = AtlasFFI.atlas_param_normalise p
-                val () = AtlasFFI.atlas_param_free p
-              in
-                if q = Foreign.Memory.null then
-                  raise Fail ("G2_unitary_dual: normalise failed: " ^ AtlasFFI.atlas_last_error ())
-                else
-                  let
-                    val finals = ParamFinals.finals q
-                    val () = AtlasFFI.atlas_param_free q
-                  in
-                    case finals of
-                      [] => raise Fail "G2_unitary_dual: finals_for returned empty list"
-                    | (f, _) :: rest =>
-                        (ParamFinals.freeTerms rest;
-                         SOME f)
-                  end
-              end
-          end
-    end
+    (case AllParameters.all_parameters_x_gamma_raw (g, x, gamma) of
+       [] => NONE
+     | p :: _ => SOME p)
 
   fun all_parameters_x_gamma (g: AtlasFFI.group, x: int, gamma: {den: int, nums: int list}) :
     AtlasFFI.param list =
-    let
-      fun addUnique (p: AtlasFFI.param, acc: AtlasFFI.param list) : AtlasFFI.param list =
-        if List.exists (fn q => AtlasFFI.atlas_param_equivalent (p, q) = 1) acc then
-          (AtlasFFI.atlas_param_free p; acc)
-        else
-          p :: acc
-
-      val rank = AtlasFFI.atlas_group_rank g
-      val theta =
-        parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
-      val th1 = Lattice.matAdd (Lattice.identity rank, theta)
-      val rho = parseRatWeightText (AtlasFFI.atlas_group_rho_text g)
-      val u = Lattice.matVecMulRatvec th1 (Lattice.ratvecSub (gamma, rho))
-      val lrOpt = Lattice.vec_solve (th1, u)
-    in
-      case lrOpt of
-        NONE => []
-      | SOME lr =>
-          let
-            val lambda = ratvecAddIntVec (rho, lr)
-            val oneMinusTheta =
-              ListPair.mapEq
-                (fn (ri, ti) => ListPair.mapEq (op -) (ri, ti))
-                (Lattice.identity rank, theta)
-            val nu = Lattice.ratvecScale (Lattice.matVecMulRatvec oneMinusTheta gamma, 1, 2)
-
-            val twists = LambdaDifferential0.allTheta theta
-
-            fun addTwist (v: int list, acc: AtlasFFI.param list) =
-              let
-                val lambda2 = ratvecAddIntVec (lambda, v)
-                val p0 =
-                  AtlasFFI.atlas_param_new_from_lambda_nu_text
-                    (g, x, intsToCText (#nums lambda2), #den lambda2, intsToCText (#nums nu), #den nu)
-                val () =
-                  if p0 = Foreign.Memory.null then
-                    raise Fail ("G2_unitary_dual: parameter construction failed: " ^ AtlasFFI.atlas_last_error ())
-                  else
-                    ()
-                val p1 = AtlasFFI.atlas_param_normalise p0
-                val () = AtlasFFI.atlas_param_free p0
-                val () =
-                  if p1 = Foreign.Memory.null then
-                    raise Fail ("G2_unitary_dual: normalise failed: " ^ AtlasFFI.atlas_last_error ())
-                  else
-                    ()
-                val finals = ParamFinals.finals p1
-                val () = AtlasFFI.atlas_param_free p1
-
-                fun addFinal ((q, mult), acc2) =
-                  if mult = 0 then
-                    (AtlasFFI.atlas_param_free q; acc2)
-                  else
-                    let
-                      val q1 = AtlasFFI.atlas_param_normalise q
-                      val () = AtlasFFI.atlas_param_free q
-                      val () =
-                        if q1 = Foreign.Memory.null then
-                          raise Fail ("G2_unitary_dual: normalise(final) failed: " ^ AtlasFFI.atlas_last_error ())
-                        else
-                          ()
-                    in
-                      addUnique (q1, acc2)
-                    end
-              in
-                List.foldl addFinal acc finals
-              end
-          in
-            List.rev (List.foldl addTwist [] twists)
-          end
-    end
+    AllParameters.all_parameters_x_gamma_raw (g, x, gamma)
 
   fun p_s (g: AtlasFFI.group) (m: rat, v: rat) : AtlasFFI.param list =
     let
@@ -413,10 +248,12 @@ structure G2_unitary_dual = struct
 
   fun coords_infchar (g: AtlasFFI.group) (p: AtlasFFI.param) : rat list =
     let
-      val cors = parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
+      val cors = Coordinates.parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
       val gamma = parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
     in
-      coordsRatFromCoroots cors gamma
+      List.map
+        (fn {num, den} => {num = num, den = den})
+        (Coordinates.coordsRatFromCoroots cors gamma)
     end
 
   fun ratDiv (a: rat, b: rat) : int =
