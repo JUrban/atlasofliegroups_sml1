@@ -4,6 +4,7 @@ use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
+use "atlas-scripts-sml/ParamHash.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/basic.sml";
@@ -406,4 +407,47 @@ structure FPP_localDirac = struct
 
   fun params_for_local_faces (g: group, x: int, lambda: ratvec) : param list =
     params_for_local_faces_limit (g, x, lambda, ~1)
+
+  (* Filter a list of owned parameters by exact Atlas unitarity, freeing the
+     rejected ones. *)
+  fun keep_unitary_and_free_rest (ps: param list) : param list =
+    let
+      fun step (p, acc) =
+        if AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1 then
+          p :: acc
+        else
+          (AtlasFFI.atlas_param_free p; acc)
+    in
+      List.rev (List.foldl step [] ps)
+    end
+
+  (* Baseline “local Dirac” output: unitary final parameters coming from local
+     face barycenters, with optional face-count limit for testing. *)
+  fun unitary_params_for_local_faces_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
+    keep_unitary_and_free_rest (params_for_local_faces_limit (g, x, lambda, maxFaces))
+
+  fun unitary_params_for_local_faces (g: group, x: int, lambda: ratvec) : param list =
+    unitary_params_for_local_faces_limit (g, x, lambda, ~1)
+
+  (* Insert unitary parameters into a `ParamHash` (which clones on insertion),
+     freeing the input handles. Returns the number of new insertions. *)
+  fun add_unitary_params_to_hash (uhash: ParamHash.t, ps: param list) : int =
+    let
+      val sizeBefore = ParamHash.size uhash
+      fun one p =
+        (ignore (ParamHash.match uhash p);
+         AtlasFFI.atlas_param_free p)
+      val () = List.app one ps
+      val sizeAfter = ParamHash.size uhash
+    in
+      sizeAfter - sizeBefore
+    end
+
+  (* Compute unitary local-face parameters and add them to `uhash`. *)
+  fun add_unitary_from_local_faces_limit
+    (g: group, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
+    add_unitary_params_to_hash (uhash, unitary_params_for_local_faces_limit (g, x, lambda, maxFaces))
+
+  fun add_unitary_from_local_faces (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    add_unitary_from_local_faces_limit (g, x, lambda, ~1, uhash)
 end
