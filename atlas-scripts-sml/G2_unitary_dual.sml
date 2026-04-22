@@ -6,6 +6,8 @@ use "atlas-scripts-sml/LambdaDifferential0.sml";
 structure G2_unitary_dual = struct
   type rat = {num: int, den: int}
 
+  fun ratOfInt n : rat = {num = n, den = 1}
+
   fun parseInts s =
     let
       fun toInt tok =
@@ -94,6 +96,16 @@ structure G2_unitary_dual = struct
   fun in_fpp_coords (den: int, evals: int list) : bool =
     List.all (fn e => 0 <= e andalso e <= den) evals
 
+  fun in_fpp_rat (xs: rat list) : bool =
+    let
+      fun leq (a: rat, b: rat) =
+        #num a * #den b <= #num b * #den a
+      val zero = ratOfInt 0
+      val one = ratOfInt 1
+    in
+      List.all (fn x => leq (zero, x) andalso leq (x, one)) xs
+    end
+
   fun in_fpp_param (g: AtlasFFI.group) (p: AtlasFFI.param) : bool =
     let
       val cors = parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
@@ -126,6 +138,15 @@ structure G2_unitary_dual = struct
         {num = num' div g, den = den' div g}
       end
 
+  fun coordsRatFromCoroots (coroots: int list list) (w: {den: int, nums: int list}) : rat list =
+    let
+      val den = #den w
+      val nums = #nums w
+      val () = if den <= 0 then raise Fail "G2_unitary_dual: coordsRat: non-positive denom" else ()
+    in
+      List.map (fn cor => normRat {num = dot (cor, nums), den = den}) coroots
+    end
+
   fun addRat (a: rat, b: rat) : rat =
     normRat {num = #num a * #den b + #num b * #den a, den = #den a * #den b}
 
@@ -138,6 +159,17 @@ structure G2_unitary_dual = struct
   fun divRatInt (a: rat, k: int) : rat =
     if k = 0 then raise Fail "G2_unitary_dual: divRatInt: div by 0"
     else normRat {num = #num a, den = #den a * k}
+
+  fun ratToString (a: rat) : string =
+    let
+      val a = normRat a
+    in
+      if #den a = 1 then Int.toString (#num a)
+      else Int.toString (#num a) ^ "/" ^ Int.toString (#den a)
+    end
+
+  fun ratListToString (xs: rat list) : string =
+    "[" ^ String.concatWith "," (List.map ratToString xs) ^ "]"
 
   fun ratToRatvec2 (a: rat, b: rat) : {den: int, nums: int list} =
     let
@@ -166,6 +198,9 @@ structure G2_unitary_dual = struct
     in
       ratToRatvec2 (a1, a2)
     end
+
+  val x_s = 4
+  val x_l = 3
 
   fun parseInvolutionMatrixText s : Lattice.mat =
     let
@@ -317,6 +352,22 @@ structure G2_unitary_dual = struct
           end
     end
 
+  fun p_s (g: AtlasFFI.group) (m: rat, v: rat) : AtlasFFI.param list =
+    let
+      val all = all_parameters_x_gamma (g, x_s, gamma_s (m, v))
+      val () = if null all then raise Fail "G2_unitary_dual: p_s: not found" else ()
+    in
+      all
+    end
+
+  fun p_l (g: AtlasFFI.group) (m: rat, v: rat) : AtlasFFI.param list =
+    let
+      val all = all_parameters_x_gamma (g, x_l, gamma_l (m, v))
+      val () = if null all then raise Fail "G2_unitary_dual: p_l: not found" else ()
+    in
+      all
+    end
+
   fun ps (g: AtlasFFI.group) (epsilon: int, nu: {den: int, nums: int list}) : AtlasFFI.param =
     let
       val rank = AtlasFFI.atlas_group_rank g
@@ -351,6 +402,129 @@ structure G2_unitary_dual = struct
         p
     end
 
+  fun short_format (p: AtlasFFI.param) : string =
+    let
+      val x = AtlasFFI.atlas_param_x p
+      val lam = AtlasFFI.atlas_param_lambda_text p
+      val nu = AtlasFFI.atlas_param_nu_text p
+    in
+      "(x=" ^ Int.toString x ^ "," ^ lam ^ "," ^ nu ^ ")"
+    end
+
+  fun coords_infchar (g: AtlasFFI.group) (p: AtlasFFI.param) : rat list =
+    let
+      val cors = parseSimpleCorootsText (AtlasFFI.atlas_group_simple_coroots_text g)
+      val gamma = parseRatWeightText (AtlasFFI.atlas_param_gamma_text p)
+    in
+      coordsRatFromCoroots cors gamma
+    end
+
+  fun ratDiv (a: rat, b: rat) : int =
+    let
+      val a = normRat a
+      val b = normRat b
+      val () = if #num b = 0 then raise Fail "G2_unitary_dual: ratDiv: div by 0" else ()
+      val num = #num a * #den b
+      val den = #den a * #num b
+      val () = if den <= 0 then raise Fail "G2_unitary_dual: ratDiv: expected positive divisor" else ()
+    in
+      num div den
+    end
+
+  fun tabulate (header: string list, rows: string list list) : unit =
+    let
+      fun joinRow xs = String.concatWith "\t" xs ^ "\n"
+    in
+      TextIO.print (joinRow header);
+      List.app (fn r => TextIO.print (joinRow r)) rows
+    end
+
+  fun test_s (m: int, v0: rat, v1: rat, step_size: rat) : unit =
+    let
+      val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
+      val number_steps = ratDiv (subRat (v1, v0), step_size)
+
+      fun row i =
+        let
+          val v = addRat (v0, mulRatInt (step_size, i))
+          val out =
+            (case (SOME (p_s g (ratOfInt m, v)) handle Fail _ => NONE) of
+               NONE => [ratToString v, "[]", "none", "false", "false", "", ""]
+             | SOME ps =>
+                 let
+                   val p = hd ps
+                   val unitary = AtlasFFI.atlas_param_is_unitary_c_form p = 1
+                   val coords = coords_infchar g p
+                   val inFPP = in_fpp_rat coords
+                   val check = "" (* TODO: is_good_range_induced_from *)
+                   val L = "" (* TODO: Levi real form *)
+                   val out =
+                     [ ratToString v
+                     , ratListToString coords
+                     , short_format p
+                     , Bool.toString unitary
+                     , Bool.toString inFPP
+                     , check
+                     , L
+                     ]
+                 in
+                   List.app AtlasFFI.atlas_param_free ps;
+                   out
+                 end)
+        in
+          out
+        end
+
+      val rows = List.tabulate (number_steps + 1, row)
+      val () = tabulate (["v", "coordinates", "p", "unitary", "in FPP", "conj", "L"], rows)
+      val () = AtlasFFI.atlas_group_free g
+    in
+      ()
+    end
+
+  fun test_l (m: int, v0: rat, v1: rat, step_size: rat) : unit =
+    let
+      val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
+      val number_steps = ratDiv (subRat (v1, v0), step_size)
+
+      fun row i =
+        let
+          val v = addRat (v0, mulRatInt (step_size, i))
+          val out =
+            (case (SOME (p_l g (ratOfInt m, v)) handle Fail _ => NONE) of
+               NONE => [ratToString v, "[]", "none", "false", "false", "", ""]
+             | SOME ps =>
+                 let
+                   val p = hd ps
+                   val unitary = AtlasFFI.atlas_param_is_unitary_c_form p = 1
+                   val coords = coords_infchar g p
+                   val inFPP = in_fpp_rat coords
+                   val check = "" (* TODO: is_good_range_induced_from *)
+                   val L = "" (* TODO: Levi real form *)
+                   val out =
+                     [ ratToString v
+                     , ratListToString coords
+                     , short_format p
+                     , Bool.toString unitary
+                     , Bool.toString inFPP
+                     , check
+                     , L
+                     ]
+                 in
+                   List.app AtlasFFI.atlas_param_free ps;
+                   out
+                 end)
+        in
+          out
+        end
+
+      val rows = List.tabulate (number_steps + 1, row)
+      val () = tabulate (["v", "coordinates", "p", "unitary", "in FPP", "conj", "L"], rows)
+      val () = AtlasFFI.atlas_group_free g
+    in
+      ()
+    end
+
   fun demo () =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"G", 2, #"s", 0)
@@ -380,8 +554,6 @@ structure G2_unitary_dual = struct
                 ^ "\n"))
           finals
 
-      val x_s = 4
-      val x_l = 3
       val gs = gamma_s ({num = 2, den = 1}, {num = 0, den = 1})
       val gl = gamma_l ({num = 2, den = 1}, {num = 0, den = 1})
 
