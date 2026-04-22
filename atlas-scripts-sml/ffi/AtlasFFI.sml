@@ -1,6 +1,9 @@
 structure AtlasFFI = struct
   val lib = Foreign.loadLibrary "atlas-scripts-sml/ffi/libatlas_smlffi.so"
 
+  val atlas_intmat_find_solution_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_find_solution_text"
+
   val atlas_last_error_sym = Foreign.getSymbol lib "atlas_last_error"
   val atlas_kgb_size_F4_s_sym = Foreign.getSymbol lib "atlas_kgb_size_F4_s"
   val atlas_group_new_F4_s_sym = Foreign.getSymbol lib "atlas_group_new_F4_s"
@@ -51,6 +54,13 @@ structure AtlasFFI = struct
   val atlas_ktypepol_is_typewise_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_typewise_pure"
   val atlas_ktypepol_is_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_pure"
   val atlas_param_is_unitary_c_form_sym = Foreign.getSymbol lib "atlas_param_is_unitary_c_form"
+
+  val atlas_intmat_find_solution_text =
+    Foreign.buildCall2
+      ( atlas_intmat_find_solution_text_sym
+      , (Foreign.cString, Foreign.cString)
+      , Foreign.cString
+      )
 
   val atlas_last_error =
     Foreign.buildCall0 (atlas_last_error_sym, (), Foreign.cString)

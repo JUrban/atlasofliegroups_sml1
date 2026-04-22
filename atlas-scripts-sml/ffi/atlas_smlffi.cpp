@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Atlas.h"
+#include "matreduc.h"
 #include "lietype.h"
 #include "prerootdata.h"
 #include "rootdata.h"
@@ -43,6 +44,26 @@ static atlas::int_Matrix identity_matrix(unsigned int n)
     for (unsigned int j = 0; j < n; ++j)
       m(i, j) = (i == j) ? 1 : 0;
   return m;
+}
+
+static bool parse_int_list(const char* text, std::vector<int>& out)
+{
+  out.clear();
+  if (text == nullptr)
+  {
+    g_last_error = "parse_int_list: null text";
+    return false;
+  }
+  std::istringstream in(text);
+  int v;
+  while (in >> v)
+    out.push_back(v);
+  if (!in.eof() && in.fail())
+  {
+    g_last_error = "parse_int_list: parse error";
+    return false;
+  }
+  return true;
 }
 
 namespace {
@@ -98,6 +119,77 @@ struct KTypePolHandle
   {}
 };
 } // namespace
+
+extern "C" const char* atlas_intmat_find_solution_text(const char* mat_text, const char* vec_text)
+{
+  try
+  {
+    std::vector<int> mat;
+    std::vector<int> vec;
+    if (!parse_int_list(mat_text, mat))
+      return nullptr;
+    if (!parse_int_list(vec_text, vec))
+      return nullptr;
+    if (mat.size() < 2 || vec.size() < 1)
+    {
+      g_last_error = "atlas_intmat_find_solution_text: truncated input";
+      return nullptr;
+    }
+    const int n_rows = mat[0];
+    const int n_cols = mat[1];
+    if (n_rows < 0 || n_cols < 0)
+    {
+      g_last_error = "atlas_intmat_find_solution_text: negative dimensions";
+      return nullptr;
+    }
+    const std::size_t need = static_cast<std::size_t>(2 + n_rows * n_cols);
+    if (mat.size() != need)
+    {
+      g_last_error = "atlas_intmat_find_solution_text: matrix entry count mismatch";
+      return nullptr;
+    }
+    if (vec[0] != n_rows)
+    {
+      g_last_error = "atlas_intmat_find_solution_text: vector length mismatch";
+      return nullptr;
+    }
+    if (vec.size() != static_cast<std::size_t>(1 + n_rows))
+    {
+      g_last_error = "atlas_intmat_find_solution_text: vector entry count mismatch";
+      return nullptr;
+    }
+
+    atlas::int_Matrix A(static_cast<unsigned int>(n_rows), static_cast<unsigned int>(n_cols));
+    std::size_t k = 2;
+    for (int i = 0; i < n_rows; ++i)
+      for (int j = 0; j < n_cols; ++j)
+        A(i, j) = mat[k++];
+
+    atlas::int_Vector b(static_cast<unsigned int>(n_rows));
+    for (int i = 0; i < n_rows; ++i)
+      b[i] = vec[1 + i];
+
+    if (!atlas::matreduc::has_solution(A, b))
+      return store_result("0");
+
+    atlas::int_Vector x = atlas::matreduc::find_solution(A, b);
+    std::ostringstream out;
+    out << n_cols;
+    for (int j = 0; j < n_cols; ++j)
+      out << ' ' << x[j];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
 
 extern "C" void* atlas_group_new_F4_s()
 {
