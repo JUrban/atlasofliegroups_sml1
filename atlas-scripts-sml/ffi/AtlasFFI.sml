@@ -6,6 +6,14 @@ structure AtlasFFI = struct
   val atlas_intmat_kernel_text_sym = Foreign.getSymbol lib "atlas_intmat_kernel_text"
   val atlas_intmat_eigen_lattice_text_sym =
     Foreign.getSymbol lib "atlas_intmat_eigen_lattice_text"
+  val atlas_intmat_adapted_basis_sym = Foreign.getSymbol lib "atlas_intmat_adapted_basis"
+  val atlas_intmat_adapted_basis_matrix_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_adapted_basis_matrix_text"
+  val atlas_intmat_adapted_basis_diag_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_adapted_basis_diag_text"
+  val atlas_intmat_adapted_basis_free_sym = Foreign.getSymbol lib "atlas_intmat_adapted_basis_free"
+  val atlas_intmat_in_lattice_basis_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_in_lattice_basis_text"
 
   val atlas_last_error_sym = Foreign.getSymbol lib "atlas_last_error"
   val atlas_kgb_size_F4_s_sym = Foreign.getSymbol lib "atlas_kgb_size_F4_s"
@@ -83,6 +91,27 @@ structure AtlasFFI = struct
     Foreign.buildCall2
       ( atlas_intmat_eigen_lattice_text_sym
       , (Foreign.cString, Foreign.cInt)
+      , Foreign.cString
+      )
+
+  type adapted_basis = Foreign.Memory.voidStar
+
+  val atlas_intmat_adapted_basis =
+    Foreign.buildCall1 (atlas_intmat_adapted_basis_sym, Foreign.cString, Foreign.cPointer)
+
+  val atlas_intmat_adapted_basis_matrix_text =
+    Foreign.buildCall1 (atlas_intmat_adapted_basis_matrix_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_adapted_basis_diag_text =
+    Foreign.buildCall1 (atlas_intmat_adapted_basis_diag_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_intmat_adapted_basis_free =
+    Foreign.buildCall1 (atlas_intmat_adapted_basis_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_intmat_in_lattice_basis_text =
+    Foreign.buildCall2
+      ( atlas_intmat_in_lattice_basis_text_sym
+      , (Foreign.cString, Foreign.cString)
       , Foreign.cString
       )
 

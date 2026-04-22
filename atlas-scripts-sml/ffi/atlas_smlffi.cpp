@@ -172,6 +172,12 @@ struct KTypePolHandle
     : group(group), poly(std::move(poly))
   {}
 };
+
+struct AdaptedBasisHandle
+{
+  atlas::int_Matrix basis;
+  std::vector<int> diagonal;
+};
 } // namespace
 
 extern "C" void* atlas_param_finals(void* p_handle)
@@ -421,6 +427,149 @@ extern "C" const char* atlas_intmat_eigen_lattice_text(const char* mat_text, int
       return store_result("-1");
     atlas::int_Matrix k = atlas::lattice::eigen_lattice(std::move(m), eigen_value);
     return store_result(int_matrix_to_text(k));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" void* atlas_intmat_adapted_basis(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix m;
+    if (!parse_int_matrix_text(mat_text, m))
+      return nullptr;
+    auto* h = new AdaptedBasisHandle();
+    h->basis = atlas::matreduc::adapted_basis(std::move(m), h->diagonal);
+    return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_intmat_adapted_basis_matrix_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_adapted_basis_matrix_text: null handle";
+      return nullptr;
+    }
+    const auto* h = static_cast<const AdaptedBasisHandle*>(handle);
+    return store_result(int_matrix_to_text(h->basis));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_intmat_adapted_basis_diag_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_intmat_adapted_basis_diag_text: null handle";
+      return nullptr;
+    }
+    const auto* h = static_cast<const AdaptedBasisHandle*>(handle);
+    std::ostringstream out;
+    out << h->diagonal.size();
+    for (const int d : h->diagonal)
+      out << ' ' << d;
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void atlas_intmat_adapted_basis_free(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+      return;
+    delete static_cast<AdaptedBasisHandle*>(handle);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+  }
+}
+
+extern "C" const char* atlas_intmat_in_lattice_basis_text(const char* a_text, const char* m_text)
+{
+  try
+  {
+    atlas::int_Matrix A;
+    atlas::int_Matrix M;
+    if (!parse_int_matrix_text(a_text, A))
+      return store_result("-1");
+    if (!parse_int_matrix_text(m_text, M))
+      return store_result("-1");
+    if (A.n_rows() != M.n_rows())
+    {
+      g_last_error = "atlas_intmat_in_lattice_basis_text: row dimension mismatch";
+      return store_result("-1");
+    }
+
+    const unsigned int n = A.n_rows();
+    const unsigned int m = A.n_columns();
+    const unsigned int r = M.n_columns();
+
+    atlas::int_Matrix C(m, r);
+    for (unsigned int j = 0; j < r; ++j)
+    {
+      atlas::int_Vector b(n);
+      for (unsigned int i = 0; i < n; ++i)
+        b[i] = M(i, j);
+      if (!atlas::matreduc::has_solution(A, b))
+      {
+        g_last_error = "atlas_intmat_in_lattice_basis_text: column not in lattice span";
+        return store_result("-1");
+      }
+      atlas::int_Vector x = atlas::matreduc::find_solution(A, std::move(b));
+      for (unsigned int i = 0; i < m; ++i)
+        C(i, j) = x[i];
+    }
+
+    return store_result(int_matrix_to_text(C));
   }
   catch (const std::exception& e)
   {
