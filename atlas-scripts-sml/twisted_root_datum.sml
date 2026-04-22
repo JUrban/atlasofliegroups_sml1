@@ -277,7 +277,8 @@ structure TwistedRootDatum = struct
 
   (* Lightweight analogue of `folded(rd,n)` from `twisted_root_datum.at`:
      enumerates diagram automorphisms and returns the first of order `n`.
-     This currently only supports root data where `rank = semisimple_rank`. *)
+     Uses `RootDatum.diagramAutomorphismMatrices` to lift permutations to
+     lattice automorphisms, mirroring `atlas-scripts/diagram.at`. *)
   fun folded_by_order (rd: rootdatum, n: int) : t =
     let
       val autos = RootDatum.diagramAutomorphismMatrices rd

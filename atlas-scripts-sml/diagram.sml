@@ -8,6 +8,32 @@ structure Diagram = struct
 
   fun reversePerm n = List.tabulate (n, fn i => n - 1 - i)
 
+  (* Port of `sanitize` from `atlas-scripts/diagram.at`:
+     toggles B2<->C2 naming (and swaps the corresponding node positions in sigma). *)
+  fun sanitize (to_C: bool) (lt: LieType.t, sigma: int list) : LieType.t * int list =
+    let
+      val (fro, too) = if to_C then (#"B", #"C") else (#"C", #"B")
+      val sigmaArr = Array.fromList sigma
+
+      fun swap (i, j) =
+        let
+          val xi = Array.sub (sigmaArr, i)
+          val xj = Array.sub (sigmaArr, j)
+        in
+          Array.update (sigmaArr, i, xj);
+          Array.update (sigmaArr, j, xi)
+        end
+
+      fun loop ([], _, acc) = (List.rev acc, Array.foldr (op ::) [] sigmaArr)
+        | loop ((c, r) :: rest, sum, acc) =
+            if r = 2 andalso c = fro then
+              (swap (sum, sum + 1); loop (rest, sum + r, (too, r) :: acc))
+            else
+              loop (rest, sum + r, (c, r) :: acc)
+    in
+      loop (LieType.simple_factors lt, 0, [])
+    end
+
   (* Port of `simple_automorphisms` for a single simple type. *)
   fun simple_automorphisms (typeLetter: char, rank: int) : permutation list =
     let

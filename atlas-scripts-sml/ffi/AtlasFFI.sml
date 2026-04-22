@@ -34,6 +34,8 @@ structure AtlasFFI = struct
   val atlas_intmat_adapted_basis_free_sym = Foreign.getSymbol lib "atlas_intmat_adapted_basis_free"
   val atlas_intmat_in_lattice_basis_text_sym =
     Foreign.getSymbol lib "atlas_intmat_in_lattice_basis_text"
+  val atlas_intmat_cartan_matrix_type_text_sym =
+    Foreign.getSymbol lib "atlas_intmat_cartan_matrix_type_text"
 
   val atlas_last_error_sym = Foreign.getSymbol lib "atlas_last_error"
   val atlas_kgb_size_F4_s_sym = Foreign.getSymbol lib "atlas_kgb_size_F4_s"
@@ -77,6 +79,10 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_rootdatum_simple_factors_text"
   val atlas_rootdatum_roots_text_sym = Foreign.getSymbol lib "atlas_rootdatum_roots_text"
   val atlas_rootdatum_coroots_text_sym = Foreign.getSymbol lib "atlas_rootdatum_coroots_text"
+  val atlas_rootdatum_root_coradical_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_root_coradical_text"
+  val atlas_rootdatum_coroot_radical_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_coroot_radical_text"
 
   val atlas_param_trivial_sym = Foreign.getSymbol lib "atlas_param_trivial"
   val atlas_param_free_sym = Foreign.getSymbol lib "atlas_param_free"
@@ -210,6 +216,9 @@ structure AtlasFFI = struct
       , Foreign.cString
       )
 
+  val atlas_intmat_cartan_matrix_type_text =
+    Foreign.buildCall1 (atlas_intmat_cartan_matrix_type_text_sym, Foreign.cString, Foreign.cString)
+
   val atlas_last_error =
     Foreign.buildCall0 (atlas_last_error_sym, (), Foreign.cString)
 
@@ -334,6 +343,12 @@ structure AtlasFFI = struct
 
   val atlas_rootdatum_coroots_text =
     Foreign.buildCall1 (atlas_rootdatum_coroots_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_root_coradical_text =
+    Foreign.buildCall1 (atlas_rootdatum_root_coradical_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_coroot_radical_text =
+    Foreign.buildCall1 (atlas_rootdatum_coroot_radical_text_sym, Foreign.cPointer, Foreign.cString)
 
   type param = Foreign.Memory.voidStar
 

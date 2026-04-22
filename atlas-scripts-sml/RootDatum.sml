@@ -4,6 +4,7 @@ use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/LieType.sml";
 use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/diagram.sml";
+use "atlas-scripts-sml/basic.sml";
 
 structure RootDatum = struct
   type t = AtlasFFI.rootdatum
@@ -352,15 +353,167 @@ structure RootDatum = struct
 
   fun diagramAutomorphismMatrices (h: t) : IntMatrix.mat list =
     let
-      val lt = lieType h
-      val perms = Diagram.diagram_automorphisms lt
-      val ss = LieType.semisimple_rank lt
-      val r = rank h
+      fun parseCartanMatrixTypeText (s: string) : LieType.t * int list =
+        let
+          val parts = String.fields (fn c => c = #"|") s
+          val () =
+            if length parts = 2 then ()
+            else raise Fail "RootDatum.diagramAutomorphismMatrices: bad Cartan_matrix_type format"
+          val ltPart = String.tokens Char.isSpace (List.nth (parts, 0))
+          val piPart = String.tokens Char.isSpace (List.nth (parts, 1))
+
+          fun parseLT toks =
+            (case toks of
+               kTok :: rest =>
+                 (case Int.fromString kTok of
+                    SOME k =>
+                      let
+                        fun loop (0, xs, acc) =
+                              if null xs then List.rev acc
+                              else raise Fail "RootDatum.diagramAutomorphismMatrices: extra lt tokens"
+                          | loop (n, cTok :: rTok :: xs, acc) =
+                              let
+                                val () =
+                                  if String.size cTok = 1 then ()
+                                  else raise Fail "RootDatum.diagramAutomorphismMatrices: bad type token"
+                                val c = String.sub (cTok, 0)
+                                val r =
+                                  (case Int.fromString rTok of
+                                     SOME rr => rr
+                                   | NONE => raise Fail "RootDatum.diagramAutomorphismMatrices: bad rank token")
+                              in
+                                loop (n - 1, xs, (c, r) :: acc)
+                              end
+                          | loop _ = raise Fail "RootDatum.diagramAutomorphismMatrices: truncated lt tokens"
+                      in
+                        loop (k, rest, [])
+                      end
+                  | NONE => raise Fail "RootDatum.diagramAutomorphismMatrices: bad lt header")
+             | _ => raise Fail "RootDatum.diagramAutomorphismMatrices: missing lt header")
+
+          fun parsePi toks =
+            (case toks of
+               nTok :: rest =>
+                 (case Int.fromString nTok of
+                    SOME n =>
+                      if length rest <> n then
+                        raise Fail "RootDatum.diagramAutomorphismMatrices: bad perm length"
+                      else
+                        List.map
+                          (fn t =>
+                             case Int.fromString t of
+                               SOME x => x
+                             | NONE => raise Fail "RootDatum.diagramAutomorphismMatrices: bad perm entry")
+                          rest
+                  | NONE => raise Fail "RootDatum.diagramAutomorphismMatrices: bad perm header")
+             | _ => raise Fail "RootDatum.diagramAutomorphismMatrices: missing perm header")
+
+          val lt = parseLT ltPart
+          val pi = parsePi piPart
+        in
+          (lt, pi)
+        end
+
+      val cartanTypeText =
+        AtlasFFI.atlas_intmat_cartan_matrix_type_text (IntMatrix.matToText (cartanMatrix h))
       val () =
-        if r = ss then ()
-        else raise Fail "RootDatum.diagramAutomorphismMatrices: unsupported (rank != semisimple_rank)"
+        if cartanTypeText = "-1" then
+          raise Fail ("RootDatum.diagramAutomorphismMatrices: Cartan_matrix_type failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val (lt0, map0) = parseCartanMatrixTypeText cartanTypeText
+      val (lt, map_to_rd) = Diagram.sanitize false (lt0, map0)
+
+      val r = rank h
+      val ssr = semisimpleRank h
+      val () =
+        if length map_to_rd = ssr then ()
+        else raise Fail "RootDatum.diagramAutomorphismMatrices: map length mismatch"
+
+      val ext = List.tabulate (r - ssr, fn i => ssr + i)
+      val map_ext = map_to_rd @ ext
+
+      fun permutation_right_act (m: IntMatrix.mat, sigma: int list) : IntMatrix.mat =
+        let
+          val (nRows, nCols) = IntMatrix.matShape m
+          val () =
+            if length sigma = nCols then ()
+            else raise Fail "RootDatum.diagramAutomorphismMatrices: perm dim mismatch"
+          fun col j = List.map (fn row => List.nth (row, j)) m
+          val cols = List.map col sigma
+        in
+          (case cols of
+             [] => []
+           | _ =>
+               let
+                 fun row i = List.map (fn c => List.nth (c, i)) cols
+               in
+                 List.tabulate (nRows, row)
+               end)
+        end
+
+      val rootCoradText = AtlasFFI.atlas_rootdatum_root_coradical_text h
+      val () =
+        if rootCoradText = "-1" then
+          raise Fail ("RootDatum.diagramAutomorphismMatrices: root_coradical failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val M0 = IntMatrix.parseMatText rootCoradText
+      val M = permutation_right_act (M0, map_ext)
+
+      val (M1, d) = MatrixAT.weak_left_inverse M
+
+      fun diagonal (ds: int list) : IntMatrix.mat =
+        let
+          val n = length ds
+          fun row i = List.tabulate (n, fn j => if i = j then List.nth (ds, i) else 0)
+        in
+          List.tabulate (n, row)
+        end
+
+      val flip = diagonal (List.tabulate (r, fn i => if i < ssr then 1 else ~1))
+
+      fun allDivBy (m: IntMatrix.mat, k: int) : bool =
+        List.all (fn x => x mod k = 0) (List.concat m)
+
+      fun divScalar (m: IntMatrix.mat, k: int) : IntMatrix.mat =
+        List.map (fn row => List.map (fn x => x div k) row) m
+
+      fun lift (auto: int list) : IntMatrix.mat option =
+        let
+          val A = MatrixAT.permutation_matrix (auto @ ext)
+          val MA = IntMatrix.matMul (M, A)
+          val prod = IntMatrix.matMul (MA, M1)
+        in
+          if allDivBy (prod, d) then
+            SOME (divScalar (prod, d))
+          else
+            let
+              val prod2 = IntMatrix.matMul (IntMatrix.matMul (MA, flip), M1)
+            in
+              if allDivBy (prod2, d) then SOME (divScalar (prod2, d)) else NONE
+            end
+        end
+
+      val perms = Diagram.diagram_automorphisms lt
+      val lifted = List.mapPartial lift perms
+
+      fun leqMat (a: IntMatrix.mat, b: IntMatrix.mat) : bool =
+        let
+          fun leqIntList (xs: int list, ys: int list) : bool =
+            let
+              fun loop ([], []) = true
+                | loop ([], _ :: _) = true
+                | loop (_ :: _, []) = false
+                | loop (x :: xs', y :: ys') = if x <> y then x < y else loop (xs', ys')
+            in
+              loop (xs, ys)
+            end
+        in
+          leqIntList (List.concat a, List.concat b)
+        end
     in
-      List.map (fn pi => MatrixAT.permutation_matrix pi) perms
+      Basic.sort_u leqMat lifted
     end
 
   fun mul (a: t, b: t) : t =

@@ -18,6 +18,7 @@
 #include "K_repr.h"
 #include "alcoves.h"
 #include "bitmap.h"
+#include "dynkin.h"
 
 static thread_local std::string g_last_error;
 static thread_local std::string g_last_result;
@@ -109,6 +110,45 @@ static std::string int_matrix_to_text(const atlas::int_Matrix& m)
     for (unsigned int j = 0; j < m.n_columns(); ++j)
       out << ' ' << m(i, j);
   return out.str();
+}
+
+extern "C" const char* atlas_intmat_cartan_matrix_type_text(const char* mat_text)
+{
+  try
+  {
+    atlas::int_Matrix cm;
+    if (!parse_int_matrix_text(mat_text, cm))
+      return store_result("-1");
+    if (cm.n_rows() != cm.n_columns())
+    {
+      g_last_error = "atlas_intmat_cartan_matrix_type_text: non-square matrix";
+      return store_result("-1");
+    }
+
+    atlas::Permutation pi;
+    atlas::lietype::LieType lt = atlas::dynkin::Lie_type(cm, pi);
+
+    std::ostringstream out;
+    out << lt.size();
+    for (const auto& sf : lt)
+      out << ' ' << sf.type() << ' ' << sf.rank();
+
+    out << " | " << pi.size();
+    for (unsigned int i = 0; i < pi.size(); ++i)
+      out << ' ' << static_cast<unsigned int>(pi[i]);
+
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
 }
 
 namespace {
@@ -215,6 +255,86 @@ struct RootDatumHandle
   {}
 };
 } // namespace
+
+extern "C" const char* atlas_rootdatum_root_coradical_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_root_coradical_text: null handle";
+      return store_result("-1");
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const unsigned int r = h->rd.rank();
+
+    atlas::int_Matrix m(r, r);
+    unsigned int col = 0;
+    for (auto it = h->rd.beginSimpleRoot(); it != h->rd.endSimpleRoot(); ++it, ++col)
+      for (unsigned int i = 0; i < r; ++i)
+        m(i, col) = (*it)[i];
+    for (auto it = h->rd.beginCoradical(); it != h->rd.endCoradical(); ++it, ++col)
+      for (unsigned int i = 0; i < r; ++i)
+        m(i, col) = (*it)[i];
+
+    if (col != r)
+    {
+      g_last_error = "atlas_rootdatum_root_coradical_text: internal size mismatch";
+      return store_result("-1");
+    }
+    return store_result(int_matrix_to_text(m));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" const char* atlas_rootdatum_coroot_radical_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_coroot_radical_text: null handle";
+      return store_result("-1");
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const unsigned int r = h->rd.rank();
+
+    atlas::int_Matrix m(r, r);
+    unsigned int col = 0;
+    for (auto it = h->rd.beginSimpleCoroot(); it != h->rd.endSimpleCoroot(); ++it, ++col)
+      for (unsigned int i = 0; i < r; ++i)
+        m(i, col) = (*it)[i];
+    for (auto it = h->rd.beginRadical(); it != h->rd.endRadical(); ++it, ++col)
+      for (unsigned int i = 0; i < r; ++i)
+        m(i, col) = (*it)[i];
+
+    if (col != r)
+    {
+      g_last_error = "atlas_rootdatum_coroot_radical_text: internal size mismatch";
+      return store_result("-1");
+    }
+    return store_result(int_matrix_to_text(m));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
 
 extern "C" void* atlas_param_finals(void* p_handle)
 {
