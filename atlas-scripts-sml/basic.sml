@@ -173,4 +173,48 @@ structure Basic = struct
     in
       loop (r, NONE)
     end
+
+  fun power_set (xs: 'a list) : 'a list list =
+    let
+      fun loop [] = [[]]
+        | loop (x :: rest) =
+            let
+              val p = loop rest
+            in
+              p @ List.map (fn s => x :: s) p
+            end
+    in
+      loop xs
+    end
+
+  (* All k-subsets of xs, preserving original order inside each subset. *)
+  fun choices_from (xs: 'a list, k: int) : 'a list list =
+    if k < 0 then
+      raise Fail "Basic.choices_from: negative k"
+    else if k = 0 then
+      [[]]
+    else
+      (case xs of
+         [] => []
+       | x :: rest =>
+           if k > length xs then []
+           else
+             List.map (fn ys => x :: ys) (choices_from (rest, k - 1)) @ choices_from (rest, k))
+
+  fun all_0_1_vecs_with_sum (n: int, k: int) : int list list =
+    if n < 0 then
+      raise Fail "Basic.all_0_1_vecs_with_sum: negative n"
+    else
+      let
+        val idxs = choices_from (List.tabulate (n, fn i => i), k)
+        fun mk is =
+          let
+            val v = Array.array (n, 0)
+            val () = List.app (fn i => Array.update (v, i, 1)) is
+          in
+            List.tabulate (n, fn i => Array.sub (v, i))
+          end
+      in
+        List.map mk idxs
+      end
 end
