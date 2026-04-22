@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/RootDatum.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 
 (*
   File: atlas-scripts-sml/finite_dimensional.sml
@@ -14,6 +15,10 @@ use "atlas-scripts-sml/AllParameters.sml";
     wrapper `RootDatum.makeDominantRatWeightText`.
   - `dimension(rd, lambda)` computing the Weyl dimension formula as an
     `IntInf.int` (arbitrary precision) to avoid overflow.
+  - Parameter-facing helpers (require an `AtlasFFI.group` handle):
+      - highest weight from infinitesimal character
+      - fundamental-weight coordinates of that highest weight
+      - dimension of the corresponding finite-dimensional representation
 
   Atlas correspondence
   - In `finite_dimensional.at`:
@@ -31,6 +36,8 @@ use "atlas-scripts-sml/AllParameters.sml";
 
 structure FiniteDimensional = struct
   type ratvec = Lattice.ratvec
+  type group = AtlasFFI.group
+  type param = AtlasFFI.param
 
   (* Parse a ratweight `den n1 ... nk` into a `ratvec`. *)
   fun parseRatvecText (s: string) : ratvec =
@@ -89,6 +96,9 @@ structure FiniteDimensional = struct
   (* Add rational vectors. *)
   fun ratvecAdd (u: ratvec, v: ratvec) : ratvec =
     Lattice.ratvecSub (u, Lattice.ratvecScale (v, ~1, 1))
+
+  (* Subtract rational vectors. *)
+  fun ratvecSub (u: ratvec, v: ratvec) : ratvec = Lattice.ratvecSub (u, v)
 
   (* Multiply a rational accumulator `num/den` by a rational factor `a/b`,
      cancelling by gcd to keep sizes manageable. *)
@@ -151,5 +161,84 @@ structure FiniteDimensional = struct
     in
       if den = 1 then num else raise Fail "FiniteDimensional.dimension: non-integral result"
     end
-end
 
+  (* Highest weight of a finite-dimensional parameter (ratvec), computed from:
+       highest_weight = infinitesimal_character(p) - rho(root_datum(G)).
+
+     Atlas correspondence
+     - Mirrors `finite_dimensional.at`’s
+         `highest_weight_finite_dimensional_ratvec(p)`
+       but takes an explicit `group` handle.
+  *)
+  fun highest_weight_finite_dimensional_ratvec (g: group, p: param) : ratvec =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("FiniteDimensional.highest_weight_finite_dimensional_ratvec: rootdatum_new failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val gamma = parseRatvecText (AtlasFFI.atlas_param_gamma_text p)
+      val rho = parseRatvecText (RootDatum.rhoText rd)
+      val hwt = ratvecSub (gamma, rho)
+      val () = AtlasFFI.atlas_rootdatum_free rd
+    in
+      hwt
+    end
+
+  (* Evaluate a rational weight on a coroot vector, asserting integrality. *)
+  fun evalIntegral (v: ratvec, a_v: int list) : int =
+    let
+      val v = Lattice.ratvecNormalize v
+      val den = #den v
+      val nums = #nums v
+      val () = if length nums = length a_v then () else raise Fail "FiniteDimensional.evalIntegral: length mismatch"
+      val num = List.foldl op+ 0 (ListPair.mapEq (op * ) (nums, a_v))
+    in
+      if num mod den = 0 then num div den else raise Fail "FiniteDimensional.evalIntegral: non-integral pairing"
+    end
+
+  (* Fundamental-weight coordinates of a weight `v` (assumed integral) in terms
+     of the simple coroot basis:
+       coordinates = (v * simple_coroots(rd)).ratvec_as_vec
+     in `.at` terms.
+  *)
+  fun on_fundamental_weights (v: ratvec, rd: RootDatum.t) : int list =
+    let
+      val coroots = RootDatum.simpleCorootsCols rd
+    in
+      List.map (fn a_v => evalIntegral (v, a_v)) coroots
+    end
+
+  (* Fundamental-weight coordinates of the highest weight of a finite-dimensional parameter. *)
+  fun fundamental_weight_coordinates (g: group, p: param) : int list =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("FiniteDimensional.fundamental_weight_coordinates: rootdatum_new failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val hwt = highest_weight_finite_dimensional_ratvec (g, p)
+      val coords = on_fundamental_weights (hwt, rd)
+      val () = AtlasFFI.atlas_rootdatum_free rd
+    in
+      coords
+    end
+
+  (* Dimension of a finite-dimensional parameter (arbitrary precision). *)
+  fun dimension_param (g: group, p: param) : IntInf.int =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("FiniteDimensional.dimension_param: rootdatum_new failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val hwt = highest_weight_finite_dimensional_ratvec (g, p)
+      val dim = dimension (rd, hwt)
+      val () = AtlasFFI.atlas_rootdatum_free rd
+    in
+      dim
+    end
+end
