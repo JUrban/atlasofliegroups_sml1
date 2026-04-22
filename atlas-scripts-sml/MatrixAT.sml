@@ -74,4 +74,18 @@ structure MatrixAT = struct
     in
       if d = 1 then j else raise Fail "MatrixAT.left_inverse: image is not saturated"
     end
+
+  (* Port of `weak_right_inverse` from `atlas-scripts/matrix.at`:
+     returns (B,d) such that A*B = d*I if A is surjective onto a finite-index sublattice. *)
+  fun weak_right_inverse (a: mat) : mat * int =
+    let
+      val (j, d) = weak_left_inverse (IntMatrix.transpose a)
+    in
+      (IntMatrix.transpose j, d)
+    end
+
+  (* Port of `right_inverse` from `atlas-scripts/matrix.at`:
+     returns B such that A*B = I if A is surjective as a lattice map. *)
+  fun right_inverse (a: mat) : mat =
+    IntMatrix.transpose (left_inverse (IntMatrix.transpose a))
 end
