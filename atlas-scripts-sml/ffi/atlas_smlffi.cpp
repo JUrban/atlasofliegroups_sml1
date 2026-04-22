@@ -2113,6 +2113,49 @@ extern "C" void* atlas_ktype_new_from_x_lambda_rho_text(void* group_handle, int 
   }
 }
 
+extern "C" void* atlas_ktype_K_type_formula(void* t_handle, int cutoff)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_K_type_formula: null K_type handle";
+      return nullptr;
+    }
+    if (cutoff < 0)
+    {
+      g_last_error = "atlas_ktype_K_type_formula: negative cutoff";
+      return nullptr;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr)
+    {
+      g_last_error = "atlas_ktype_K_type_formula: null group pointer in K_type";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(t->group->G);
+    atlas::K_repr::K_type t2 = t->t;
+    atlas::K_repr::KT_pol kt_int = rc.K_type_formula(t2, static_cast<atlas::repr::level>(cutoff));
+
+    atlas::K_repr::K_type_pol poly;
+    for (const auto& term : kt_int)
+      poly.add_term(term.first, atlas::Split_integer(term.second));
+
+    return static_cast<void*>(new KTypePolHandle(t->group, std::move(poly)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_ktypepol_num_terms(void* kt_handle)
 {
   try

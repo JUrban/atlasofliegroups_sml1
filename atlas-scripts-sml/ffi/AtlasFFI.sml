@@ -85,6 +85,7 @@ structure AtlasFFI = struct
   val atlas_ktype_lambda_rho_text_sym = Foreign.getSymbol lib "atlas_ktype_lambda_rho_text"
   val atlas_ktype_new_from_x_lambda_rho_text_sym =
     Foreign.getSymbol lib "atlas_ktype_new_from_x_lambda_rho_text"
+  val atlas_ktype_K_type_formula_sym = Foreign.getSymbol lib "atlas_ktype_K_type_formula"
 
   val atlas_intmat_find_solution_text =
     Foreign.buildCall2
@@ -355,4 +356,7 @@ structure AtlasFFI = struct
       , (Foreign.cPointer, Foreign.cInt, Foreign.cString)
       , Foreign.cPointer
       )
+
+  val atlas_ktype_K_type_formula =
+    Foreign.buildCall2 (atlas_ktype_K_type_formula_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)
 end

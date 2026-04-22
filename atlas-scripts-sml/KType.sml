@@ -4,6 +4,7 @@ structure KType = struct
   type ktype = AtlasFFI.ktype
   type param = AtlasFFI.param
   type group = AtlasFFI.group
+  type ktypepol = AtlasFFI.ktypepol
 
   fun free (t: ktype) : unit = AtlasFFI.atlas_ktype_free t
 
@@ -58,5 +59,16 @@ structure KType = struct
     in
       t
     end
-end
 
+  fun K_type_formula (t: ktype, cutoff: int) : ktypepol =
+    let
+      val pol = AtlasFFI.atlas_ktype_K_type_formula (t, cutoff)
+      val () =
+        if pol = Foreign.Memory.null then
+          raise Fail ("KType.K_type_formula: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+    in
+      pol
+    end
+end
