@@ -2,6 +2,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/LambdaDifferential0.sml";
+use "atlas-scripts-sml/Dominant.sml";
 
 structure AllParameters = struct
   type ratweight = {den: int, nums: int list}
@@ -61,13 +62,16 @@ structure AllParameters = struct
     else
       {den = 1, nums = ListPair.mapEq (op +) (#nums u, v)}
 
+  fun ratweightToText ({den, nums}: ratweight) : string =
+    Int.toString den ^ " " ^ String.concatWith " " (List.map Int.toString nums)
+
   fun addUniqueByEquivalent (p: AtlasFFI.param, acc: AtlasFFI.param list) : AtlasFFI.param list =
     if List.exists (fn q => AtlasFFI.atlas_param_equivalent (p, q) = 1) acc then
       (AtlasFFI.atlas_param_free p; acc)
     else
       p :: acc
 
-  fun all_parameters_x_gamma (g: AtlasFFI.group, x: int, gamma: ratweight) : AtlasFFI.param list =
+  fun all_parameters_x_gamma_raw (g: AtlasFFI.group, x: int, gamma: ratweight) : AtlasFFI.param list =
     let
       val rank = AtlasFFI.atlas_group_rank g
       val theta =
@@ -134,6 +138,16 @@ structure AllParameters = struct
             List.rev (List.foldl addTwist [] twists)
           end
     end
+
+  fun all_parameters_x_gamma_dominant (g: AtlasFFI.group, x: int, gamma: ratweight) : AtlasFFI.param list =
+    let
+      val gammaDomText = Dominant.makeDominantText g (ratweightToText gamma)
+      val gammaDom = parseRatWeightText gammaDomText
+    in
+      all_parameters_x_gamma_raw (g, x, gammaDom)
+    end
+
+  val all_parameters_x_gamma = all_parameters_x_gamma_raw
 
   fun freeAll (ps: AtlasFFI.param list) : unit =
     List.app AtlasFFI.atlas_param_free ps
