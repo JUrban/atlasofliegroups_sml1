@@ -887,6 +887,54 @@ extern "C" int atlas_group_is_split(void* handle)
   }
 }
 
+extern "C" int atlas_group_is_compact(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_is_compact: null handle";
+      return 0;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    return h->G.isCompact() ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" long atlas_group_component_rank(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_component_rank: null handle";
+      return -1;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    return static_cast<long>(h->G.component_rank());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 extern "C" const char* atlas_group_rho_text(void* handle)
 {
   try
@@ -1422,6 +1470,23 @@ extern "C" void* atlas_group_new_simple(char type_letter,
     if (rf < 0)
     {
       g_last_error = "atlas_group_new_simple: real form number must be >= 0";
+      return nullptr;
+    }
+
+    // IMPORTANT: validate the real form number against the inner class.
+    // Some invalid values can crash the Atlas library before throwing.
+    atlas::lietype::LieType lt;
+    lt.push_back(atlas::lietype::SimpleLieType(type_letter, static_cast<unsigned int>(rank)));
+    atlas::prerootdata::PreRootDatum prd(lt, /*prefer_co=*/false);
+    atlas::lietype::InnerClassType ict;
+    ict.push_back(inner_class_letter);
+    atlas::WeightInvolution di = atlas::lietype::involution(lt, ict);
+    atlas::innerclass::InnerClass ic(prd, di);
+
+    const auto nrf = static_cast<long>(ic.numRealForms());
+    if (rf >= nrf)
+    {
+      g_last_error = "atlas_group_new_simple: real form number out of range";
       return nullptr;
     }
 

@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/BigUnitaryHash.sml";
+use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/F4_FPP_lambdas.sml";
 use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/ParamHash.sml";
@@ -344,7 +345,7 @@ structure FPP_globalDirac = struct
       val () = verify_unitary_dual_set set
       val () =
         if !FPPFlags.final_verbose then
-          TextIO.print "FPP_unitary_hash_bottom_layer: TODO (more checks)\n"
+          TextIO.print "FPP_unitary_hash_bottom_layer: done\n"
         else
           ()
     in
@@ -355,5 +356,18 @@ structure FPP_globalDirac = struct
     FPP_unitary_hash_bottom_layer_set (g, param_set_of_big_unitary_hash hash)
 
   fun FPP_unitary_hash_bottom_layer_param_hash (g: AtlasFFI.group, hash: ParamHash.t) : unit =
-    FPP_unitary_hash_bottom_layer_set (g, param_set_of_param_hash hash)
+    if AtlasFFI.atlas_group_is_compact g = 1 then
+      let
+        val rho = AllParameters.parseRatWeightText (AtlasFFI.atlas_group_rho_text g)
+        val ps = AllParameters.all_parameters_gamma (g, rho)
+
+        fun addOne p =
+          (ignore (ParamHash.match hash p);
+           AtlasFFI.atlas_param_free p)
+        val () = List.app addOne ps
+      in
+        ()
+      end
+    else
+      FPP_unitary_hash_bottom_layer_set (g, param_set_of_param_hash hash)
 end

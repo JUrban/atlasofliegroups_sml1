@@ -158,6 +158,8 @@ structure AllParameters = struct
       List.rev (List.foldl loop [] (List.tabulate (kgbSize, fn i => i)))
     end
 
+  val all_parameters_gamma = all_parameters_gamma_raw
+
   fun all_parameters_gamma_dominant (g: AtlasFFI.group, gamma: ratweight) : AtlasFFI.param list =
     let
       val gammaDomText = Dominant.makeDominantText g (ratweightToText gamma)
