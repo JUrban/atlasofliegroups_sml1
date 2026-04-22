@@ -190,6 +190,25 @@ structure FPP_localDirac = struct
     , mapAct: int array          (* length = |vd|, values in [~1..|Lvd|-1] *)
     }
 
+  (* `.at`-style compact encoding of the involution action on vertices:
+     fixed indices and transposed pairs (representatives with `i<j`). *)
+  type perm2 = int list * (int * int) list
+
+  fun perm2_of_localFD ({perm, pairs, ...}: localFD) : perm2 =
+    let
+      val n = Array.length perm
+      fun loop i acc =
+        if i >= n then
+          List.rev acc
+        else if Array.sub (perm, i) = i then
+          loop (i + 1) (i :: acc)
+        else
+          loop (i + 1) acc
+      val fixed = loop 0 []
+    in
+      (fixed, pairs)
+    end
+
   (* Membership test for tiny face keys (length <= 5). *)
   fun memberInt (x: int, xs: int list) : bool = List.exists (fn y => y = x) xs
 
@@ -321,6 +340,18 @@ structure FPP_localDirac = struct
       val () = fillPairs (pairs, length fixed)
     in
       {Lvd = Lvd, perm = perm, pairs = pairs, mapAct = mapAct}
+    end
+
+  (* Convenience wrapper: compute `(Lvd, Perm2, mapAct)` using the canonical
+     folded-FPP vertex table for `g`. *)
+  fun localFD_Lvd2_simple (g: group, x: int, lambda: ratvec) : (VertexData.t * perm2 * int array) =
+    let
+      val faceCtx = FPPFaceKey.create g
+      val vd = #vd faceCtx
+      val fd = localFD_Lvd_simple (g, x, lambda, vd)
+      val perm2 = perm2_of_localFD fd
+    in
+      (#Lvd fd, perm2, #mapAct fd)
     end
 
   (*
