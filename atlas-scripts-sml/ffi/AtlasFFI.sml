@@ -41,9 +41,12 @@ structure AtlasFFI = struct
   val atlas_kgb_size_F4_s_sym = Foreign.getSymbol lib "atlas_kgb_size_F4_s"
   val atlas_group_new_F4_s_sym = Foreign.getSymbol lib "atlas_group_new_F4_s"
   val atlas_group_new_simple_sym = Foreign.getSymbol lib "atlas_group_new_simple"
+  val atlas_group_new_levi_of_parabolic_sym =
+    Foreign.getSymbol lib "atlas_group_new_levi_of_parabolic"
   val atlas_group_free_sym = Foreign.getSymbol lib "atlas_group_free"
   val atlas_group_kgb_size_sym = Foreign.getSymbol lib "atlas_group_kgb_size"
   val atlas_group_rank_sym = Foreign.getSymbol lib "atlas_group_rank"
+  val atlas_group_semisimple_rank_sym = Foreign.getSymbol lib "atlas_group_semisimple_rank"
   val atlas_group_is_split_sym = Foreign.getSymbol lib "atlas_group_is_split"
   val atlas_group_is_compact_sym = Foreign.getSymbol lib "atlas_group_is_compact"
   val atlas_group_component_rank_sym = Foreign.getSymbol lib "atlas_group_component_rank"
@@ -63,6 +66,12 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_group_kgb_involution_is_minus_identity"
   val atlas_kgb_all_lambda_differential_0_text_sym =
     Foreign.getSymbol lib "atlas_kgb_all_lambda_differential_0_text"
+  val atlas_kgb_status_sym = Foreign.getSymbol lib "atlas_kgb_status"
+  val atlas_kgb_cross_sym = Foreign.getSymbol lib "atlas_kgb_cross"
+  val atlas_kgb_cayley_sym = Foreign.getSymbol lib "atlas_kgb_cayley"
+  val atlas_kgb_length_sym = Foreign.getSymbol lib "atlas_kgb_length"
+  val atlas_kgb_torus_factor_text_sym =
+    Foreign.getSymbol lib "atlas_kgb_torus_factor_text"
 
   val atlas_rootdatum_new_simple_sym = Foreign.getSymbol lib "atlas_rootdatum_new_simple"
   val atlas_rootdatum_new_from_simple_mats_text_sym =
@@ -245,6 +254,13 @@ structure AtlasFFI = struct
       , Foreign.cPointer
       )
 
+  val atlas_group_new_levi_of_parabolic =
+    Foreign.buildCall3
+      ( atlas_group_new_levi_of_parabolic_sym
+      , (Foreign.cPointer, Foreign.cString, Foreign.cInt)
+      , Foreign.cPointer
+      )
+
   val atlas_group_free =
     Foreign.buildCall1 (atlas_group_free_sym, Foreign.cPointer, Foreign.cVoid)
 
@@ -253,6 +269,9 @@ structure AtlasFFI = struct
 
   val atlas_group_rank =
     Foreign.buildCall1 (atlas_group_rank_sym, Foreign.cPointer, Foreign.cLong)
+
+  val atlas_group_semisimple_rank =
+    Foreign.buildCall1 (atlas_group_semisimple_rank_sym, Foreign.cPointer, Foreign.cInt)
 
   val atlas_group_is_split =
     Foreign.buildCall1 (atlas_group_is_split_sym, Foreign.cPointer, Foreign.cInt)
@@ -305,6 +324,37 @@ structure AtlasFFI = struct
   val atlas_kgb_all_lambda_differential_0_text =
     Foreign.buildCall2
       ( atlas_kgb_all_lambda_differential_0_text_sym
+      , (Foreign.cPointer, Foreign.cInt)
+      , Foreign.cString
+      )
+
+  val atlas_kgb_status =
+    Foreign.buildCall3
+      ( atlas_kgb_status_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cInt)
+      , Foreign.cInt
+      )
+
+  val atlas_kgb_cross =
+    Foreign.buildCall3
+      ( atlas_kgb_cross_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cInt)
+      , Foreign.cInt
+      )
+
+  val atlas_kgb_cayley =
+    Foreign.buildCall3
+      ( atlas_kgb_cayley_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cInt)
+      , Foreign.cInt
+      )
+
+  val atlas_kgb_length =
+    Foreign.buildCall2 (atlas_kgb_length_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cInt)
+
+  val atlas_kgb_torus_factor_text =
+    Foreign.buildCall2
+      ( atlas_kgb_torus_factor_text_sym
       , (Foreign.cPointer, Foreign.cInt)
       , Foreign.cString
       )

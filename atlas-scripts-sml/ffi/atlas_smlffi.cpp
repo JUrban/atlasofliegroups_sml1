@@ -183,6 +183,30 @@ struct GroupHandle
   {
     rt = std::make_unique<atlas::repr::Rep_table>(G);
   }
+
+  GroupHandle(atlas::prerootdata::PreRootDatum&& prd_in,
+              atlas::WeightInvolution&& di_in,
+              atlas::RealFormNbr rf,
+              const atlas::RatCoweight& coch,
+              atlas::TorusPart tp)
+    : lt()
+    , ict()
+    , prd(std::move(prd_in))
+    , di(std::move(di_in))
+    , ic(prd, di)
+    , G(ic, rf, coch, tp)
+    , rt()
+  {
+    // Ensure involution table knows Cartan class for identity (see synthetic real form wrapper).
+    atlas::TwistedInvolution tw_id;
+    atlas::CartanNbr cn = ic.class_number(tw_id);
+    ic.generate_Cartan_orbit(cn);
+    const atlas::BitMap& b = ic.Cartan_ordering().below(cn);
+    for (auto it = b.begin(); it(); ++it)
+      ic.generate_Cartan_orbit(*it);
+
+    rt = std::make_unique<atlas::repr::Rep_table>(G);
+  }
 };
 
 struct ParamHandle
@@ -1152,6 +1176,235 @@ extern "C" const char* atlas_group_posroots_text(void* handle)
         out << ' ' << r[i];
     }
     return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" int atlas_group_semisimple_rank(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_semisimple_rank: null handle";
+      return -1;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    return static_cast<int>(h->G.semisimple_rank());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+static const char* ratvec_to_text(const atlas::RatWeight& v)
+{
+  std::ostringstream out;
+  out << v.denominator();
+  const auto& num = v.numerator();
+  for (std::size_t i = 0; i < num.size(); ++i)
+    out << ' ' << static_cast<long long>(num[i]);
+  return store_result(out.str());
+}
+
+static const char* ratcoweight_to_text(const atlas::RatCoweight& v)
+{
+  std::ostringstream out;
+  out << v.denominator();
+  const auto& num = v.numerator();
+  for (std::size_t i = 0; i < num.size(); ++i)
+    out << ' ' << static_cast<long long>(num[i]);
+  return store_result(out.str());
+}
+
+extern "C" int atlas_kgb_status(void* group_handle, int s, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_status: null group handle";
+      return -1;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& kgb = g->G.kgb();
+    const auto& rd = g->G.root_datum();
+    if (x < 0 || static_cast<unsigned int>(x) >= kgb.size())
+    {
+      g_last_error = "atlas_kgb_status: invalid KGB index";
+      return -1;
+    }
+    if (s < 0 || static_cast<unsigned int>(s) >= rd.semisimple_rank())
+    {
+      g_last_error = "atlas_kgb_status: invalid generator index";
+      return -1;
+    }
+
+    const atlas::KGBElt xv = static_cast<atlas::KGBElt>(x);
+    const atlas::weyl::Generator sv = static_cast<atlas::weyl::Generator>(s);
+    unsigned stat = kgb.status(sv, xv);
+    if (stat == 0u && !kgb.isDescent(sv, xv))
+      stat = 4u; // complex ascent
+    return static_cast<int>(stat);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" int atlas_kgb_cross(void* group_handle, int s, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_cross: null group handle";
+      return -1;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& kgb = g->G.kgb();
+    const auto& rd = g->G.root_datum();
+    if (x < 0 || static_cast<unsigned int>(x) >= kgb.size())
+    {
+      g_last_error = "atlas_kgb_cross: invalid KGB index";
+      return -1;
+    }
+    if (s < 0 || static_cast<unsigned int>(s) >= rd.semisimple_rank())
+    {
+      g_last_error = "atlas_kgb_cross: invalid generator index";
+      return -1;
+    }
+
+    const atlas::KGBElt xv = static_cast<atlas::KGBElt>(x);
+    const atlas::weyl::Generator sv = static_cast<atlas::weyl::Generator>(s);
+    return static_cast<int>(kgb.cross(sv, xv));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" int atlas_kgb_cayley(void* group_handle, int s, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_cayley: null group handle";
+      return -1;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& kgb = g->G.kgb();
+    const auto& rd = g->G.root_datum();
+    if (x < 0 || static_cast<unsigned int>(x) >= kgb.size())
+    {
+      g_last_error = "atlas_kgb_cayley: invalid KGB index";
+      return -1;
+    }
+    if (s < 0 || static_cast<unsigned int>(s) >= rd.semisimple_rank())
+    {
+      g_last_error = "atlas_kgb_cayley: invalid generator index";
+      return -1;
+    }
+
+    const atlas::KGBElt xv = static_cast<atlas::KGBElt>(x);
+    const atlas::weyl::Generator sv = static_cast<atlas::weyl::Generator>(s);
+    atlas::KGBElt y = kgb.any_Cayley(sv, xv);
+    if (y == atlas::UndefKGB)
+      y = xv; // match atlas interpreter behavior: leave unchanged if undefined
+    return static_cast<int>(y);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" int atlas_kgb_length(void* group_handle, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_length: null group handle";
+      return -1;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& kgb = g->G.kgb();
+    if (x < 0 || static_cast<unsigned int>(x) >= kgb.size())
+    {
+      g_last_error = "atlas_kgb_length: invalid KGB index";
+      return -1;
+    }
+    return static_cast<int>(kgb.length(static_cast<atlas::KGBElt>(x)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" const char* atlas_kgb_torus_factor_text(void* group_handle, int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_kgb_torus_factor_text: null group handle";
+      return nullptr;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& kgb = g->G.kgb();
+    if (x < 0 || static_cast<unsigned int>(x) >= kgb.size())
+    {
+      g_last_error = "atlas_kgb_torus_factor_text: invalid KGB index";
+      return nullptr;
+    }
+    atlas::RatCoweight tf = kgb.torus_factor(static_cast<atlas::KGBElt>(x));
+    tf.normalize();
+    return ratcoweight_to_text(tf);
   }
   catch (const std::exception& e)
   {
@@ -4076,6 +4329,132 @@ extern "C" const char* atlas_param_good_range_induced_from_first_text(void* p_ha
     }
 
     return store_result("0|||");
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_levi_of_parabolic(void* group_handle,
+                                                   const char* S_text,
+                                                   int x)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_group_new_levi_of_parabolic: null group handle";
+      return nullptr;
+    }
+    if (S_text == nullptr)
+    {
+      g_last_error = "atlas_group_new_levi_of_parabolic: null S_text";
+      return nullptr;
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    const auto& rdG = g->G.root_datum();
+    const auto& kgbG = g->G.kgb();
+
+    if (x < 0 || static_cast<unsigned int>(x) >= kgbG.size())
+    {
+      g_last_error = "atlas_group_new_levi_of_parabolic: invalid KGB index";
+      return nullptr;
+    }
+
+    std::vector<int> S_int;
+    if (!parse_int_list(S_text, S_int))
+      return nullptr;
+    if (S_int.empty())
+    {
+      g_last_error = "atlas_group_new_levi_of_parabolic: empty S";
+      return nullptr;
+    }
+
+    const auto ss_rank = static_cast<unsigned int>(rdG.semisimple_rank());
+    std::vector<uint8_t> seen(ss_rank, 0);
+    std::vector<atlas::weyl::Generator> S;
+    S.reserve(S_int.size());
+    for (int s : S_int)
+    {
+      if (s < 0 || static_cast<unsigned int>(s) >= ss_rank)
+      {
+        g_last_error = "atlas_group_new_levi_of_parabolic: generator index out of range";
+        return nullptr;
+      }
+      if (seen[static_cast<unsigned int>(s)] != 0)
+        continue;
+      seen[static_cast<unsigned int>(s)] = 1;
+      S.push_back(static_cast<atlas::weyl::Generator>(s));
+    }
+
+    atlas::KGBElt x_min = static_cast<atlas::KGBElt>(x);
+    while (true)
+    {
+      auto downs = down_neighbors(kgbG, S, x_min);
+      if (downs.empty())
+        break;
+      x_min = downs.front();
+    }
+
+    // Check theta-stability of the Levi: for t not in S, H=fund_coweight sum,
+    // require H*(theta*alpha_s)=0 for all s in S.
+    const auto& theta = kgbG.involution_matrix(x_min);
+    if (!has_theta_stable_Levi(rdG, theta, S))
+    {
+      g_last_error = "atlas_group_new_levi_of_parabolic: Levi factor is not theta-stable";
+      return nullptr;
+    }
+
+    // Build Levi root datum as in basic.at sub_datum(rd,S): keep ambient rank.
+    atlas::int_Matrix sr_mat(rdG.rank(), static_cast<unsigned int>(S.size()));
+    atlas::int_Matrix scr_mat(rdG.rank(), static_cast<unsigned int>(S.size()));
+    for (std::size_t j = 0; j < S.size(); ++j)
+    {
+      const auto s = S[j];
+      const auto& alpha = rdG.simpleRoot(s);
+      const auto& alpha_v = rdG.simpleCoroot(s);
+      for (unsigned int i = 0; i < rdG.rank(); ++i)
+      {
+        sr_mat(i, static_cast<unsigned int>(j)) = alpha[i];
+        scr_mat(i, static_cast<unsigned int>(j)) = alpha_v[i];
+      }
+    }
+
+    atlas::prerootdata::PreRootDatum prdL(sr_mat, scr_mat, /*prefer_co=*/false);
+
+    atlas::RatCoweight torus_factor = kgbG.torus_factor(x_min);
+    // Project torus_factor to theta-fixed: (1+theta)/2.
+    {
+      auto& num = torus_factor.numerator();
+      num += theta.right_prod(num);
+      torus_factor /= 2;
+      torus_factor.normalize();
+    }
+
+    // Determine which (weak) real form in the Levi inner class this describes.
+    atlas::innerclass::InnerClass icTmp(prdL, theta);
+    atlas::TwistedInvolution tw_id;
+    atlas::CartanNbr cn = icTmp.class_number(tw_id);
+    icTmp.generate_Cartan_orbit(cn);
+    const atlas::BitMap& b = icTmp.Cartan_ordering().below(cn);
+    for (auto it = b.begin(); it(); ++it)
+      icTmp.generate_Cartan_orbit(*it);
+
+    atlas::RatCoweight coch(0);
+    atlas::RealFormNbr rf = atlas::innerclass::real_form_of(icTmp, tw_id, torus_factor, coch);
+    atlas::TorusPart tp =
+      atlas::realredgp::minimal_torus_part(icTmp, rf, coch, tw_id, torus_factor);
+
+    return static_cast<void*>(
+      new GroupHandle(std::move(prdL), atlas::WeightInvolution(theta), rf, coch, tp));
   }
   catch (const std::exception& e)
   {
