@@ -3,6 +3,49 @@ use "atlas-scripts-sml/IntMatrix.sml";
 structure MatrixAT = struct
   type mat = IntMatrix.mat
 
+  fun null (nRows: int, nCols: int) : mat =
+    if nRows < 0 orelse nCols < 0 then
+      raise Fail "MatrixAT.null: negative dimensions"
+    else
+      List.tabulate (nRows, fn _ => List.tabulate (nCols, fn _ => 0))
+
+  fun id_mat (n: int) : mat =
+    if n < 0 then raise Fail "MatrixAT.id_mat: negative size" else IntMatrix.identity n
+
+  fun block_matrix (a: mat, b: mat) : mat =
+    let
+      val (ra, ca) = IntMatrix.matShape a
+      val (rb, cb) = IntMatrix.matShape b
+      val top = List.map (fn row => row @ List.tabulate (cb, fn _ => 0)) a
+      val bot = List.map (fn row => List.tabulate (ca, fn _ => 0) @ row) b
+    in
+      top @ bot
+    end
+
+  fun is_permutation (pi: int list) : bool =
+    let
+      val n = length pi
+      val seen = Array.array (n, false)
+      fun ok [] = true
+        | ok (x :: xs) =
+            if x < 0 orelse x >= n then false
+            else if Array.sub (seen, x) then false
+            else (Array.update (seen, x, true); ok xs)
+    in
+      ok pi
+    end
+
+  fun permutation_matrix (pi: int list) : mat =
+    if not (is_permutation pi) then
+      raise Fail "MatrixAT.permutation_matrix: not a permutation"
+    else
+      let
+        val n = length pi
+        fun row i = List.tabulate (n, fn j => if List.nth (pi, j) = i then 1 else 0)
+      in
+        List.tabulate (n, row)
+      end
+
   fun gcdInt (a: int, b: int) : int =
     let
       val a = Int.abs a
