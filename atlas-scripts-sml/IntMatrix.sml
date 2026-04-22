@@ -181,6 +181,15 @@ structure IntMatrix = struct
       | _ => parseMatText out
     end
 
+  (* Cokernel matrix, in the sense of `basic.at`:
+       cokernel(M) = transpose(kernel(transpose(M))).
+     Here `kernel` returns a matrix whose columns form a Z-basis of the kernel,
+     so `kernel(transpose(M))` is an `n x t` matrix (columns are kernel vectors)
+     and its transpose is `t x n`, whose rows can be viewed as linear forms
+     annihilating the image of `M`. *)
+  fun cokernel (a: mat) : mat =
+    transpose (kernel (transpose a))
+
   (* Eigenlattice for eigenvalue `eigenValue` of an integer matrix. *)
   fun eigenLattice (a: mat, eigenValue: int) : mat =
     let
