@@ -37,8 +37,26 @@ structure TwistedRootDatum = struct
            val () = if List.all (fn c => length c = n) cs then () else raise Fail "TwistedRootDatum.matFromColumns: ragged"
            fun row i = List.map (fn c => List.nth (c, i)) cols
          in
-           List.tabulate (n, row)
+          List.tabulate (n, row)
          end)
+
+  fun rootdatum_from_positive (posRootsCols: int list list, posCorootsCols: int list list) : rootdatum =
+    let
+      val () =
+        if length posRootsCols = length posCorootsCols then ()
+        else raise Fail "TwistedRootDatum.rootdatum_from_positive: mismatched roots/coroots"
+      val rootCor = ListPair.zipEq (posRootsCols, posCorootsCols)
+      fun isSum alpha =
+        List.exists
+          (fn beta => List.exists (fn gamma => vecAdd (beta, gamma) = alpha) posRootsCols)
+          posRootsCols
+      fun isSimple alpha = not (isSum alpha)
+      val simplePairs = List.filter (fn (r, _) => isSimple r) rootCor
+      val simpleRoots = List.map #1 simplePairs
+      val simpleCoroots = List.map #2 simplePairs
+    in
+      RootDatum.newFromSimpleMats (matFromColumns simpleRoots, matFromColumns simpleCoroots, false)
+    end
 
   fun direct_product_rootdatum (rd1: rootdatum, rd2: rootdatum) : rootdatum =
     let
@@ -200,20 +218,35 @@ structure TwistedRootDatum = struct
       val coroots = matColumns corootsMat
       val () = if length roots = length coroots then () else raise Fail "TwistedRootDatum.folded: mismatched pre_folded"
 
-      val rootCor = ListPair.zipEq (roots, coroots)
-
-      fun isSum alpha =
-        List.exists
-          (fn beta => List.exists (fn gamma => vecAdd (beta, gamma) = alpha) roots)
-          roots
-
-      fun isSimple alpha = not (isSum alpha)
-      val simplePairs = List.filter (fn (r, _) => isSimple r) rootCor
-      val simpleRoots = List.map #1 simplePairs
-      val simpleCoroots = List.map #2 simplePairs
-
-      val foldedRd = RootDatum.newFromSimpleMats (matFromColumns simpleRoots, matFromColumns simpleCoroots, false)
+      val foldedRd = rootdatum_from_positive (roots, coroots)
     in
       (foldedRd, tMat)
+    end
+
+  fun inverse_image_simple_factor (trd: t, foldedFactor: rootdatum, tMat: mat) : rootdatum =
+    let
+      val rd = #rd trd
+      val tStar = IntMatrix.transpose tMat
+      fun restrict v = IntMatrix.matVecMul (tStar, v)
+
+      val foldedPos = Sort.sort_u_rlex (RootDatum.posRootsCols foldedFactor)
+      val locate = Basic.binary_search_in (foldedPos, Sort.rlex_leq)
+
+      val posRoots = RootDatum.posRootsCols rd
+      val posCoroots = RootDatum.posCorootsCols rd
+      val () = if length posRoots = length posCoroots then () else raise Fail "TwistedRootDatum.inverse_image_simple_factor: mismatch"
+
+      fun keep (root: int list) : bool =
+        Option.isSome (locate (restrict root))
+
+      fun filterPairs ([], [], accR, accC) = (List.rev accR, List.rev accC)
+        | filterPairs (r :: rs, c :: cs, accR, accC) =
+            if keep r then filterPairs (rs, cs, r :: accR, c :: accC)
+            else filterPairs (rs, cs, accR, accC)
+        | filterPairs _ = raise Fail "TwistedRootDatum.inverse_image_simple_factor: mismatch"
+
+      val (roots', coroots') = filterPairs (posRoots, posCoroots, [], [])
+    in
+      rootdatum_from_positive (roots', coroots')
     end
 end
