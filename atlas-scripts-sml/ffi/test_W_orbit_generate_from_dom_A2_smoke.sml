@@ -26,6 +26,19 @@ val () =
       end)
     orbit;
 
+(* from_dominant + W_orbit should work for a non-dominant orbit element too. *)
+val v = WOrbit.act_word_rtl (rd, [0], start);
+val (witness, dom) = WOrbit.from_dominant_vec (rd, v);
+val () = if WOrbit.is_dominant (rd, dom) then () else raise Fail "from_dominant produced non-dominant";
+val () = if dom = start then () else raise Fail "A2: expected dom=rho";
+val () =
+  if WOrbit.act_word_rtl (rd, witness, dom) = v then
+    ()
+  else
+    raise Fail "from_dominant witness failed";
+
+val orb2 = WOrbit.W_orbit (rd, v);
+val () = if length orb2 = 6 then () else raise Fail "W_orbit size mismatch on non-dominant input";
+
 val () = RootDatum.free rd;
 val () = print "OK\n";
-

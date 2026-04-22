@@ -21,6 +21,8 @@ use "atlas-scripts-sml/sort.sml";
       - `simple_actor` (“lowering only” simple reflection action)
       - `generate_from_dom` (orbit generation with witness words)
       - `generate_action_from_dom` (as above, also tracking action matrices)
+      - `from_dominant_vec` (deterministic dominant factoring for integral vecs)
+      - `W_orbit_dom` / `W_orbit` (orbit as row-matrix of vectors)
       - a few convenience helpers (`allSimples`, `act_word_rtl`)
   - Not yet implemented:
       - `stabiliser_quotient` / `Weyl_orbit_ws` analogues
@@ -93,6 +95,51 @@ structure WOrbit = struct
 
   (* ---------- orbit generation ---------- *)
 
+  (* Dominance test for integral weights: <x, alpha_i^vee> >= 0 for all simple i. *)
+  fun is_dominant (rd: rootdatum, x: vec) : bool =
+    let
+      val ssr = RootDatum.semisimpleRank rd
+      fun ok i = RootDatum.dot (x, simpleCoroot (rd, i)) >= 0
+    in
+      List.all ok (List.tabulate (ssr, fn i => i))
+    end
+
+  (* Deterministically factor an integral weight into a dominant representative.
+
+     Returns `(witnessWord, x_dom)` where:
+       - `x_dom` is dominant
+       - `act_word_rtl(rd, witnessWord, x_dom) = x_original`
+
+     This is the integral-weight analogue of `.at` `from_dominant` / C++
+     `RootDatum::factor_dominant`, but implemented in pure SML using the
+     simple reflection formulas.
+
+     Notes
+     - This implementation is deterministic but not guaranteed to return a
+       *minimal-length* witness word (the C++ version typically is).
+  *)
+  fun from_dominant_vec (rd: rootdatum, x_original: vec) : word * vec =
+    let
+      val ssr = RootDatum.semisimpleRank rd
+
+      fun firstNegative (x: vec) : int option =
+        let
+          fun loop i =
+            if i >= ssr then NONE
+            else if RootDatum.dot (x, simpleCoroot (rd, i)) < 0 then SOME i
+            else loop (i + 1)
+        in
+          loop 0
+        end
+
+      fun loop (x: vec, appliedRev: int list) : word * vec =
+        (case firstNegative x of
+           NONE => (List.rev appliedRev, x)
+         | SOME i => loop (reflectSimple (rd, i) x, i :: appliedRev))
+    in
+      loop (x_original, [])
+    end
+
   (* "lowering only" standard simple reflection action on weights.
 
      Mirrors `simple_actor` in `W_orbit.at`: if the coroot evaluation is
@@ -162,6 +209,23 @@ structure WOrbit = struct
   (* Convenience wrapper: use simple reflections indexed by `gens` as generators. *)
   fun generate_from_dom_simples (rd: rootdatum, gens: int list, start: vec) : (vec * word) list =
     generate_from_dom (List.map (fn i => simple_actor (rd, i)) gens, gens, start)
+
+  (* Orbit of a dominant integral weight under the full Weyl group, returned as
+     a matrix of row vectors (matching the `.at` convention for `mat`). *)
+  fun W_orbit_dom (rd: rootdatum, start_dom: vec) : mat =
+    List.map #1 (generate_from_dom_simples (rd, allSimples rd, start_dom))
+
+  (* Orbit of an arbitrary integral weight under the full Weyl group.
+
+     Implementation: compute a dominant representative and then generate the
+     orbit from that dominant representative (the orbit set is unchanged).
+  *)
+  fun W_orbit (rd: rootdatum, x: vec) : mat =
+    let
+      val (_, x_dom) = from_dominant_vec (rd, x)
+    in
+      W_orbit_dom (rd, x_dom)
+    end
 
   (* Variant tracking action matrices.
 
