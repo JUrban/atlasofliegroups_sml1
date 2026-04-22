@@ -13,9 +13,6 @@ structure IntMatrix = struct
       List.map toInt (String.tokens Char.isSpace s)
     end
 
-  fun toCText (s: string) : string =
-    String.translate (fn #"~" => "-" | c => str c) s
-
   fun matShape (rows: mat) : int * int =
     case rows of
       [] => (0, 0)
@@ -26,6 +23,71 @@ structure IntMatrix = struct
         in
           (length rows, m)
         end
+
+  fun toCText (s: string) : string =
+    String.translate (fn #"~" => "-" | c => str c) s
+
+  fun transpose (a: mat) : mat =
+    let
+      val (n, m) = matShape a
+      fun col j = List.map (fn row => List.nth (row, j)) a
+    in
+      List.tabulate (m, col)
+    end
+
+  fun neg (a: mat) : mat = List.map (fn row => List.map (fn x => ~x) row) a
+
+  fun add (a: mat, b: mat) : mat =
+    ListPair.mapEq (fn (ra, rb) => ListPair.mapEq (op +) (ra, rb)) (a, b)
+
+  fun sub (a: mat, b: mat) : mat =
+    ListPair.mapEq (fn (ra, rb) => ListPair.mapEq (op -) (ra, rb)) (a, b)
+
+  fun hcat (a: mat, b: mat) : mat =
+    let
+      val (na, ma) = matShape a
+      val (nb, mb) = matShape b
+      val () = if na = nb then () else raise Fail "IntMatrix.hcat: row mismatch"
+    in
+      ListPair.mapEq (op @) (a, b)
+    end
+
+  fun matMul (a: mat, b: mat) : mat =
+    let
+      val (ar, ac) = matShape a
+      val (br, bc) = matShape b
+      val () = if ac = br then () else raise Fail "IntMatrix.matMul: dim mismatch"
+      fun col j = List.map (fn row => List.nth (row, j)) b
+      val cols = List.tabulate (bc, col)
+      fun dot (xs, ys) =
+        let
+          fun loop ([], [], acc) = acc
+            | loop (x :: xs', y :: ys', acc) = loop (xs', ys', acc + x * y)
+            | loop _ = raise Fail "IntMatrix.dot: mismatch"
+        in
+          loop (xs, ys, 0)
+        end
+      fun rowMul r = List.map (fn c => dot (r, c)) cols
+    in
+      if ar = 0 then [] else List.map rowMul a
+    end
+
+  fun firstRows (k: int, a: mat) : mat =
+    let
+      val (n, _) = matShape a
+      val () = if 0 <= k andalso k <= n then () else raise Fail "IntMatrix.firstRows: oob"
+    in
+      List.take (a, k)
+    end
+
+  fun firstCols (k: int, a: mat) : mat =
+    let
+      val (_, m) = matShape a
+      val () = if 0 <= k andalso k <= m then () else raise Fail "IntMatrix.firstCols: oob"
+      fun row r = List.take (r, k)
+    in
+      List.map row a
+    end
 
   fun matToText (a: mat) : string =
     let
@@ -79,4 +141,3 @@ structure IntMatrix = struct
       | _ => parseMatText out
     end
 end
-
