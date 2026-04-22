@@ -77,6 +77,15 @@ structure AtlasFFI = struct
   val atlas_ktypepol_is_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_pure"
   val atlas_param_is_unitary_c_form_sym = Foreign.getSymbol lib "atlas_param_is_unitary_c_form"
 
+  val atlas_ktype_free_sym = Foreign.getSymbol lib "atlas_ktype_free"
+  val atlas_param_K_type_sym = Foreign.getSymbol lib "atlas_param_K_type"
+  val atlas_ktype_parameter_sym = Foreign.getSymbol lib "atlas_ktype_parameter"
+  val atlas_ktype_is_final_sym = Foreign.getSymbol lib "atlas_ktype_is_final"
+  val atlas_ktype_x_sym = Foreign.getSymbol lib "atlas_ktype_x"
+  val atlas_ktype_lambda_rho_text_sym = Foreign.getSymbol lib "atlas_ktype_lambda_rho_text"
+  val atlas_ktype_new_from_x_lambda_rho_text_sym =
+    Foreign.getSymbol lib "atlas_ktype_new_from_x_lambda_rho_text"
+
   val atlas_intmat_find_solution_text =
     Foreign.buildCall2
       ( atlas_intmat_find_solution_text_sym
@@ -319,4 +328,31 @@ structure AtlasFFI = struct
 
   val atlas_param_is_unitary_c_form =
     Foreign.buildCall1 (atlas_param_is_unitary_c_form_sym, Foreign.cPointer, Foreign.cInt)
+
+  type ktype = Foreign.Memory.voidStar
+
+  val atlas_ktype_free =
+    Foreign.buildCall1 (atlas_ktype_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_param_K_type =
+    Foreign.buildCall1 (atlas_param_K_type_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_ktype_parameter =
+    Foreign.buildCall1 (atlas_ktype_parameter_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_ktype_is_final =
+    Foreign.buildCall1 (atlas_ktype_is_final_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_ktype_x =
+    Foreign.buildCall1 (atlas_ktype_x_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_ktype_lambda_rho_text =
+    Foreign.buildCall1 (atlas_ktype_lambda_rho_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_ktype_new_from_x_lambda_rho_text =
+    Foreign.buildCall3
+      ( atlas_ktype_new_from_x_lambda_rho_text_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cString)
+      , Foreign.cPointer
+      )
 end

@@ -4,6 +4,7 @@ use "atlas-scripts-sml/LambdaDifferential0.sml";
 use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/ParamReduce.sml";
 use "atlas-scripts-sml/Rat.sml";
+use "atlas-scripts-sml/KType.sml";
 
 structure K_highest_weights = struct
   type mat = IntMatrix.mat
@@ -132,6 +133,34 @@ structure K_highest_weights = struct
      Returned params are freshly allocated and must be freed by caller. *)
   fun reduce_parameters (ps: AtlasFFI.param list) : AtlasFFI.param list =
     ParamReduce.reduce ps
+
+  fun parseVecTextWithRankHeader s : int list =
+    (case parseInts s of
+       n :: rest =>
+         if length rest <> n then
+           raise Fail "K_highest_weights: parseVecTextWithRankHeader: bad length"
+         else
+           rest
+     | _ => raise Fail "K_highest_weights: parseVecTextWithRankHeader: empty")
+
+  (* Port of `all_equal_dlambda_K_parameters(t)` from `atlas-scripts/K_highest_weights.at`.
+     Returned K_types are freshly allocated and must be freed by caller. *)
+  fun all_equal_dlambda_K_parameters (g: AtlasFFI.group, t: KType.ktype) : KType.ktype list =
+    let
+      val x = KType.x t
+      val base = parseVecTextWithRankHeader (KType.lambdaRhoText t)
+      val twists = all_lambda_differential_0 (g, x)
+
+      fun mk v =
+        let
+          val w = ListPair.mapEq (op +) (base, v)
+          val t0 = KType.newFromXAndLambdaRhoText (g, x, intsToCText w)
+        in
+          if KType.isFinal t0 then SOME t0 else (KType.free t0; NONE)
+        end
+    in
+      List.mapPartial mk twists
+    end
 
   (* Port of `cone(limit,cs)` from `atlas-scripts/K_highest_weights.at`.
      Returns an `n x m` matrix (row-major) whose columns are the weight vectors. *)

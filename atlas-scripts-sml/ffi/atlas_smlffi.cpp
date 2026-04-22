@@ -173,6 +173,16 @@ struct KTypePolHandle
   {}
 };
 
+struct KTypeHandle
+{
+  GroupHandle* group; // non-owning; user must keep group alive
+  atlas::K_repr::K_type t;
+
+  KTypeHandle(GroupHandle* group, atlas::K_repr::K_type&& t)
+    : group(group), t(std::move(t))
+  {}
+};
+
 struct AdaptedBasisHandle
 {
   atlas::int_Matrix basis;
@@ -1885,6 +1895,221 @@ extern "C" void atlas_ktypepol_free(void* kt_handle)
   catch (...)
   {
     g_last_error = "unknown C++ exception";
+  }
+}
+
+extern "C" void atlas_ktype_free(void* t_handle)
+{
+  try
+  {
+    delete static_cast<KTypeHandle*>(t_handle);
+  }
+  catch (...)
+  {
+  }
+}
+
+extern "C" void* atlas_param_K_type(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_K_type: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_K_type: null group pointer in param";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(p->group->G);
+    atlas::K_repr::K_type t = rc.sr_K(p->sr);
+    return static_cast<void*>(new KTypeHandle(p->group, std::move(t)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_ktype_parameter(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_parameter: null K_type handle";
+      return nullptr;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr)
+    {
+      g_last_error = "atlas_ktype_parameter: null group pointer in K_type";
+      return nullptr;
+    }
+    atlas::repr::Rep_context rc(t->group->G);
+    atlas::repr::StandardRepr sr = rc.sr(t->t);
+    return static_cast<void*>(new ParamHandle(t->group, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" int atlas_ktype_is_final(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_is_final: null K_type handle";
+      return 0;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr)
+    {
+      g_last_error = "atlas_ktype_is_final: null group pointer in K_type";
+      return 0;
+    }
+    atlas::repr::Rep_context rc(t->group->G);
+    return rc.is_final(t->t) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return 0;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return 0;
+  }
+}
+
+extern "C" int atlas_ktype_x(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_x: null K_type handle";
+      return -1;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    return static_cast<int>(t->t.x());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" const char* atlas_ktype_lambda_rho_text(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_lambda_rho_text: null K_type handle";
+      return store_result("-1");
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr)
+    {
+      g_last_error = "atlas_ktype_lambda_rho_text: null group pointer in K_type";
+      return store_result("-1");
+    }
+    const auto rank = t->group->G.rank();
+    std::ostringstream out;
+    out << rank;
+    const auto& w = t->t.lambda_rho();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << w[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
+extern "C" void* atlas_ktype_new_from_x_lambda_rho_text(void* group_handle, int x, const char* lambda_rho_text)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_new_from_x_lambda_rho_text: null group handle";
+      return nullptr;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+
+    std::vector<int> xs;
+    if (!parse_int_list(lambda_rho_text, xs))
+    {
+      g_last_error = "atlas_ktype_new_from_x_lambda_rho_text: failed to parse lambda_rho text";
+      return nullptr;
+    }
+
+    std::vector<int> nums;
+    if (xs.size() == rank)
+      nums = xs;
+    else if (xs.size() == rank + 1 && xs[0] == static_cast<int>(rank))
+      nums = std::vector<int>(xs.begin() + 1, xs.end());
+    else
+    {
+      std::ostringstream msg;
+      msg << "atlas_ktype_new_from_x_lambda_rho_text: expected " << rank
+          << " ints (optionally preceded by rank), got " << xs.size();
+      g_last_error = msg.str();
+      return nullptr;
+    }
+
+    atlas::Weight w(static_cast<unsigned int>(rank));
+    for (unsigned int i = 0; i < rank; ++i)
+      w[i] = nums[i];
+
+    atlas::K_repr::K_type t = rc.sr_K(static_cast<atlas::KGBElt>(x), std::move(w));
+    return static_cast<void*>(new KTypeHandle(g, std::move(t)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
   }
 }
 
