@@ -5,6 +5,7 @@ use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/ParamHash.sml";
+use "atlas-scripts-sml/BigUnitaryCache.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/basic.sml";
@@ -481,11 +482,15 @@ structure FPP_localDirac = struct
       List.tabulate (n, dropAt)
     end
 
+  type unitary_cache = BigUnitaryCache.t
+
   (* Exact unitarity test for a local face: check all final terms at the face barycenter. *)
-  fun face_is_unitary_exact (g: group, x: int, lambda: ratvec, Lvd: VertexData.t, face: face_key) : bool =
+  fun face_is_unitary_exact_thetaPlusHalf
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key) : bool =
     let
       val gammaLocal = VertexData.face_bary (Lvd, face)
-      val p0 = parameter_x_lambda_gamma (g, x, lambda, gammaLocal)
+      val nu = Lattice.ratvecSub (gammaLocal, thetaPlusHalf)
+      val p0 = Representations.parameter (g, x, lambda, nu)
       val p1 = AtlasFFI.atlas_param_normalise p0
       val () = AtlasFFI.atlas_param_free p0
       val () =
@@ -509,6 +514,17 @@ structure FPP_localDirac = struct
       List.all okTerm finals
     end
 
+  fun face_is_unitary_exact (g: group, x: int, lambda: ratvec, Lvd: VertexData.t, face: face_key) : bool =
+    let
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+    in
+      face_is_unitary_exact_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face)
+    end
+
   (*
     Baseline face filtering (dimension-by-dimension)
 
@@ -524,6 +540,11 @@ structure FPP_localDirac = struct
     (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : face_key list array =
     let
       val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
       val vd = #vd (#faceCtx c)
       val fd = localFD_Lvd_simple (g, x, lambda, vd)
       val Lvd = #Lvd fd
@@ -541,7 +562,8 @@ structure FPP_localDirac = struct
       fun keepDim0 () =
         let
           val vs = Array.sub (facesByDim, 0)
-          val ks = List.filter (fn face => face_is_unitary_exact (g, x, lambda, Lvd, face)) vs
+          val ks =
+            List.filter (fn face => face_is_unitary_exact_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face)) vs
         in
           Array.update (kept, 0, ks)
         end
@@ -556,7 +578,7 @@ structure FPP_localDirac = struct
           fun subfacesOk face =
             List.all (fn sf => Hash.lookup prevSet sf >= 0) (codim1_subfaces face)
           fun ok face =
-            subfacesOk face andalso face_is_unitary_exact (g, x, lambda, Lvd, face)
+            subfacesOk face andalso face_is_unitary_exact_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face)
           val fs = Array.sub (facesByDim, d)
           val ks = List.filter ok fs
         in
@@ -571,6 +593,97 @@ structure FPP_localDirac = struct
 
   fun unitary_local_faces_by_dim_exact_ctx (c: ctx, x: int, lambda: ratvec) : face_key list array =
     unitary_local_faces_by_dim_exact_limit_ctx (c, x, lambda, ~1)
+
+  (* Cached variant: uses `BigUnitaryCache` for the final-parameter unitary checks. *)
+  fun face_is_unitary_exact_thetaPlusHalf_cached
+    (cache: unitary_cache)
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key) : bool =
+    let
+      val gammaLocal = VertexData.face_bary (Lvd, face)
+      val nu = Lattice.ratvecSub (gammaLocal, thetaPlusHalf)
+      val p0 = Representations.parameter (g, x, lambda, nu)
+      val p1 = AtlasFFI.atlas_param_normalise p0
+      val () = AtlasFFI.atlas_param_free p0
+      val () =
+        if p1 = Foreign.Memory.null then
+          raise Fail ("face_is_unitary_exact_cached: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val finals = ParamFinals.finals p1
+      val () = AtlasFFI.atlas_param_free p1
+      fun okTerm (q, mult) =
+        if mult = 0 then
+          (AtlasFFI.atlas_param_free q; true)
+        else if AtlasFFI.atlas_param_is_hermitian q <> 1 then
+          (AtlasFFI.atlas_param_free q; false)
+        else
+          let
+            val ok = BigUnitaryCache.check_unitary cache q
+            val () = AtlasFFI.atlas_param_free q
+          in
+            ok
+          end
+    in
+      List.all okTerm finals
+    end
+
+  fun unitary_local_faces_by_dim_exact_limit_ctx_cached
+    (cache: unitary_cache)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : face_key list array =
+    let
+      val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val fd = localFD_Lvd_simple (g, x, lambda, vd)
+      val Lvd = #Lvd fd
+
+      val facesByDim0 = local_faces_for_x_lambda_by_dim_ctx (c, x, lambda)
+      val r = Array.length facesByDim0 - 1
+
+      fun takeLim xs =
+        if maxFacesPerDim < 0 then xs else List.take (xs, Int.min (maxFacesPerDim, length xs))
+
+      val facesByDim = Array.tabulate (r + 1, fn d => takeLim (Array.sub (facesByDim0, d)))
+      val kept = Array.array (r + 1, ([]: face_key list))
+
+      fun faceSetOf (xs: face_key list) : face_key Hash.t =
+        Hash.make_hash_data ({hash_code = Hash.hash_code_vec, eq = (op =) }, xs)
+
+      fun keepDim0 () =
+        let
+          val vs = Array.sub (facesByDim, 0)
+          val ks =
+            List.filter
+              (fn face => face_is_unitary_exact_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face))
+              vs
+        in
+          Array.update (kept, 0, ks)
+        end
+
+      fun keepDim d =
+        let
+          val prev = Array.sub (kept, d - 1)
+          val prevSet = faceSetOf prev
+          fun subfacesOk face =
+            List.all (fn sf => Hash.lookup prevSet sf >= 0) (codim1_subfaces face)
+          fun ok face =
+            subfacesOk face
+            andalso face_is_unitary_exact_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face)
+          val fs = Array.sub (facesByDim, d)
+          val ks = List.filter ok fs
+        in
+          Array.update (kept, d, ks)
+        end
+
+      val () = keepDim0 ()
+      val () = List.app keepDim (List.tabulate (r, fn i => i + 1))
+    in
+      kept
+    end
 
   (*
     Enumerate final parameters associated to the barycenters of *local* faces.

@@ -20,6 +20,10 @@ val () = if length (Array.sub (faces0, 0)) > 0 then () else raise Fail "expected
 val kept = FPP_localDirac.unitary_local_faces_by_dim_exact_limit_ctx (c, x, lambda, 30);
 val () = if length (Array.sub (kept, 0)) > 0 then () else raise Fail "expected some unitary vertices";
 
+val cache = BigUnitaryCache.create 256;
+val kept2 = FPP_localDirac.unitary_local_faces_by_dim_exact_limit_ctx_cached cache (c, x, lambda, 30);
+val () = if length (Array.sub (kept2, 0)) > 0 then () else raise Fail "expected some unitary vertices (cached)";
+val () = BigUnitaryCache.freeAll cache;
+
 val () = AtlasFFI.atlas_group_free g;
 val () = print "OK\n";
-
