@@ -76,6 +76,23 @@ structure Parabolics = struct
       List.map mk (Basic.power_set part)
     end
 
+  fun is_twist_stable_subset (tw: int list) (S: int list) : bool =
+    let
+      val r = length tw
+      val inS = Array.array (r, false)
+      val () =
+        List.app
+          (fn s =>
+            if 0 <= s andalso s < r then
+              Array.update (inS, s, true)
+            else
+              raise Fail "Parabolics.is_twist_stable_subset: simple index oob")
+          S
+      fun mem s = Array.sub (inS, s)
+    in
+      List.all (fn s => mem (List.nth (tw, s))) S
+    end
+
   fun ascents (g: group) (S: int list, x: kgbelt) : kgbelt list =
     let
       fun one s =
@@ -131,6 +148,27 @@ structure Parabolics = struct
 
   fun is_closed (g: group) (P as (S, x): parabolic) : bool =
     AtlasFFI.atlas_kgb_length (g, x_min g (S, x)) = 0
+
+  (* `theta_stable_parabolics(G,(rd,S))` from `parabolics.at` (type-level variant). *)
+  fun theta_stable_parabolics_of_type (g: group) (S: int list) : parabolic list =
+    let
+      val tw = twist g
+    in
+      if not (is_twist_stable_subset tw S) then
+        []
+      else
+        let
+          val xs = distinguished_fiber g
+          val ys = List.map (fn x0 => maximal g (S, x0)) xs
+          val ysU = Sort.sort_u (op <=) ys
+        in
+          List.map (fn y => (S, y)) ysU
+        end
+    end
+
+  (* `theta_stable_parabolics(G)` from `parabolics.at` (all types). *)
+  fun theta_stable_parabolics (g: group) : parabolic list =
+    List.concat (List.map (theta_stable_parabolics_of_type g) (twist_stable_subsets g))
 
   (* `theta_stable_parabolics_with(x)` analog from `induction.at`, but computed directly.
      Returns theta-stable parabolics (S, maximal(S,x)) for twist-stable S whose orbit is closed. *)
