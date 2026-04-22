@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
+use "atlas-scripts-sml/Lattice.sml";
 
 structure RootDatum = struct
   type t = AtlasFFI.rootdatum
@@ -115,5 +116,28 @@ structure RootDatum = struct
         | loop _ = raise Fail "RootDatum.corootOfRoot: mismatch"
     in
       loop (rs, cs, 0)
+    end
+
+  fun semisimpleRank (h: t) : int =
+    length (simpleRootsCols h)
+
+  fun rootExpression (h: t) (root: int list) : int list =
+    let
+      val a = simpleRootsMat h (* rank x ssRank, columns are simple roots *)
+    in
+      case Lattice.solve (a, root) of
+        NONE => raise Fail "RootDatum.rootExpression: no solution"
+      | SOME coeffs => coeffs
+    end
+
+  fun highestRoot (h: t) : int list =
+    let
+      val pos = posRootsCols h
+      fun height v = List.foldl (op +) 0 (rootExpression h v)
+      fun pick (x, best) = if height x > height best then x else best
+    in
+      case pos of
+        [] => raise Fail "RootDatum.highestRoot: no posroots"
+      | x :: xs => List.foldl pick x xs
     end
 end
