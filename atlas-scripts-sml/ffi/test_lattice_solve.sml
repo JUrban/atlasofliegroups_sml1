@@ -15,3 +15,9 @@ val () =
     NONE => print "no vec_solve\n"
   | SOME ys => print ("vec_solve=" ^ String.concatWith "," (List.map Int.toString ys) ^ "\n");
 
+val u2 = {den = 2, nums = [6, 8]};
+val y2 = Lattice.vec_solve (a, u2);
+val () =
+  case y2 of
+    NONE => print "no vec_solve u2\n"
+  | SOME ys => print ("vec_solve_u2=" ^ String.concatWith "," (List.map Int.toString ys) ^ "\n");

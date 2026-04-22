@@ -5,6 +5,45 @@ structure Lattice = struct
   type mat = int list list
   type ratvec = {den: int, nums: int list}
 
+  fun gcd (a: int, b: int) : int =
+    let
+      val a = Int.abs a
+      val b = Int.abs b
+      fun loop (x, 0) = x
+        | loop (x, y) = loop (y, x mod y)
+    in
+      if a = 0 then b else loop (a, b)
+    end
+
+  fun gcdList xs =
+    case xs of
+      [] => 0
+    | x :: rest => List.foldl gcd (Int.abs x) rest
+
+  fun ratvecNormalize (u: ratvec) : ratvec =
+    let
+      val den0 = #den u
+      val nums0 = #nums u
+      val () = if den0 = 0 then raise Fail "Lattice.ratvecNormalize: zero denom" else ()
+      val sign = if den0 < 0 then ~1 else 1
+      val den1 = den0 * sign
+      val nums1 = List.map (fn a => a * sign) nums0
+      val g = gcd (den1, gcdList nums1)
+    in
+      if g <= 1 then {den = den1, nums = nums1} else {den = den1 div g, nums = List.map (fn a => a div g) nums1}
+    end
+
+  fun ratvecToIntegral (u: ratvec) : vec option =
+    let
+      val u = ratvecNormalize u
+      val den = #den u
+      val nums = #nums u
+    in
+      if den = 1 then SOME nums
+      else if List.all (fn a => a mod den = 0) nums then SOME (List.map (fn a => a div den) nums)
+      else NONE
+    end
+
   fun matShape (rows: mat) : int * int =
     case rows of
       [] => (0, 0)
@@ -36,18 +75,21 @@ structure Lattice = struct
       val numsV = #nums v
       val () = if du = 0 orelse dv = 0 then raise Fail "Lattice.ratvecSub: zero denom" else ()
       val () = if length numsU = length numsV then () else raise Fail "Lattice.ratvecSub: length mismatch"
-      val den = du * dv
-      val nums = ListPair.mapEq (fn (a, b) => a * dv - b * du) (numsU, numsV)
+      val g = gcd (du, dv)
+      val aMul = dv div g
+      val bMul = du div g
+      val den = du * aMul
+      val nums = ListPair.mapEq (fn (a, b) => a * aMul - b * bMul) (numsU, numsV)
     in
-      {den = den, nums = nums}
+      ratvecNormalize {den = den, nums = nums}
     end
 
   fun ratvecScale (u: ratvec, num: int, den: int) : ratvec =
     if den = 0 then raise Fail "Lattice.ratvecScale: zero denom"
-    else {den = #den u * den, nums = List.map (fn a => a * num) (#nums u)}
+    else ratvecNormalize {den = #den u * den, nums = List.map (fn a => a * num) (#nums u)}
 
   fun matVecMulRatvec (a: mat) (u: ratvec) : ratvec =
-    {den = #den u, nums = matVecMulInt a (#nums u)}
+    ratvecNormalize {den = #den u, nums = matVecMulInt a (#nums u)}
 
   fun matAdd (a: mat, b: mat) : mat =
     ListPair.mapEq (fn (ra, rb) => ListPair.mapEq (op +) (ra, rb)) (a, b)
@@ -115,8 +157,7 @@ structure Lattice = struct
     end
 
   fun vec_solve (a: mat, u: ratvec) : vec option =
-    if #den u <> 1 then
-      NONE
-    else
-      solve (a, #nums u)
+    case ratvecToIntegral u of
+      NONE => NONE
+    | SOME b => solve (a, b)
 end
