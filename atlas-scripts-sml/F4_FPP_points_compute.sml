@@ -7,6 +7,7 @@ use "atlas-scripts-sml/FPPFlags.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/VertexData.sml";
+use "atlas-scripts-sml/unity.sml";
 
 (*
   File: atlas-scripts-sml/F4_FPP_points_compute.sml
@@ -85,6 +86,20 @@ structure F4_FPP_points_compute = struct
       val barycenters = FPP_barycenters_fold.barycenters_all g
       val lambdasByX = FPP_lambdas_fold.FPP_lambdas_table g
 
+      (* Equal-rank predicate: true iff some KGB element has involution `-I`. *)
+      val equalRank =
+        let
+          fun loop i =
+            if i >= kgbSize then
+              false
+            else if AtlasFFI.atlas_group_kgb_involution_is_minus_identity (g, i) = 1 then
+              true
+            else
+              loop (i + 1)
+        in
+          loop 0
+        end
+
       fun parseTheta x =
         AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
 
@@ -107,13 +122,28 @@ structure F4_FPP_points_compute = struct
                 raise Fail ("F4_FPP_points_compute: normalise failed: " ^ AtlasFFI.atlas_last_error ())
               else
                 let
-                  val ok =
+                  val okBase =
                     AtlasFFI.atlas_param_is_standard p1 = 1 andalso AtlasFFI.atlas_param_is_final p1 = 1
                     andalso AtlasFFI.atlas_param_is_hermitian p1 = 1
-                    andalso (not (!FPPFlags.Dirac_flag) orelse AtlasFFI.atlas_param_is_unitary p1 = 1)
+
+                  (* If we have already stored an equivalent parameter, it is
+                     already known to satisfy the same filters, so skip any
+                     further (potentially expensive) checks. *)
+                  val already = okBase andalso ParamHash.lookup out p1 >= 0
+
+                  val okUnitary =
+                    if not okBase orelse already orelse not (!FPPFlags.Dirac_flag) then
+                      true
+                    else if !FPPFlags.to_ht_prune_flag andalso equalRank then
+                      Unity.is_unitary_test_prune_equal_rank_steps
+                        (g, p1, !FPPFlags.to_ht_prune_steps, !FPPFlags.to_ht_prune_step_size)
+                    else if not equalRank then
+                      AtlasFFI.atlas_param_is_unitary p1 = 1
+                    else
+                      AtlasFFI.atlas_param_is_unitary p1 = 1
 
                   val () =
-                    if ok then
+                    if okBase andalso okUnitary andalso not already then
                       ignore (ParamHash.match out p1)
                     else
                       ()

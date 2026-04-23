@@ -28,6 +28,12 @@ structure FPPFlags = struct
   val write_x_flag = ref false
   (* When true, enforce Dirac/unitarity-related filters during generation. *)
   val Dirac_flag = ref true
+  (* When true, try equal-rank `to_ht`-based early-disproof before exact unitarity checks. *)
+  val to_ht_prune_flag = ref false
+  (* Number of pruning heights to try (when enabled). *)
+  val to_ht_prune_steps = ref 2
+  (* Step size for pruning heights (when enabled). *)
+  val to_ht_prune_step_size = ref 5
   (* Emit detailed per-lambda diagnostics (script parity). *)
   val every_lambda_deets_flag = ref false
   (* Verbose face/barycenter processing diagnostics. *)

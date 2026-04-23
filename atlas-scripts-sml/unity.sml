@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/KTypePol.sml";
 use "atlas-scripts-sml/basic.sml";
+use "atlas-scripts-sml/to_ht.sml";
 
 (*
   File: atlas-scripts-sml/unity.sml
@@ -20,6 +21,10 @@ use "atlas-scripts-sml/basic.sml";
   - Baseline unitarity predicates (exact):
       - `is_unitary_test(p)`
       - `is_unitary_test_hts(p, hts)` (currently ignores `hts`)
+  - Safe equal-rank pruning helper:
+      - `is_unitary_test_prune_equal_rank_steps(g, p, stepCount, stepSize)`
+        which can quickly DISPROVE unitarity using truncated hermitian forms,
+        falling back to the exact Atlas predicate when not disproved.
 
   Notes and limitations
   - In `.at`, `short_hts`/`next_heights` are tuned to avoid doing full KL
@@ -98,4 +103,40 @@ structure Unity = struct
     in
       is_unitary_test p
     end
+
+  (*
+    Equal-rank “to height” pruning (safe early disproof)
+
+    In equal-rank cases, one can often disprove unitarity by inspecting a
+    truncated hermitian form: if it already has mixed sign at low height, the
+    full form cannot be positive definite.
+
+    This helper is designed to be SAFE:
+    - returning `false` means we found a definite obstruction at some height;
+    - returning `true` means “not disproved” and we then ask Atlas for the exact
+      `is_unitary` decision.
+
+    If any truncation/form computation fails, we conservatively fall back to
+    the exact Atlas predicate.
+  *)
+  fun is_unitary_test_prune_equal_rank_steps (g: AtlasFFI.group, p: param, stepCount: int, stepSize: int) : bool =
+    if AtlasFFI.atlas_param_is_hermitian p <> 1 then
+      false
+    else
+      let
+        val steps = Int.max (0, stepCount)
+        val size = Int.max (0, stepSize)
+        val hts = List.tabulate (steps, fn i => (i + 1) * size)
+
+        fun pruneOk [] = true
+          | pruneOk (ht :: rest) =
+              ToHT.is_unitary_to_ht_prune_equal_rank (g, p, ht) andalso pruneOk rest
+
+        val notDisproved = (pruneOk hts) handle _ => true
+      in
+        if notDisproved then
+          AtlasFFI.atlas_param_is_unitary p = 1
+        else
+          false
+      end
 end
