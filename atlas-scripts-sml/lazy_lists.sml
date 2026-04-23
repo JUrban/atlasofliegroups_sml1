@@ -118,9 +118,48 @@ structure Lazy_lists = struct
                 end))
     end
 
-  (* Convenience: stream `0,0,0,...` *)
-  fun series_0 () : inf_list = series (fn _ => 0)
+  (* ---------- finite prefix + constant tail (from `lazy_lists.at`) ---------- *)
 
-  (* Convenience: stream `1,1,1,...` *)
-  fun inf_ones () : inf_list = series (fn _ => 1)
+  (* `extend(pol,zero)` = stream with prefix `pol` then infinitely many `zero`. *)
+  fun extend (pol: 'a list, zero: 'a) : 'a infinite_list =
+    let
+      fun zeros () = InfNode (zero, InfList zeros)
+      fun loop xs () =
+        (case xs of
+           [] => zeros ()
+         | x :: rest => InfNode (x, InfList (loop rest)))
+    in
+      InfList (loop pol)
+    end
+
+  fun extend_0 (pol: int list) : inf_list = extend (pol, 0)
+
+  val series_0 : inf_list = extend_0 []
+  val series_1 : inf_list = extend_0 [1]
+  val X : inf_list = extend_0 [0, 1]
+  val inf_ones : inf_list = series (fn _ => 1)
+
+  (* ---------- integer stream arithmetic (small subset) ---------- *)
+
+  fun sum_int (f: inf_list, g: inf_list) : inf_list =
+    InfList
+      (fn () =>
+         let
+           val InfNode (x, ff) = force f
+           val InfNode (y, gg) = force g
+         in
+           InfNode (x + y, sum_int (ff, gg))
+         end)
+
+  fun scale_by_int (a: int) (f: inf_list) : inf_list =
+    if a = 1 then f
+    else if a = 0 then series_0
+    else
+      InfList
+        (fn () =>
+           let
+             val InfNode (x, ff) = force f
+           in
+             InfNode (a * x, scale_by_int a ff)
+           end)
 end
