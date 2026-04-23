@@ -72,6 +72,18 @@ structure WeylgroupAT = struct
       IntMatrix.sub (id, opm)
     end
 
+  (* Multiply a matrix on the left by the simple reflection matrix. *)
+  fun left_reflect (rd: rootdatum, s: int, m: mat) : mat =
+    IntMatrix.matMul (reflection_matrix_simple (rd, s), m)
+
+  (* Multiply a matrix on the right by the simple reflection matrix. *)
+  fun right_reflect (rd: rootdatum, m: mat, s: int) : mat =
+    IntMatrix.matMul (m, reflection_matrix_simple (rd, s))
+
+  (* Conjugate by the simple reflection: `r * m * r`. *)
+  fun conjugate (rd: rootdatum, s: int, m: mat) : mat =
+    left_reflect (rd, s, right_reflect (rd, m, s))
+
   (* Reflect a weight vector: `v <- v - <v,alpha^v>*alpha`. *)
   fun reflect_simple (rd: rootdatum, s: int, v: vec) : vec =
     let
@@ -138,4 +150,3 @@ structure WeylgroupAT = struct
   fun lengthens_left (rd: rootdatum, s: int, m: mat) : bool =
     is_positive_coroot (rd, rowVecMul (simple_coroot (rd, s), m))
 end
-

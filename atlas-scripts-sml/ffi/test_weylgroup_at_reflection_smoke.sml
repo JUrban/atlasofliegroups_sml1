@@ -19,6 +19,11 @@ val id = IntMatrix.identity 1;
 val _ = assert "lengthens(id) for simple root" (WeylgroupAT.lengthens (rdA1, id, 0));
 val _ = assert "lengthens(reflection) is false" (not (WeylgroupAT.lengthens (rdA1, r, 0)));
 
+val rr = WeylgroupAT.right_reflect (rdA1, id, 0);
+val _ = assert "right_reflect(id)=reflection" (rr = r);
+
+val cc = WeylgroupAT.conjugate (rdA1, 0, id);
+val _ = assert "conjugate(id)=id" (cc = id);
+
 val () = RootDatum.free rdA1;
 val _ = print "ok\n";
-
