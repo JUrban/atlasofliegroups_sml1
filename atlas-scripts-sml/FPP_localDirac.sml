@@ -915,6 +915,49 @@ structure FPP_localDirac = struct
   fun local_test_GEO_hash2_exact_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     local_test_GEO_hash2_exact_into_hash_limit_ctx (c, x, lambda, ~1, uhash)
 
+  (*
+    Compatibility wrappers (names from `FPP_localDirac.at`)
+
+    The `.at` code distinguishes several variants:
+      - `local_test_GEO_hash2` / `local_test_GEO_hash` / `local_test_GEO_hash_dumb`
+      - `local_test_GEO`
+
+    For now, we provide *compiling* SML entry points with the same base names,
+    delegating to the exact-baseline `*_hash2_exact*` routines above. This lets
+    subsequent `.at`→`.sml` translation preserve call structure while we
+    incrementally replace internals with true `to_ht`-style pruning.
+  *)
+
+  fun local_test_GEO_hash2_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash2_exact_limit_ctx (c, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash2_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2_exact_ctx (c, x, lambda)
+
+  fun local_test_GEO_hash2_limit (g: group, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash2_exact_limit (g, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash2 (g: group, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2_exact (g, x, lambda)
+
+  fun local_test_GEO_hash_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash2_limit_ctx (c, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2_ctx (c, x, lambda)
+
+  fun local_test_GEO_hash_limit (g: group, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash2_limit (g, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash (g: group, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2 (g, x, lambda)
+
+  fun local_test_GEO_limit (g: group, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash2_limit (g, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO (g: group, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2 (g, x, lambda)
+
   (* Filter a list of owned parameters by exact Atlas unitarity, freeing the
      rejected ones. *)
   fun keep_unitary_and_free_rest (ps: param list) : param list =
