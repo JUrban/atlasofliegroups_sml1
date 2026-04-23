@@ -8,7 +8,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
   - The `.at` file builds many groups via `RootDatum`/`InnerClass`/`RealForm`
     constructors. In SML we currently expose a simpler surface:
       create a real form directly as an `AtlasFFI.group` handle using the C++
-      shim constructor `atlas_group_new_simple(type,rank,innerClass,rf)`.
+      shim constructor `atlas_group_new_simple_outer(type,rank,innerClass,rf)`.
 
   Scope
   - This module focuses on *simple* groups where the Atlas library provides
@@ -23,6 +23,16 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
     and canonicalizes them as the interpreter does (e.g. for `F4`, `s` and `e`
     collapse to the same inner class).
 
+  Real-form numbering (important)
+  - Atlas has two real-form numberings:
+      - "inner" numbers (`RealFormNbr`): internal to the library; inner 0 is
+        always the quasisplit form of the chosen inner class.
+      - "outer" numbers: the stable script-facing indices used by
+        `real_form(ic, rf)` in `.at` scripts; outer 0 is the quasicompact form
+        (see `atlas-scripts/basic.at`).
+  - This module follows the `.at` convention: `simple(..., rf)` interprets
+    `rf` as an *outer* number, i.e. it matches `real_form(inner_class(...), rf)`.
+
   Ownership
   - Every function returning a `group` allocates a fresh handle.
   - Callers must free it with `AtlasFFI.atlas_group_free`.
@@ -34,12 +44,23 @@ structure Groups = struct
   fun failFFI (where': string) : 'a =
     raise Fail ("Groups." ^ where' ^ ": " ^ AtlasFFI.atlas_last_error ())
 
-  fun simple (typeLetter: char, rank: int, innerClassLetter: char, rf: int) : group =
+  fun simpleInner (typeLetter: char, rank: int, innerClassLetter: char, rfInner: int) : group =
     let
-      val g = AtlasFFI.atlas_group_new_simple (typeLetter, rank, innerClassLetter, rf)
+      val g = AtlasFFI.atlas_group_new_simple (typeLetter, rank, innerClassLetter, rfInner)
+    in
+      if g = Foreign.Memory.null then failFFI "simpleInner" else g
+    end
+
+  fun simple (typeLetter: char, rank: int, innerClassLetter: char, rfOuter: int) : group =
+    let
+      val g = AtlasFFI.atlas_group_new_simple_outer (typeLetter, rank, innerClassLetter, rfOuter)
     in
       if g = Foreign.Memory.null then failFFI "simple" else g
     end
+
+  fun quasisplit (typeLetter: char, rank: int, innerClassLetter: char) : group =
+    (* Quasisplit = inner number 0. *)
+    simpleInner (typeLetter, rank, innerClassLetter, 0)
 
   fun numRealForms (typeLetter: char, rank: int, innerClassLetter: char) : int =
     let
@@ -52,11 +73,11 @@ structure Groups = struct
 
   (* Exceptional groups: names follow the `groups.at` conventions. *)
 
-  (* G2: inner class `e`; typically rf=0 (compact), rf=1 (split). *)
-  fun G2_c () : group = simple (#"G", 2, #"e", 0)
-  fun G2_s () : group = simple (#"G", 2, #"e", 1)
+  (* G2: see `atlas-scripts/groups.at`. *)
+  fun G2_c () : group = simple (#"G", 2, #"e", 0) (* quasicompact/compact *)
+  fun G2_s () : group = quasisplit (#"G", 2, #"e")
 
-  (* F4: inner class `e` (same as `s`); typically rf=0 (split), rf=1 (B4), rf=2 (compact). *)
+  (* F4: see `atlas-scripts/groups.at`. *)
   fun F4_s () : group =
     let
       val g = AtlasFFI.atlas_group_new_F4_s ()
@@ -64,8 +85,8 @@ structure Groups = struct
       if g = Foreign.Memory.null then failFFI "F4_s" else g
     end
 
+  fun F4_c () : group = simple (#"F", 4, #"e", 0) (* quasicompact *)
   fun F4_B4 () : group = simple (#"F", 4, #"e", 1)
-  fun F4_c () : group = simple (#"F", 4, #"e", 2)
 
   (* E6: two inner classes `e` and `s` (as in `groups.at`). *)
   fun E6_c () : group = simple (#"E", 6, #"e", 0)
@@ -86,4 +107,3 @@ structure Groups = struct
   fun E8_q () : group = simple (#"E", 8, #"e", 1)
   fun E8_s () : group = simple (#"E", 8, #"e", 2)
 end
-

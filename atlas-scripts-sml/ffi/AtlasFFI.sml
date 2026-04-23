@@ -70,8 +70,12 @@ structure AtlasFFI = struct
   val atlas_group_new_simple_sym = Foreign.getSymbol lib "atlas_group_new_simple"
   val atlas_group_new_simple_text_sym =
     Foreign.getSymbol lib "atlas_group_new_simple_text"
+  val atlas_group_new_simple_outer_text_sym =
+    Foreign.getSymbol lib "atlas_group_new_simple_outer_text"
   val atlas_group_new_simple_isogeny_spec_text_sym =
     Foreign.getSymbol lib "atlas_group_new_simple_isogeny_spec_text"
+  val atlas_group_new_simple_isogeny_outer_spec_text_sym =
+    Foreign.getSymbol lib "atlas_group_new_simple_isogeny_outer_spec_text"
   val atlas_group_new_levi_of_parabolic_sym =
     Foreign.getSymbol lib "atlas_group_new_levi_of_parabolic"
   val atlas_group_free_sym = Foreign.getSymbol lib "atlas_group_free"
@@ -79,6 +83,7 @@ structure AtlasFFI = struct
   val atlas_group_rank_sym = Foreign.getSymbol lib "atlas_group_rank"
   val atlas_group_semisimple_rank_sym = Foreign.getSymbol lib "atlas_group_semisimple_rank"
   val atlas_group_real_form_number_sym = Foreign.getSymbol lib "atlas_group_real_form_number"
+  val atlas_group_form_number_sym = Foreign.getSymbol lib "atlas_group_form_number"
   val atlas_group_is_split_sym = Foreign.getSymbol lib "atlas_group_is_split"
   val atlas_group_is_compact_sym = Foreign.getSymbol lib "atlas_group_is_compact"
   val atlas_group_component_rank_sym = Foreign.getSymbol lib "atlas_group_component_rank"
@@ -319,8 +324,18 @@ structure AtlasFFI = struct
   val atlas_group_new_simple_text =
     Foreign.buildCall1 (atlas_group_new_simple_text_sym, Foreign.cString, Foreign.cPointer)
 
+  val atlas_group_new_simple_outer_text =
+    Foreign.buildCall1 (atlas_group_new_simple_outer_text_sym, Foreign.cString, Foreign.cPointer)
+
   val atlas_group_new_simple_isogeny_spec_text =
     Foreign.buildCall1 (atlas_group_new_simple_isogeny_spec_text_sym, Foreign.cString, Foreign.cPointer)
+
+  val atlas_group_new_simple_isogeny_outer_spec_text =
+    Foreign.buildCall1
+      ( atlas_group_new_simple_isogeny_outer_spec_text_sym
+      , Foreign.cString
+      , Foreign.cPointer
+      )
 
   fun atlas_group_new_simple (typeLetter: char, rank: int, innerClassLetter: char, rf: int) : group =
     atlas_group_new_simple_text
@@ -331,6 +346,22 @@ structure AtlasFFI = struct
         ^ String.str innerClassLetter
         ^ " "
         ^ Int.toString rf
+      )
+
+  (* Outer real-form numbering (Atlas interpreter `real_form(ic, rf)` argument). *)
+  fun atlas_group_new_simple_outer (typeLetter: char,
+                                    rank: int,
+                                    innerClassLetter: char,
+                                    rfOuter: int)
+    : group =
+    atlas_group_new_simple_outer_text
+      ( String.str typeLetter
+        ^ " "
+        ^ Int.toString rank
+        ^ " "
+        ^ String.str innerClassLetter
+        ^ " "
+        ^ Int.toString rfOuter
       )
 
   fun atlas_group_new_simple_isogeny (typeLetter: char,
@@ -347,6 +378,24 @@ structure AtlasFFI = struct
         ^ String.str innerClassLetter
         ^ " "
         ^ Int.toString rf
+        ^ " "
+        ^ String.str isogenyLetter
+      )
+
+  fun atlas_group_new_simple_isogeny_outer (typeLetter: char,
+                                           rank: int,
+                                           innerClassLetter: char,
+                                           rfOuter: int,
+                                           isogenyLetter: char)
+    : group =
+    atlas_group_new_simple_isogeny_outer_spec_text
+      ( String.str typeLetter
+        ^ " "
+        ^ Int.toString rank
+        ^ " "
+        ^ String.str innerClassLetter
+        ^ " "
+        ^ Int.toString rfOuter
         ^ " "
         ^ String.str isogenyLetter
       )
@@ -372,6 +421,9 @@ structure AtlasFFI = struct
 
   val atlas_group_real_form_number =
     Foreign.buildCall1 (atlas_group_real_form_number_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_group_form_number =
+    Foreign.buildCall1 (atlas_group_form_number_sym, Foreign.cPointer, Foreign.cInt)
 
   val atlas_group_is_split =
     Foreign.buildCall1 (atlas_group_is_split_sym, Foreign.cPointer, Foreign.cInt)

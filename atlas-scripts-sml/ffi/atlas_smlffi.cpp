@@ -24,6 +24,7 @@
 #include "alcoves.h"
 #include "bitmap.h"
 #include "dynkin.h"
+#include "output.h"
 
 static thread_local std::string g_last_error;
 static thread_local std::string g_last_result;
@@ -1359,6 +1360,34 @@ extern "C" int atlas_group_real_form_number(void* handle)
   }
 }
 
+// Return the *outer* real-form number (Atlas interpreter `form_number`) for
+// this group, i.e. `ic.interface.out(G.realForm())`.
+extern "C" int atlas_group_form_number(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_form_number: null handle";
+      return -1;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    atlas::lietype::Layout lo(h->lt, h->ict);
+    atlas::output::FormNumberMap iface(h->ic, lo);
+    return static_cast<int>(iface.out(h->G.realForm()));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 static const char* ratvec_to_text(const atlas::RatWeight& v)
 {
   std::ostringstream out;
@@ -2274,6 +2303,74 @@ extern "C" void* atlas_group_new_simple(char type_letter,
   }
 }
 
+// Construct a simple real group using the *outer* real-form numbering used by
+// the Atlas interpreter's `real_form(ic, rf)` function.
+//
+// Background:
+// - Atlas internally indexes real forms by an "inner" number (`RealFormNbr`),
+//   where 0 is always the quasisplit form of the given inner class.
+// - Atlas scripts use a stable "outer" numbering, where (for instance)
+//   `real_form(ic,0)` is the quasicompact form (see `basic.at`).
+// - The interpreter converts outer -> inner via `ic.interface.in(rf_outer)`.
+extern "C" void* atlas_group_new_simple_outer(char type_letter,
+                                             int rank,
+                                             char inner_class_letter,
+                                             int rf_outer)
+{
+  try
+  {
+    if (rank <= 0)
+    {
+      g_last_error = "atlas_group_new_simple_outer: rank must be positive";
+      return nullptr;
+    }
+    if (rf_outer < 0)
+    {
+      g_last_error = "atlas_group_new_simple_outer: real form number must be >= 0";
+      return nullptr;
+    }
+
+    // Validate and convert outer -> inner using an InnerClass instance.
+    atlas::lietype::LieType lt;
+    lt.push_back(atlas::lietype::SimpleLieType(type_letter, static_cast<unsigned int>(rank)));
+    atlas::prerootdata::PreRootDatum prd(lt, /*prefer_co=*/false);
+    atlas::lietype::InnerClassType ict;
+    ict.push_back(canonical_inner_class_letter(inner_class_letter,
+                                               lt[0].type(),
+                                               static_cast<unsigned int>(lt[0].rank())));
+    atlas::WeightInvolution di = atlas::lietype::involution(lt, ict);
+    atlas::innerclass::InnerClass ic(prd, di);
+
+    const auto nrf = static_cast<long>(ic.numRealForms());
+    if (rf_outer >= nrf)
+    {
+      g_last_error = "atlas_group_new_simple_outer: real form number out of range";
+      return nullptr;
+    }
+
+    atlas::lietype::Layout lo(lt, ict);
+    atlas::output::FormNumberMap iface(ic, lo);
+    const atlas::RealFormNbr rf_inner =
+      iface.in(atlas::RealFormNbr(static_cast<unsigned short>(rf_outer)));
+    auto* h =
+      new GroupHandle(type_letter,
+                      static_cast<unsigned int>(rank),
+                      inner_class_letter,
+                      rf_inner);
+    return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" void* atlas_group_new_simple_text(const char* spec_text)
 {
   try
@@ -2299,6 +2396,45 @@ extern "C" void* atlas_group_new_simple_text(const char* spec_text)
       return nullptr;
     }
     return atlas_group_new_simple(type_s[0], rank, ic_s[0], rf);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_outer_text(const char* spec_text)
+{
+  try
+  {
+    if (spec_text == nullptr)
+    {
+      g_last_error = "atlas_group_new_simple_outer_text: null spec_text";
+      return nullptr;
+    }
+    std::istringstream in(spec_text);
+    std::string type_s;
+    int rank = 0;
+    std::string ic_s;
+    int rf = 0;
+    if (!(in >> type_s >> rank >> ic_s >> rf))
+    {
+      g_last_error =
+        "atlas_group_new_simple_outer_text: expected \"<Type> <Rank> <IC> <RF>\"";
+      return nullptr;
+    }
+    if (type_s.size() != 1 || ic_s.size() != 1)
+    {
+      g_last_error = "atlas_group_new_simple_outer_text: type/ic must be 1 character each";
+      return nullptr;
+    }
+    return atlas_group_new_simple_outer(type_s[0], rank, ic_s[0], rf);
   }
   catch (const std::exception& e)
   {
@@ -2370,6 +2506,85 @@ extern "C" void* atlas_group_new_simple_isogeny(char type_letter,
                               inner_class_letter,
                               atlas::RealFormNbr(static_cast<unsigned short>(rf)),
                               adjoint);
+    return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_isogeny_outer(char type_letter,
+                                                     int rank,
+                                                     char inner_class_letter,
+                                                     int rf_outer,
+                                                     char isogeny_letter)
+{
+  try
+  {
+    if (rank <= 0)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_outer: rank must be positive";
+      return nullptr;
+    }
+    if (rf_outer < 0)
+    {
+      g_last_error =
+        "atlas_group_new_simple_isogeny_outer: real form number must be >= 0";
+      return nullptr;
+    }
+
+    const bool adjoint = (isogeny_letter == 'a' || isogeny_letter == 'A');
+    const bool simply_connected = (isogeny_letter == 's' || isogeny_letter == 'S');
+    if (!adjoint && !simply_connected)
+    {
+      g_last_error =
+        "atlas_group_new_simple_isogeny_outer: isogeny must be 's' (sc) or 'a' (ad)";
+      return nullptr;
+    }
+
+    atlas::lietype::LieType lt;
+    lt.push_back(atlas::lietype::SimpleLieType(type_letter, static_cast<unsigned int>(rank)));
+
+    atlas::prerootdata::PreRootDatum prd(lt, /*prefer_co=*/false); // simply connected
+    if (adjoint)
+    {
+      atlas::int_Matrix M = lt.transpose_Cartan_matrix();
+      for (unsigned int i = lt.semisimple_rank(); i < lt.rank(); ++i)
+        M(i, i) = 1;
+      prd.quotient(M);
+    }
+
+    atlas::lietype::InnerClassType ict;
+    ict.push_back(canonical_inner_class_letter(inner_class_letter,
+                                               lt[0].type(),
+                                               static_cast<unsigned int>(lt[0].rank())));
+    atlas::WeightInvolution di = atlas::lietype::involution(lt, ict);
+    atlas::innerclass::InnerClass ic(prd, di);
+
+    const auto nrf = static_cast<long>(ic.numRealForms());
+    if (rf_outer >= nrf)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_outer: real form number out of range";
+      return nullptr;
+    }
+
+    atlas::lietype::Layout lo(lt, ict);
+    atlas::output::FormNumberMap iface(ic, lo);
+    const atlas::RealFormNbr rf_inner =
+      iface.in(atlas::RealFormNbr(static_cast<unsigned short>(rf_outer)));
+    auto* h =
+      new GroupHandle(type_letter,
+                      static_cast<unsigned int>(rank),
+                      inner_class_letter,
+                      rf_inner,
+                      adjoint);
     return static_cast<void*>(h);
   }
   catch (const std::exception& e)
@@ -2456,6 +2671,47 @@ extern "C" void* atlas_group_new_simple_isogeny_spec_text(const char* spec_text)
       return nullptr;
     }
     return atlas_group_new_simple_isogeny(type_s[0], rank, ic_s[0], rf, iso_s[0]);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_isogeny_outer_spec_text(const char* spec_text)
+{
+  try
+  {
+    if (spec_text == nullptr)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_outer_spec_text: null spec_text";
+      return nullptr;
+    }
+    std::istringstream in(spec_text);
+    std::string type_s;
+    int rank = 0;
+    std::string ic_s;
+    int rf = 0;
+    std::string iso_s;
+    if (!(in >> type_s >> rank >> ic_s >> rf >> iso_s))
+    {
+      g_last_error =
+        "atlas_group_new_simple_isogeny_outer_spec_text: expected \"<Type> <Rank> <IC> <RF> <Iso>\"";
+      return nullptr;
+    }
+    if (type_s.size() != 1 || ic_s.size() != 1 || iso_s.size() != 1)
+    {
+      g_last_error =
+        "atlas_group_new_simple_isogeny_outer_spec_text: type/ic/iso must be 1 character each";
+      return nullptr;
+    }
+    return atlas_group_new_simple_isogeny_outer(type_s[0], rank, ic_s[0], rf, iso_s[0]);
   }
   catch (const std::exception& e)
   {

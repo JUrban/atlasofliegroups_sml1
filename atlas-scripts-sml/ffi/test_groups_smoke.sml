@@ -7,10 +7,19 @@ fun show (name: string, g: AtlasFFI.group) =
     val kgb = AtlasFFI.atlas_group_kgb_size g
     val r = AtlasFFI.atlas_group_rank g
     val ssr = AtlasFFI.atlas_group_semisimple_rank g
+    val rfInner = AtlasFFI.atlas_group_real_form_number g
+    val rfOuter = AtlasFFI.atlas_group_form_number g
+    val isSplit = AtlasFFI.atlas_group_is_split g
+    val isCompact = AtlasFFI.atlas_group_is_compact g
     val () =
       print
         ( name ^ ": rank=" ^ Int.toString r ^ ", ssr=" ^ Int.toString ssr ^ ", KGB="
           ^ Int.toString kgb ^ "\n"
+        )
+    val () =
+      print
+        ( "  rf(inner)=" ^ Int.toString rfInner ^ " rf(outer)=" ^ Int.toString rfOuter
+          ^ " split=" ^ Int.toString isSplit ^ " compact=" ^ Int.toString isCompact ^ "\n"
         )
   in
     AtlasFFI.atlas_group_free g
