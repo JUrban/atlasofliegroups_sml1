@@ -3855,6 +3855,49 @@ extern "C" void* atlas_ktype_next_to_lowest(void* t_handle)
     atlas::repr::Rep_context rc(t->group->G);
     const int start = static_cast<int>(t->t.height()) + 1;
 
+    struct CacheKey
+    {
+      const GroupHandle* group;
+      int x;
+      std::vector<int> lambda_rho;
+
+      bool operator==(const CacheKey& o) const
+      {
+        return group == o.group && x == o.x && lambda_rho == o.lambda_rho;
+      }
+    };
+    struct CacheKeyHash
+    {
+      std::size_t operator()(const CacheKey& k) const
+      {
+        std::size_t h = (reinterpret_cast<std::size_t>(k.group) >> 4) ^ (static_cast<std::size_t>(k.x) * 1315423911u);
+        for (int v : k.lambda_rho)
+          h = (h * 1315423911u) ^ static_cast<std::size_t>(v + 0x9e3779b9);
+        return h;
+      }
+    };
+
+    static thread_local std::unordered_map<CacheKey, atlas::K_repr::K_type, CacheKeyHash> cache;
+
+    CacheKey key;
+    key.group = t->group;
+    key.x = static_cast<int>(t->t.x());
+    {
+      const auto& w = t->t.lambda_rho();
+      key.lambda_rho.reserve(w.size());
+      for (std::size_t i = 0; i < w.size(); ++i)
+        key.lambda_rho.push_back(w[i]);
+    }
+
+    {
+      auto it = cache.find(key);
+      if (it != cache.end())
+      {
+        atlas::K_repr::K_type u = it->second.copy();
+        return static_cast<void*>(new KTypeHandle(t->group, std::move(u)));
+      }
+    }
+
     // Incrementally widen the cutoff until the K-type formula shows a term
     // above the lowest K-type. We cap iterations to avoid infinite loops if a
     // pathological case occurs.
@@ -3884,7 +3927,10 @@ extern "C" void* atlas_ktype_next_to_lowest(void* t_handle)
       }
 
       if (found)
+      {
+        cache.emplace(std::move(key), best.copy());
         return static_cast<void*>(new KTypeHandle(t->group, std::move(best)));
+      }
     }
 
     g_last_error = "atlas_ktype_next_to_lowest: no higher K-type found within cutoff budget";
