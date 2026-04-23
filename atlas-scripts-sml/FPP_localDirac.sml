@@ -186,12 +186,20 @@ structure FPP_localDirac = struct
     context that callers can reuse.
   *)
 
+  type gamma_bucket =
+    { onePlus: mat
+    , keys: int list Hash.t
+    , gammaIdxsByKey: int list array
+    }
+
   type ctx =
     { g: group
     , faceCtx: FPPFaceKey.t
     , barycenters: ratvec list
+    , barycentersA: ratvec array
     , gammaFaceTable: (int list * face_key) array
     , twoRhoCheck: int list option ref
+    , gammaBucketsByX: gamma_bucket option array
     }
 
   fun create_ctx (g: group) : ctx =
@@ -306,10 +314,81 @@ structure FPP_localDirac = struct
       { g = g
       , faceCtx = faceCtx
       , barycenters = barycenters
+      , barycentersA = Array.fromList barycenters
       , gammaFaceTable = gammaFaceTable
       , twoRhoCheck = ref NONE
+      , gammaBucketsByX = Array.array (kgbSize, NONE)
       }
     end
+
+  (* ---------------------------------------------------------------------- *)
+  (* Cached gamma buckets for fixed x (theta).                               *)
+  (* ---------------------------------------------------------------------- *)
+
+  fun gamma_bucket_for_x_ctx (c: ctx, x: int) : gamma_bucket =
+    case Array.sub (#gammaBucketsByX c, x) of
+      SOME b => b
+    | NONE =>
+        let
+          val g = #g c
+          val rank = AtlasFFI.atlas_group_rank g
+          val theta =
+            AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+          val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+
+          val baryA = #barycentersA c
+          val n = Array.length baryA
+
+          val keysH = Hash.make_hash_reserve ({hash_code = Hash.hash_code_vec, eq = (op =) }, n)
+          val gammaIdxsByKey : int list array ref = ref (Array.array (Int.max (16, n div 4), []))
+
+          fun ensureCap need =
+            let
+              val a = !gammaIdxsByKey
+              val cap = Array.length a
+            in
+              if need <= cap then
+                ()
+              else
+                let
+                  val newCap = Int.max (need, cap * 2)
+                  val b = Array.array (newCap, ([]: int list))
+                  fun copy i =
+                    if i = cap then () else (Array.update (b, i, Array.sub (a, i)); copy (i + 1))
+                in
+                  copy 0;
+                  gammaIdxsByKey := b
+                end
+            end
+
+          fun addGamma i =
+            if i = n then
+              ()
+            else
+              let
+                val gamma = Array.sub (baryA, i)
+                val key = ratvecKey (Lattice.matVecMulRatvec onePlus gamma)
+                val sizeBefore = #size keysH ()
+                val j = #match keysH key
+                val sizeAfter = #size keysH ()
+                val () = if sizeAfter = sizeBefore + 1 then ensureCap (j + 1) else ()
+                val a = !gammaIdxsByKey
+              in
+                Array.update (a, j, i :: Array.sub (a, j));
+                addGamma (i + 1)
+              end
+
+          val () = addGamma 0
+
+          val b =
+            { onePlus = onePlus
+            , keys = keysH
+            , gammaIdxsByKey = !gammaIdxsByKey
+            }
+          val () = Array.update (#gammaBucketsByX c, x, SOME b)
+        in
+          b
+        end
 
   fun global_face_of_gamma_ctx (c: ctx, gamma: ratvec) : face_key =
     let
@@ -392,18 +471,13 @@ structure FPP_localDirac = struct
   *)
   fun gammas_for_x_lambda_ctx (c: ctx, x: int, lambda: ratvec) : ratvec list =
     let
-      val g = #g c
-      val rank = AtlasFFI.atlas_group_rank g
-      val theta =
-        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
-      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
-      val k = ratvecKey (Lattice.matVecMulRatvec onePlus lambda)
-      val barycenters = #barycenters c
-
-      fun keep gamma =
-        ratvecKey (Lattice.matVecMulRatvec onePlus gamma) = k
+      val b = gamma_bucket_for_x_ctx (c, x)
+      val k = ratvecKey (Lattice.matVecMulRatvec (#onePlus b) lambda)
+      val j = Hash.lookup (#keys b) k
+      val idxs = if j < 0 then [] else Array.sub (#gammaIdxsByKey b, j)
+      val baryA = #barycentersA c
     in
-      List.filter keep barycenters
+      List.map (fn i => Array.sub (baryA, i)) idxs
     end
 
   fun gammas_for_x_lambda (g: group, x: int, lambda: ratvec) : ratvec list =
