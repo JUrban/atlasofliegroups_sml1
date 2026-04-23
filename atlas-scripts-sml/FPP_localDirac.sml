@@ -13,6 +13,7 @@ use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 use "atlas-scripts-sml/hash.sml";
+use "atlas-scripts-sml/unity.sml";
 
 (*
   File: atlas-scripts-sml/FPP_localDirac.sml
@@ -235,6 +236,8 @@ structure FPP_localDirac = struct
   val unip_flag : bool ref = ref true
   val more_after_flag : bool ref = ref false
   val min_after_flag : bool ref = ref false
+  (* When true, attempt `Unity`/`to_ht`-based early-disproof in cached unitary checks. *)
+  val to_ht_prune_flag : bool ref = ref false
 
   (* ---------------------------------------------------------------------- *)
   (* `.at`-style parameter constructor from gamma (infinitesimal character). *)
@@ -695,6 +698,7 @@ structure FPP_localDirac = struct
   (* Cached variant: uses `BigUnitaryCache` for the final-parameter unitary checks. *)
   fun face_is_unitary_exact_thetaPlusHalf_cached
     (cache: unitary_cache)
+    (allowPrune: bool)
     (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key) : bool =
     let
       val gammaLocal = VertexData.face_bary (Lvd, face)
@@ -716,7 +720,11 @@ structure FPP_localDirac = struct
           (AtlasFFI.atlas_param_free q; false)
         else
           let
-            val ok = BigUnitaryCache.check_unitary cache q
+            val ok =
+              if allowPrune then
+                BigUnitaryCache.check_unitary_prune_equal_rank_steps cache (g, !bl_step_count, !bl_step_size) q
+              else
+                BigUnitaryCache.check_unitary cache q
             val () = AtlasFFI.atlas_param_free q
           in
             ok
@@ -730,6 +738,7 @@ structure FPP_localDirac = struct
     (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : face_key list array =
     let
       val g = #g c
+      val allowPrune = !to_ht_prune_flag andalso Representations.is_equal_rank g
       val rank = AtlasFFI.atlas_group_rank g
       val theta =
         AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
@@ -756,7 +765,7 @@ structure FPP_localDirac = struct
           val vs = Array.sub (facesByDim, 0)
           val ks =
             List.filter
-              (fn face => face_is_unitary_exact_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face))
+              (fn face => face_is_unitary_exact_thetaPlusHalf_cached cache allowPrune (g, x, lambda, thetaPlusHalf, Lvd, face))
               vs
         in
           Array.update (kept, 0, ks)
@@ -770,7 +779,7 @@ structure FPP_localDirac = struct
             List.all (fn sf => Hash.lookup prevSet sf >= 0) (codim1_subfaces face)
           fun ok face =
             subfacesOk face
-            andalso face_is_unitary_exact_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face)
+            andalso face_is_unitary_exact_thetaPlusHalf_cached cache allowPrune (g, x, lambda, thetaPlusHalf, Lvd, face)
           val fs = Array.sub (facesByDim, d)
           val ks = List.filter ok fs
         in

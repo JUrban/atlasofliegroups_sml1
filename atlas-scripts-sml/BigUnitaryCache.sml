@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/ParamHash.sml";
+use "atlas-scripts-sml/unity.sml";
 
 (*
   File: atlas-scripts-sml/BigUnitaryCache.sml
@@ -14,6 +15,7 @@ use "atlas-scripts-sml/ParamHash.sml";
   - `ParamHash` clones on insertion, so the cache owns its stored handles.
 *)
 structure BigUnitaryCache = struct
+  type group = AtlasFFI.group
   type param = AtlasFFI.param
 
   type t =
@@ -76,4 +78,19 @@ structure BigUnitaryCache = struct
   (* Cached wrapper for `AtlasFFI.atlas_param_is_unitary`. *)
   fun check_unitary (t: t) (p: param) : bool =
     check t (fn q => AtlasFFI.atlas_param_is_unitary q = 1) p
+
+  (*
+    Cached wrapper for `Unity.is_unitary_test_prune_equal_rank_steps`.
+
+    This is intended as an OPTIONAL performance experiment: it can sometimes
+    quickly disprove unitarity before calling the exact Atlas predicate, but in
+    some workloads the truncated-form computations are more expensive than the
+    direct `is_unitary` test.
+
+    Safety
+    - The pruning helper is designed to be safe (only early-disproves), and
+      falls back to the exact predicate when pruning is inconclusive.
+  *)
+  fun check_unitary_prune_equal_rank_steps (t: t) (g: group, stepCount: int, stepSize: int) (p: param) : bool =
+    check t (fn q => Unity.is_unitary_test_prune_equal_rank_steps (g, q, stepCount, stepSize)) p
 end
