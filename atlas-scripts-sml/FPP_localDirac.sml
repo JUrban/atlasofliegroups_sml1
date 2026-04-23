@@ -819,6 +819,37 @@ structure FPP_localDirac = struct
       ps
     end
 
+  (* `.at`-style naming: a baseline analogue of `local_test_GEO_hash2` that
+     uses closure-filtered unitary faces, with exact Atlas unitary checks. *)
+  fun local_test_GEO_hash2_exact_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    unitary_params_from_unitary_faces_by_dim_exact_limit_ctx (c, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash2_exact_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2_exact_limit_ctx (c, x, lambda, ~1)
+
+  fun local_test_GEO_hash2_exact_limit (g: group, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash2_exact_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash2_exact (g: group, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash2_exact_limit (g, x, lambda, ~1)
+
+  fun local_test_GEO_hash2_exact_into_hash_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, uhash: ParamHash.t) : int =
+    let
+      val ps = local_test_GEO_hash2_exact_limit_ctx (c, x, lambda, maxFacesPerDim)
+      val sizeBefore = ParamHash.size uhash
+      fun one p =
+        (ignore (ParamHash.match uhash p);
+         AtlasFFI.atlas_param_free p)
+      val () = List.app one ps
+      val sizeAfter = ParamHash.size uhash
+    in
+      sizeAfter - sizeBefore
+    end
+
+  fun local_test_GEO_hash2_exact_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash2_exact_into_hash_limit_ctx (c, x, lambda, ~1, uhash)
+
   (* Filter a list of owned parameters by exact Atlas unitarity, freeing the
      rejected ones. *)
   fun keep_unitary_and_free_rest (ps: param list) : param list =
