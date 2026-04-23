@@ -68,6 +68,10 @@ structure AtlasFFI = struct
   val atlas_kgb_size_F4_s_sym = Foreign.getSymbol lib "atlas_kgb_size_F4_s"
   val atlas_group_new_F4_s_sym = Foreign.getSymbol lib "atlas_group_new_F4_s"
   val atlas_group_new_simple_sym = Foreign.getSymbol lib "atlas_group_new_simple"
+  val atlas_group_new_simple_text_sym =
+    Foreign.getSymbol lib "atlas_group_new_simple_text"
+  val atlas_group_new_simple_isogeny_spec_text_sym =
+    Foreign.getSymbol lib "atlas_group_new_simple_isogeny_spec_text"
   val atlas_group_new_levi_of_parabolic_sym =
     Foreign.getSymbol lib "atlas_group_new_levi_of_parabolic"
   val atlas_group_free_sym = Foreign.getSymbol lib "atlas_group_free"
@@ -311,11 +315,39 @@ structure AtlasFFI = struct
   val atlas_group_new_F4_s =
     Foreign.buildCall0 (atlas_group_new_F4_s_sym, (), Foreign.cPointer)
 
-  val atlas_group_new_simple =
-    Foreign.buildCall4
-      ( atlas_group_new_simple_sym
-      , (Foreign.cChar, Foreign.cInt, Foreign.cChar, Foreign.cInt)
-      , Foreign.cPointer
+  val atlas_group_new_simple_text =
+    Foreign.buildCall1 (atlas_group_new_simple_text_sym, Foreign.cString, Foreign.cPointer)
+
+  val atlas_group_new_simple_isogeny_spec_text =
+    Foreign.buildCall1 (atlas_group_new_simple_isogeny_spec_text_sym, Foreign.cString, Foreign.cPointer)
+
+  fun atlas_group_new_simple (typeLetter: char, rank: int, innerClassLetter: char, rf: int) : group =
+    atlas_group_new_simple_text
+      ( String.str typeLetter
+        ^ " "
+        ^ Int.toString rank
+        ^ " "
+        ^ String.str innerClassLetter
+        ^ " "
+        ^ Int.toString rf
+      )
+
+  fun atlas_group_new_simple_isogeny (typeLetter: char,
+                                     rank: int,
+                                     innerClassLetter: char,
+                                     rf: int,
+                                     isogenyLetter: char)
+    : group =
+    atlas_group_new_simple_isogeny_spec_text
+      ( String.str typeLetter
+        ^ " "
+        ^ Int.toString rank
+        ^ " "
+        ^ String.str innerClassLetter
+        ^ " "
+        ^ Int.toString rf
+        ^ " "
+        ^ String.str isogenyLetter
       )
 
   val atlas_group_new_levi_of_parabolic =

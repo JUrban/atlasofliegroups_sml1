@@ -117,6 +117,10 @@ static std::string int_matrix_to_text(const atlas::int_Matrix& m)
   return out.str();
 }
 
+namespace {
+char canonical_inner_class_letter(char c, char type_letter, unsigned int rank);
+} // namespace
+
 extern "C" const char* atlas_intmat_cartan_matrix_type_text(const char* mat_text)
 {
   try
@@ -178,7 +182,37 @@ struct GroupHandle
         return atlas::prerootdata::PreRootDatum(lt, /*prefer_co=*/false);
       }())
     , di([&] {
-        ict.push_back(inner_class_letter);
+        ict.push_back(canonical_inner_class_letter(inner_class_letter, type_letter, rank));
+        return atlas::lietype::involution(lt, ict);
+      }())
+    , ic(prd, di)
+    , G(ic, rf)
+    , rt()
+  {
+    rt = std::make_unique<atlas::repr::Rep_table>(G);
+  }
+
+  GroupHandle(char type_letter,
+              unsigned int rank,
+              char inner_class_letter,
+              atlas::RealFormNbr rf,
+              bool adjoint)
+    : lt()
+    , ict()
+    , prd([&] {
+        lt.push_back(atlas::lietype::SimpleLieType(type_letter, rank));
+        atlas::prerootdata::PreRootDatum tmp(lt, /*prefer_co=*/false); // simply connected
+        if (adjoint)
+        {
+          atlas::int_Matrix M = lt.transpose_Cartan_matrix();
+          for (unsigned int i = lt.semisimple_rank(); i < lt.rank(); ++i)
+            M(i, i) = 1;
+          tmp.quotient(M);
+        }
+        return tmp;
+      }())
+    , di([&] {
+        ict.push_back(canonical_inner_class_letter(inner_class_letter, type_letter, rank));
         return atlas::lietype::involution(lt, ict);
       }())
     , ic(prd, di)
@@ -2209,7 +2243,9 @@ extern "C" void* atlas_group_new_simple(char type_letter,
     lt.push_back(atlas::lietype::SimpleLieType(type_letter, static_cast<unsigned int>(rank)));
     atlas::prerootdata::PreRootDatum prd(lt, /*prefer_co=*/false);
     atlas::lietype::InnerClassType ict;
-    ict.push_back(inner_class_letter);
+    ict.push_back(canonical_inner_class_letter(inner_class_letter,
+                                               lt[0].type(),
+                                               static_cast<unsigned int>(lt[0].rank())));
     atlas::WeightInvolution di = atlas::lietype::involution(lt, ict);
     atlas::innerclass::InnerClass ic(prd, di);
 
@@ -2225,6 +2261,201 @@ extern "C" void* atlas_group_new_simple(char type_letter,
                               inner_class_letter,
                               atlas::RealFormNbr(static_cast<unsigned short>(rf)));
     return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_text(const char* spec_text)
+{
+  try
+  {
+    if (spec_text == nullptr)
+    {
+      g_last_error = "atlas_group_new_simple_text: null spec_text";
+      return nullptr;
+    }
+    std::istringstream in(spec_text);
+    std::string type_s;
+    int rank = 0;
+    std::string ic_s;
+    int rf = 0;
+    if (!(in >> type_s >> rank >> ic_s >> rf))
+    {
+      g_last_error = "atlas_group_new_simple_text: expected \"<Type> <Rank> <IC> <RF>\"";
+      return nullptr;
+    }
+    if (type_s.size() != 1 || ic_s.size() != 1)
+    {
+      g_last_error = "atlas_group_new_simple_text: type/ic must be 1 character each";
+      return nullptr;
+    }
+    return atlas_group_new_simple(type_s[0], rank, ic_s[0], rf);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_isogeny(char type_letter,
+                                               int rank,
+                                               char inner_class_letter,
+                                               int rf,
+                                               char isogeny_letter)
+{
+  try
+  {
+    if (rank <= 0)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny: rank must be positive";
+      return nullptr;
+    }
+    if (rf < 0)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny: real form number must be >= 0";
+      return nullptr;
+    }
+
+    const bool adjoint = (isogeny_letter == 'a' || isogeny_letter == 'A');
+    const bool simply_connected = (isogeny_letter == 's' || isogeny_letter == 'S');
+    if (!adjoint && !simply_connected)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny: isogeny must be 's' (sc) or 'a' (ad)";
+      return nullptr;
+    }
+
+    atlas::lietype::LieType lt;
+    lt.push_back(atlas::lietype::SimpleLieType(type_letter, static_cast<unsigned int>(rank)));
+
+    atlas::prerootdata::PreRootDatum prd(lt, /*prefer_co=*/false); // simply connected
+    if (adjoint)
+    {
+      atlas::int_Matrix M = lt.transpose_Cartan_matrix();
+      for (unsigned int i = lt.semisimple_rank(); i < lt.rank(); ++i)
+        M(i, i) = 1;
+      prd.quotient(M);
+    }
+
+    atlas::lietype::InnerClassType ict;
+    ict.push_back(canonical_inner_class_letter(inner_class_letter,
+                                               lt[0].type(),
+                                               static_cast<unsigned int>(lt[0].rank())));
+    atlas::WeightInvolution di = atlas::lietype::involution(lt, ict);
+    atlas::innerclass::InnerClass ic(prd, di);
+
+    const auto nrf = static_cast<long>(ic.numRealForms());
+    if (rf >= nrf)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny: real form number out of range";
+      return nullptr;
+    }
+
+    auto* h = new GroupHandle(type_letter,
+                              static_cast<unsigned int>(rank),
+                              inner_class_letter,
+                              atlas::RealFormNbr(static_cast<unsigned short>(rf)),
+                              adjoint);
+    return static_cast<void*>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_isogeny_text(const char* type_and_rank_text,
+                                                    char inner_class_letter,
+                                                    int rf,
+                                                    char isogeny_letter)
+{
+  try
+  {
+    if (type_and_rank_text == nullptr)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_text: null type_and_rank_text";
+      return nullptr;
+    }
+    const std::string s(type_and_rank_text);
+    if (s.size() < 2)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_text: expected like \"A1\"";
+      return nullptr;
+    }
+
+    const char type_letter = s[0];
+    int rank = 0;
+    try
+    {
+      rank = std::stoi(s.substr(1));
+    }
+    catch (...)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_text: failed to parse rank";
+      return nullptr;
+    }
+
+    return atlas_group_new_simple_isogeny(
+      type_letter, rank, inner_class_letter, rf, isogeny_letter);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_group_new_simple_isogeny_spec_text(const char* spec_text)
+{
+  try
+  {
+    if (spec_text == nullptr)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_spec_text: null spec_text";
+      return nullptr;
+    }
+    std::istringstream in(spec_text);
+    std::string type_s;
+    int rank = 0;
+    std::string ic_s;
+    int rf = 0;
+    std::string iso_s;
+    if (!(in >> type_s >> rank >> ic_s >> rf >> iso_s))
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_spec_text: expected \"<Type> <Rank> <IC> <RF> <Iso>\"";
+      return nullptr;
+    }
+    if (type_s.size() != 1 || ic_s.size() != 1 || iso_s.size() != 1)
+    {
+      g_last_error = "atlas_group_new_simple_isogeny_spec_text: type/ic/iso must be 1 character each";
+      return nullptr;
+    }
+    return atlas_group_new_simple_isogeny(type_s[0], rank, ic_s[0], rf, iso_s[0]);
   }
   catch (const std::exception& e)
   {
@@ -5541,6 +5772,58 @@ static std::string lie_type_to_short_string(const atlas::lietype::LieType& lt)
     out << sf.type() << sf.rank();
   }
   return out.str();
+}
+
+// Canonicalize an Atlas interpreter inner-class letter for a single simple
+// factor, following `checked_inner_class_type` in `sources/interpreter/atlas-types.w`.
+//
+// Allowed user-facing letters: `c` (compact), `e` (equal-rank synonym for `c`),
+// `s` (split), `u` (unequal rank), and `C` (complex; not supported here).
+//
+// The Atlas library routines used below expect the *canonical* letters after
+// collapsing some cases where `s`/`u` are equivalent to `c`/`s` respectively.
+char canonical_inner_class_letter(char c, char type_letter, unsigned int rank)
+{
+  if (c == 'c' || c == 'e')
+    return 'c';
+
+  if (c == 's')
+  {
+    // 's' collapses to 'c' when the long Weyl element acts as -1:
+    // A1, Bn, Cn, D(2n), E7, E8, F4, G2.
+    if (type_letter == 'A' && rank >= 2u)
+      return 's';
+    if (type_letter == 'D' && (rank % 2u) != 0u)
+      return 's';
+    if (type_letter == 'E' && rank == 6u)
+      return 's';
+    if (type_letter == 'T')
+      return 's';
+    return 'c';
+  }
+
+  if (c == 'u')
+  {
+    // 'u' only meaningful for An (n>=2), Dn, E6, T; often collapses to 's'.
+    if (type_letter == 'D')
+      return (rank % 2u == 0u) ? 'u' : 's';
+    if ((type_letter == 'A' && rank >= 2u) || (type_letter == 'E' && rank == 6u) ||
+        type_letter == 'T')
+      return 's';
+
+    std::ostringstream o;
+    o << "Unequal rank class is meaningless for type " << type_letter << rank;
+    throw std::runtime_error(o.str());
+  }
+
+  if (c == 'C')
+    throw std::runtime_error("Complex inner class not supported for single-factor constructor");
+
+  {
+    std::ostringstream o;
+    o << "Unknown inner class symbol `" << c << "'";
+    throw std::runtime_error(o.str());
+  }
 }
 
 static std::string subset_to_string(const std::vector<atlas::weyl::Generator>& S)

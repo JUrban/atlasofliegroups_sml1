@@ -33,6 +33,7 @@ val () = tryUse "atlas-scripts-sml/lazy_lists.sml"
 val () = tryUse "atlas-scripts-sml/exp-generating-series.sml"
 val () = tryUse "atlas-scripts-sml/sort.sml"
 val () = tryUse "atlas-scripts-sml/tabulate.sml"
+val () = tryUse "atlas-scripts-sml/generate_groups.sml"
 
 (* Matrix / lattice helpers. *)
 val () = tryUse "atlas-scripts-sml/matrix.sml"
