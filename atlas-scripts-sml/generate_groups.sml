@@ -18,9 +18,10 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
     `AtlasFFI.atlas_group_free` when no longer needed.
 
   FFI dependency
-  - Uses `atlas_group_new_simple_isogeny(type,rank,ic,rf,isog)` from the SML
-    FFI layer; internally this calls a text-based C++ shim export so that the
-    Poly/ML FFI never has to call a 4/5-argument foreign function directly.
+  - Uses `atlas_group_new_simple_isogeny_outer(type,rank,ic,rfOuter,isog)` from
+    the SML FFI layer, so that `rfOuter` matches the Atlas interpreter’s
+    script-facing numbering (the same numbering used by `real_form(ic,rf)` and
+    by `real_forms(Cartan_class(...))`).
 *)
 
 structure GenerateGroups = struct
@@ -81,9 +82,16 @@ structure GenerateGroups = struct
     end
 
   (* Construct a group handle; raises Fail on FFI error. *)
-  fun new_simple (iso: isogeny, typeLetter: char, rank: int, innerClassLetter: char, rf: int) : group =
+  fun new_simple (iso: isogeny,
+                  typeLetter: char,
+                  rank: int,
+                  innerClassLetter: char,
+                  rfOuter: int)
+    : group =
     let
-      val g = AtlasFFI.atlas_group_new_simple_isogeny (typeLetter, rank, innerClassLetter, rf, isogenyToChar iso)
+      val g =
+        AtlasFFI.atlas_group_new_simple_isogeny_outer
+          (typeLetter, rank, innerClassLetter, rfOuter, isogenyToChar iso)
     in
       if g = Foreign.Memory.null then
         raise Fail ("GenerateGroups.new_simple: " ^ AtlasFFI.atlas_last_error ())
