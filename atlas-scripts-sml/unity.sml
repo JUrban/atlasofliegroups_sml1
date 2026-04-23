@@ -126,13 +126,30 @@ structure Unity = struct
       let
         val steps = Int.max (0, stepCount)
         val size = Int.max (0, stepSize)
-        val hts = List.tabulate (steps, fn i => (i + 1) * size)
+        val maxHt = steps * size
 
-        fun pruneOk [] = true
-          | pruneOk (ht :: rest) =
-              ToHT.is_unitary_to_ht_prune_equal_rank (g, p, ht) andalso pruneOk rest
-
-        val notDisproved = (pruneOk hts) handle _ => true
+        (* Instead of recomputing truncated forms at each height bound, compute
+           the c-form once and compare its first impure height against the
+           maximum bound. This is equivalent because the step sequence is
+           increasing, and a mixed coefficient at height `d` fails *all* bounds
+           `ht >= d`. *)
+        val notDisproved =
+          if steps = 0 then
+            true
+          else
+            ((let
+                val cf = AtlasFFI.atlas_param_c_form_irreducible p
+                val () =
+                  if cf = Foreign.Memory.null then
+                    raise Fail ("is_unitary_test_prune_equal_rank_steps: c_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+                  else
+                    ()
+                val r = AtlasFFI.atlas_group_rank g
+                val d = KTypePol.impureHeight (cf, r)
+                val () = KTypePol.free cf
+              in
+                (d = ~1) orelse (d > maxHt)
+              end) handle _ => true)
       in
         if notDisproved then
           AtlasFFI.atlas_param_is_unitary p = 1
