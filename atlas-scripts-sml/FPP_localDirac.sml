@@ -16,6 +16,8 @@ use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 use "atlas-scripts-sml/hash.sml";
 use "atlas-scripts-sml/unity.sml";
+use "atlas-scripts-sml/unity_fpp.sml";
+use "atlas-scripts-sml/to_ht.sml";
 
 (*
   File: atlas-scripts-sml/FPP_localDirac.sml
@@ -240,6 +242,11 @@ structure FPP_localDirac = struct
   val min_after_flag : bool ref = ref false
   (* When true, attempt `Unity`/`to_ht`-based early-disproof in cached unitary checks. *)
   val to_ht_prune_flag : bool ref = ref false
+  (* When true, compute a per-dimension height schedule from `pmax` using
+     LKTs-based `next_heights`; otherwise use a cheap arithmetic schedule. *)
+  val ht_schedule_from_pmax_flag : bool ref = ref false
+  (* Default arithmetic schedule step (when `ht_schedule_from_pmax_flag=false`). *)
+  val ht_schedule_step : int ref = ref 5
 
   (* ---------------------------------------------------------------------- *)
   (* `.at`-style parameter constructor from gamma (infinitesimal character). *)
@@ -611,6 +618,52 @@ structure FPP_localDirac = struct
       Representations.parameter (g, x, lambda, vBest)
     end
 
+  (* Compute a per-dimension truncation-height schedule for `(x,lambda)` that
+     can be used for `ToHT` pruning. Returns a list of length `rank(g)+1`.
+
+     Notes
+     - This is a porting scaffold: the `.at` scripts compute tailored height
+       schedules using several heuristics (`short_hts`, `next_heights`, etc.).
+     - The schedule affects performance only (it is used for safe early
+       disproof); exact unitarity is still checked at the end. *)
+  fun slice_hts_for_x_lambda_ctx (c: ctx, x: int, lambda: ratvec) : int list =
+    let
+      val g = #g c
+      val r = AtlasFFI.atlas_group_rank g
+      val need = r + 1
+
+      fun padTo xs =
+        if length xs >= need then
+          List.take (xs, need)
+        else
+          xs @ List.tabulate (need - length xs, fn _ => ~1)
+    in
+      if !ht_schedule_from_pmax_flag then
+        let
+          val vd = #vd (#faceCtx c)
+          val fd = localFD_Lvd_simple (g, x, lambda, vd)
+          val p0 = pmax (g, x, lambda, #Lvd fd)
+          val p1 = AtlasFFI.atlas_param_normalise p0
+          val () = AtlasFFI.atlas_param_free p0
+          val () =
+            if p1 = Foreign.Memory.null then
+              raise Fail ("slice_hts_for_x_lambda: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+          val hs = (UnityFPP.next_heights_lkts (p1, need) handle _ => Unity.next_heights (p1, need))
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          padTo hs
+        end
+      else
+        let
+          val step = Int.max (1, !ht_schedule_step)
+          val hs = List.tabulate (need, fn i => (i + 1) * step)
+        in
+          padTo hs
+        end
+    end
+
   (*
     Enumerate all *stable* local faces meeting the `(x,lambda)` slice, as a list
     of records that remember both:
@@ -915,6 +968,118 @@ structure FPP_localDirac = struct
       kept
     end
 
+  (* ---------------------------------------------------------------------- *)
+  (* To-height pruning variant (safe early disproof, then exact check later) *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* Safe early disproof for a local face at height bound `ht`.
+     Returns `true` on exceptions (conservative). *)
+  fun face_is_unitary_to_ht_thetaPlusHalf
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key, ht: int) : bool =
+    let
+      val gammaLocal = VertexData.face_bary (Lvd, face)
+      val nu = Lattice.ratvecSub (gammaLocal, thetaPlusHalf)
+      val p0 = Representations.parameter (g, x, lambda, nu)
+      val p1 = AtlasFFI.atlas_param_normalise p0
+      val () = AtlasFFI.atlas_param_free p0
+      val () =
+        if p1 = Foreign.Memory.null then
+          raise Fail ("face_is_unitary_to_ht: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+
+      fun okFinal q =
+        AtlasFFI.atlas_param_is_hermitian q = 1 andalso ToHT.is_unitary_to_ht (q, ht)
+    in
+      if AtlasFFI.atlas_param_is_final p1 = 1 then
+        let
+          val ok = okFinal p1 handle _ => true
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          ok
+        end
+      else
+        let
+          val finals = ParamFinals.finals p1
+          val () = AtlasFFI.atlas_param_free p1
+          fun okTerm (q, mult) =
+            if mult = 0 then
+              (AtlasFFI.atlas_param_free q; true)
+            else
+              let
+                val ok = (okFinal q handle _ => true)
+                val () = AtlasFFI.atlas_param_free q
+              in
+                ok
+              end
+        in
+          List.all okTerm finals
+        end
+    end
+
+  (* Dimension-by-dimension face filtering using `ToHT` at per-dimension bounds.
+     This is intended as a pruning pre-pass; callers should still do an exact
+     `is_unitary` verification on the resulting barycenter parameters. *)
+  fun unitary_local_faces_by_dim_to_ht_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : face_key list array =
+    let
+      val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val fd = localFD_Lvd_simple (g, x, lambda, vd)
+      val Lvd = #Lvd fd
+
+      val hts = slice_hts_for_x_lambda_ctx (c, x, lambda)
+      fun htForDim d = List.nth (hts, d) handle _ => ~1
+
+      val facesByDim0 = local_faces_for_x_lambda_by_dim_ctx (c, x, lambda)
+      val r = Array.length facesByDim0 - 1
+
+      fun takeLim xs =
+        if maxFacesPerDim < 0 then xs else List.take (xs, Int.min (maxFacesPerDim, length xs))
+
+      val facesByDim = Array.tabulate (r + 1, fn d => takeLim (Array.sub (facesByDim0, d)))
+
+      val kept = Array.array (r + 1, ([]: face_key list))
+
+      fun faceSetOf (xs: face_key list) : face_key Hash.t =
+        Hash.make_hash_data ({hash_code = Hash.hash_code_vec, eq = (op =) }, xs)
+
+      fun keepDim0 () =
+        let
+          val vs = Array.sub (facesByDim, 0)
+          val ht0 = htForDim 0
+          val ks =
+            List.filter (fn face => face_is_unitary_to_ht_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face, ht0)) vs
+        in
+          Array.update (kept, 0, ks)
+        end
+
+      fun keepDim d =
+        let
+          val prev = Array.sub (kept, d - 1)
+          val prevSet = faceSetOf prev
+          fun subfacesOk face =
+            List.all (fn sf => Hash.lookup prevSet sf >= 0) (codim1_subfaces face)
+          val htd = htForDim d
+          fun ok face =
+            subfacesOk face andalso face_is_unitary_to_ht_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face, htd)
+          val fs = Array.sub (facesByDim, d)
+          val ks = List.filter ok fs
+        in
+          Array.update (kept, d, ks)
+        end
+
+      val () = keepDim0 ()
+      val () = List.app keepDim (List.tabulate (r, fn i => i + 1))
+    in
+      kept
+    end
+
   (*
     Enumerate final parameters associated to the barycenters of *local* faces.
 
@@ -1015,6 +1180,40 @@ structure FPP_localDirac = struct
         end
     in
       List.foldl addFromFace [] faces
+    end
+
+  (* Exact unitary parameters from barycenters of faces kept by the ToHT pass.
+     Uses `BigUnitaryCache` for the final exact `is_unitary` checks. *)
+  fun unitary_params_from_unitary_faces_by_dim_to_ht_exact_limit_ctx_cached
+    (cache: unitary_cache)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    let
+      val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val fd = localFD_Lvd_simple (g, x, lambda, vd)
+      val Lvd = #Lvd fd
+
+      val keptFacesByDim = unitary_local_faces_by_dim_to_ht_limit_ctx (c, x, lambda, maxFacesPerDim)
+      val faces = List.concat (Array.foldr (op ::) [] keptFacesByDim)
+      val ps0 = params_for_given_local_faces_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, faces)
+
+      fun keepUnitaryCached (ps: param list) : param list =
+        let
+          fun step (p, acc) =
+            if AtlasFFI.atlas_param_is_hermitian p = 1 andalso BigUnitaryCache.check_unitary cache p then
+              p :: acc
+            else
+              (AtlasFFI.atlas_param_free p; acc)
+        in
+          List.rev (List.foldl step [] ps)
+        end
+    in
+      keepUnitaryCached ps0
     end
 
   (* Baseline “GEO-hash2” style output: use face-closure filtering to select
