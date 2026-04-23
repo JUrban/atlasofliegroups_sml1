@@ -144,6 +144,10 @@ structure FPP_localDirac = struct
       #den u :: #nums u
     end
 
+  (* Key for an already-normalized rational vector. *)
+  fun ratvecKeyNormalized (u: ratvec) : int list =
+    #den u :: #nums u
+
   (* ---------------------------------------------------------------------- *)
   (* Root-datum helpers used by pmax/pmin and height schedules.              *)
   (* ---------------------------------------------------------------------- *)
@@ -367,7 +371,7 @@ structure FPP_localDirac = struct
             else
               let
                 val gamma = Array.sub (baryA, i)
-                val key = ratvecKey (Lattice.matVecMulRatvec onePlus gamma)
+                val key = ratvecKeyNormalized (Lattice.matVecMulRatvec onePlus gamma)
                 val sizeBefore = #size keysH ()
                 val j = #match keysH key
                 val sizeAfter = #size keysH ()
@@ -472,7 +476,7 @@ structure FPP_localDirac = struct
   fun gammas_for_x_lambda_ctx (c: ctx, x: int, lambda: ratvec) : ratvec list =
     let
       val b = gamma_bucket_for_x_ctx (c, x)
-      val k = ratvecKey (Lattice.matVecMulRatvec (#onePlus b) lambda)
+      val k = ratvecKeyNormalized (Lattice.matVecMulRatvec (#onePlus b) lambda)
       val j = Hash.lookup (#keys b) k
       val idxs = if j < 0 then [] else Array.sub (#gammaIdxsByKey b, j)
       val baryA = #barycentersA c

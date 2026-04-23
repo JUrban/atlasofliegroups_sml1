@@ -67,6 +67,10 @@ structure F4_FPP_points_compute = struct
       #den u :: #nums u
     end
 
+  (* Key for an already-normalized rational vector. *)
+  fun ratvecKeyNormalized (u: ratvec) : int list =
+    #den u :: #nums u
+
   (* Normalize a rational vector and serialize it as `(numsText, den)` for FFI calls. *)
   fun ratvecToTextParts (u: ratvec) : string * int =
     let
@@ -219,7 +223,7 @@ structure F4_FPP_points_compute = struct
             else
               let
                 val gamma = Array.sub (baryA, i)
-                val key = ratvecKey (Lattice.matVecMulRatvec onePlus gamma)
+                val key = ratvecKeyNormalized (Lattice.matVecMulRatvec onePlus gamma)
                 val sizeBefore = #size keysH ()
                 val j = #match keysH key
                 val sizeAfter = #size keysH ()
@@ -244,7 +248,7 @@ structure F4_FPP_points_compute = struct
             let
               val thetaPlus = Lattice.matVecMulRatvec onePlus lambda
               val thetaPlusHalf = Lattice.ratvecScale (thetaPlus, 1, 2)
-              val k = ratvecKey thetaPlus
+              val k = ratvecKeyNormalized thetaPlus
 
               val j = Hash.lookup (#keysH bucket) k
 
