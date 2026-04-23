@@ -112,6 +112,30 @@ structure FPPFaceKey = struct
       {verts = verts, vd = vd, gammaDim = gammaDim, pairSums = pairSums}
     end
 
+  (*
+    Fast-path constructor for callers that only need the global folded-FPP
+    *vertex table* (and derived `VertexData`) but do not need to reconstruct
+    face keys from barycenters.
+
+    In particular, `FPP_localDirac.create_ctx` uses this in the `F4_s` case
+    when a precomputed `gamma -> face_key` table is available on disk.
+
+    Limitations
+    - `gammaDim` always returns `NONE`, so `faceKeyOfGamma` will return `NONE`
+      for every input.
+    - `pairSums` is empty.
+  *)
+  fun createVerticesOnly (g: AtlasFFI.group) : t =
+    let
+      val vertsList = FPP_vertices_fold.vertices g
+      val vd = VertexData.fromList vertsList
+      val verts = #verts vd
+      val gammaDim = (fn (_: key) => NONE)
+      val pairSums : (key * (int * int)) array = Array.fromList []
+    in
+      {verts = verts, vd = vd, gammaDim = gammaDim, pairSums = pairSums}
+    end
+
   (* Lookup all vertex index pairs `(i,j)` with `v_i + v_j` having key `k`. *)
   fun lookupPairSums ({pairSums, ...}: t, k: key) : (int * int) list =
     let

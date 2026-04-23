@@ -2,6 +2,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/FPP_barycenters_fold.sml";
+use "atlas-scripts-sml/F4_FPP_barycenters.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/ParamHash.sml";
@@ -34,11 +35,13 @@ use "atlas-scripts-sml/hash.sml";
     This corresponds to the conceptual `Perm`/`mapAct` discussion at the top of
     `FPP_localDirac.at` and is a prerequisite for face-by-face local searches.
 
-  Important limitation
-  - This module does NOT yet implement the main `local_test_GEO_hash*` algorithms
-    nor the FPP-local Dirac/bottom-layer pruning logic; those require additional
-    bindings and supporting SML ports (e.g. richer `to_ht`/c-form helpers and
-    face enumeration pipelines).
+  Current status (important limitations remain)
+  - This module now contains an *exact* “GEO-hash2 style” pipeline for building
+    stable local faces dimension-by-dimension and filtering them by Atlas’
+    unitarity predicate, with caching to avoid repeated expensive checks.
+  - It still lacks the `.at` script’s full suite of *height-stepped* `to_ht`
+    pruning and the more delicate local-Dirac/bottom-layer step logic; those
+    are expected to be the next major functional additions.
 
   Ownership and conventions
   - Parameters returned by constructors here are owned handles; callers must free
@@ -88,8 +91,6 @@ structure FPP_localDirac = struct
 
   fun create_ctx (g: group) : ctx =
     let
-      val faceCtx = FPPFaceKey.create g
-      val barycenters = FPP_barycenters_fold.barycenters_all g
       val rank = AtlasFFI.atlas_group_rank g
       val kgbSize = AtlasFFI.atlas_group_kgb_size g
       val isSplit = AtlasFFI.atlas_group_is_split g = 1
@@ -106,6 +107,12 @@ structure FPP_localDirac = struct
 
       fun looksLikeF4s () : bool =
         isSplit andalso rank = 4 andalso kgbSize = 229 andalso nPosRoots = 24
+
+      fun loadBarycenters (path: string) : ratvec list option =
+        (case path of
+           "atlas-scripts-sml/data/F4_FPP_barycenters.txt" =>
+             (SOME (F4_FPP_barycenters.loadRatvecs ()) handle _ => NONE)
+         | _ => NONE)
 
       fun loadGammaFaceTable (path: string) : (int list * face_key) array option =
         let
@@ -145,7 +152,7 @@ structure FPP_localDirac = struct
         end
         handle _ => NONE
 
-      fun computeGammaFaceTable () : (int list * face_key) array =
+      fun computeGammaFaceTable (faceCtx: FPPFaceKey.t, barycenters: ratvec list) : (int list * face_key) array =
         let
           fun toEntry gamma =
             (case FPPFaceKey.faceKeyOfGamma (faceCtx, gamma) of
@@ -157,13 +164,30 @@ structure FPP_localDirac = struct
           Array.fromList entriesSorted
         end
 
-      val gammaFaceTable =
+      val (barycenters, gammaFaceTableOpt) =
         if looksLikeF4s () then
-          (case loadGammaFaceTable "atlas-scripts-sml/data/f4s_gamma_face_table.txt" of
-             SOME tab => tab
-           | NONE => computeGammaFaceTable ())
+          let
+            val bary =
+              (case loadBarycenters "atlas-scripts-sml/data/F4_FPP_barycenters.txt" of
+                 SOME xs => xs
+               | NONE => FPP_barycenters_fold.barycenters_all g)
+            val tabOpt = loadGammaFaceTable "atlas-scripts-sml/data/f4s_gamma_face_table.txt"
+          in
+            (bary, tabOpt)
+          end
         else
-          computeGammaFaceTable ()
+          (FPP_barycenters_fold.barycenters_all g, NONE)
+
+      val faceCtx =
+        if looksLikeF4s () andalso Option.isSome gammaFaceTableOpt then
+          FPPFaceKey.createVerticesOnly g
+        else
+          FPPFaceKey.create g
+
+      val gammaFaceTable =
+        case gammaFaceTableOpt of
+          SOME tab => tab
+        | NONE => computeGammaFaceTable (faceCtx, barycenters)
     in
       { g = g, faceCtx = faceCtx, barycenters = barycenters, gammaFaceTable = gammaFaceTable }
     end

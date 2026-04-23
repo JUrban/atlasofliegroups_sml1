@@ -9,7 +9,9 @@
   - This fixture predates the fully computed folded-FPP barycenter generator and
     is kept for debugging and cross-checks.
 *)
+use "atlas-scripts-sml/Lattice.sml";
 structure F4_FPP_barycenters = struct
+  type ratvec = Lattice.ratvec
   type ratvec_text = {numsText: string, denom: int}
 
   (* Parse whitespace-separated integers. *)
@@ -60,6 +62,37 @@ structure F4_FPP_barycenters = struct
       fun handleRow line =
         (case parseInts line of
            [den, a, b, c, d] => {numsText = intsToText [a, b, c, d], denom = den}
+         | _ => raise Fail ("F4_FPP_barycenters: unexpected row: " ^ line))
+
+      fun loop acc =
+        case TextIO.inputLine input of
+          NONE => List.rev acc
+        | SOME line =>
+            let
+              val s = rstripNewlines line
+            in
+              if s = "" orelse (String.size s > 0 andalso String.sub (s, 0) = #"#")
+              then loop acc
+              else loop (handleRow s :: acc)
+            end
+      val result = loop []
+    in
+      (TextIO.closeIn input; result) handle e => (TextIO.closeIn input; raise e)
+    end
+
+  (*
+    Load all barycenters from disk as normalized `Lattice.ratvec` values.
+
+    This is the representation used by the folded-FPP code (`FPP_barycenters_fold`)
+    and is suitable for high-level algorithms like `FPP_localDirac.create_ctx`.
+  *)
+  fun loadRatvecs () : ratvec list =
+    let
+      val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_barycenters.txt"
+
+      fun handleRow line =
+        (case parseInts line of
+           [den, a, b, c, d] => Lattice.ratvecNormalize {den = den, nums = [a, b, c, d]}
          | _ => raise Fail ("F4_FPP_barycenters: unexpected row: " ^ line))
 
       fun loop acc =
