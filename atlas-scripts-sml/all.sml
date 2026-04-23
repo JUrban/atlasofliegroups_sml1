@@ -61,6 +61,7 @@ val () = tryUse "atlas-scripts-sml/chopping_facets_fast.sml"
 val () = tryUse "atlas-scripts-sml/WeylWord.sml"
 val () = tryUse "atlas-scripts-sml/Weylgroup.sml"
 val () = tryUse "atlas-scripts-sml/bruhat.sml"
+val () = tryUse "atlas-scripts-sml/standardize.sml"
 
 (* FFI-facing representation utilities (partial ports). *)
 val () = tryUse "atlas-scripts-sml/representations.sml"
