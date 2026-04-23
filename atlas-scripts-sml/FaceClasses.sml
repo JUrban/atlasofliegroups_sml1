@@ -1,6 +1,8 @@
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 use "atlas-scripts-sml/hash.sml";
+use "atlas-scripts-sml/KTypePol.sml";
+use "atlas-scripts-sml/KTypePolHash.sml";
 
 (*
   File: atlas-scripts-sml/FaceClasses.sml
@@ -365,6 +367,104 @@ structure FaceClasses = struct
 
   fun up_data_FDKH (fd: int list list list) : graph_data =
     strong_components (up_graph_gens_FDKH fd)
+
+  (* `up_graph_gens(FDKH, KTypePol_hash, level)` variant from `face_classes.at` (red_count_flag configurable).
+     Compares truncated K-type polynomials (to `level`) for reverse-edge creation.
+
+     Parameters
+     - `polHash`: owning table of KTypePol (the face entries store indices into this table)
+     - `level`: truncation height (must be >= 0 to enable this mode)
+     - `redShift`: 0 when no `red_count` coord is stored; 1 when it is (shifts the indices)
+  *)
+  fun up_graph_gens_FDKH_kpol (fd: int list list list, polHash: KTypePolHash.t, level: int, redShift: int) : int list list =
+    if level < 0 then
+      up_graph_gens_FDKH fd
+    else
+      let
+        val dims = length fd
+        val index = index_f fd
+        val total = size_fd fd
+        val edgeGens = Array.array (total, ([]: int list))
+        val lookups = lookups_face_verts fd
+
+        fun addEdge (u: int, v: int) =
+          Array.update (edgeGens, u, v :: Array.sub (edgeGens, u))
+
+        fun nth2 (xs: 'a list list, d: int, j: int) : 'a =
+          List.nth (List.nth (xs, d), j)
+
+        fun truncEq (childIdx: int, parentIdx: int) : bool =
+          let
+            val child = KTypePolHash.index polHash childIdx
+            val parent = KTypePolHash.index polHash parentIdx
+            val tc = KTypePol.toHT (child, level)
+            val tp = KTypePol.toHT (parent, level)
+            val eq = AtlasFFI.atlas_ktypepol_equal (tc, tp) = 1
+            val () = KTypePol.free tc
+            val () = KTypePol.free tp
+          in
+            eq
+          end
+
+        fun loopD d =
+          if d >= dims then
+            ()
+          else if d = 0 then
+            loopD 1
+          else
+            let
+              val row = List.nth (fd, d)
+              val lookupSub = List.nth (lookups, d - 1)
+              fun loopJ (j1, []) = ()
+                | loopJ (j1, find :: rest) =
+                    let
+                      val verts = List.take (find, d + 1)
+                      val childCharIdx = List.nth (find, d + redShift + 1)
+                      val childLang = List.nth (find, d + redShift + 2)
+                      fun loopE e =
+                        if e > d then
+                          ()
+                        else
+                          let
+                            val subVerts = deleteAt (verts, e)
+                            val j0 = lookupSub subVerts
+                          in
+                            if j0 >= 0 then
+                              let
+                                val u = index (d - 1, j0)
+                                val v = index (d, j1)
+                                val () = addEdge (u, v)
+                                val sub = nth2 (fd, d - 1, j0)
+                                val parentCharIdx = List.nth (sub, d + redShift)
+                                val parentLang = List.nth (sub, d + redShift + 1)
+                              in
+                                if childLang = parentLang andalso truncEq (childCharIdx, parentCharIdx) then
+                                  addEdge (v, u)
+                                else
+                                  ();
+                                loopE (e + 1)
+                              end
+                            else
+                              loopE (e + 1)
+                          end
+                    in
+                      loopE 0;
+                      loopJ (j1 + 1, rest)
+                    end
+            in
+              loopJ (0, row);
+              loopD (d + 1)
+            end
+
+        val () = loopD 0
+
+        fun uniq xs = Sort.sort_u (op <=) xs
+      in
+        List.tabulate (total, fn i => uniq (Array.sub (edgeGens, i)))
+      end
+
+  fun up_data_FDKH_kpol (fd: int list list list, polHash: KTypePolHash.t, level: int, redShift: int) : graph_data =
+    strong_components (up_graph_gens_FDKH_kpol (fd, polHash, level, redShift))
 
   (* `class_lists(FDKH, GD)` from `face_classes.at`: return per-dimension vectors
      mapping each face index to its SCC class id. *)
