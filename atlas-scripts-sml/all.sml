@@ -35,6 +35,7 @@ val () = tryUse "atlas-scripts-sml/sort.sml"
 val () = tryUse "atlas-scripts-sml/tabulate.sml"
 val () = tryUse "atlas-scripts-sml/generate_groups.sml"
 val () = tryUse "atlas-scripts-sml/groups.sml"
+val () = tryUse "atlas-scripts-sml/groups_at.sml"
 val () = tryUse "atlas-scripts-sml/lietypes.sml"
 val () = tryUse "atlas-scripts-sml/isomorphism.sml"
 
