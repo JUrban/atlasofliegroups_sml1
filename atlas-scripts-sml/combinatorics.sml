@@ -193,4 +193,122 @@ structure Combinatorics = struct
           in
             List.tabulate (k, fn i => Array.sub (out, i))
           end
+
+  (* Multinomial coefficient: product over i of binom(upper[i], a[i]) where
+     upper[i] is the suffix-sum of a starting at i. Result as IntInf. *)
+  fun multinomIntInf (a: int list) : IntInf.int =
+    let
+      val () = if List.all (fn x => x >= 0) a then () else raise Fail "Combinatorics.multinom: negative part"
+      fun suffixSums xs =
+        let
+          fun loop ([], acc) = acc
+            | loop (x :: rest, acc) =
+                (case acc of
+                   [] => loop (rest, [x])
+                 | s :: _ => loop (rest, (x + s) :: acc))
+        in
+          loop (List.rev xs, [])
+        end
+      val uppers = suffixSums a
+      fun step ((m, upper), acc) = acc * binomIntInf (upper, m)
+    in
+      List.foldl step 1 (ListPair.zipEq (a, uppers))
+    end
+
+  fun multi_chooseIntInf (n: int, k: int) : IntInf.int =
+    if n <= 0 orelse k < 0 then raise Fail "Combinatorics.multi_choose: bad args"
+    else binomIntInf (n + k - 1, k)
+
+  fun falling_powerIntInf (n: int, k: int) : IntInf.int =
+    if k < 0 then raise Fail "Combinatorics.falling_power: negative exponent"
+    else
+      let
+        fun loop (i, acc) =
+          if i > k then acc
+          else loop (i + 1, acc * IntInf.fromInt (n - k + i))
+      in
+        loop (1, 1)
+      end
+
+  fun rising_powerIntInf (n: int, k: int) : IntInf.int =
+    if k < 0 then raise Fail "Combinatorics.rising_power: negative exponent"
+    else
+      let
+        fun loop (i, acc) =
+          if i >= k then acc
+          else loop (i + 1, acc * IntInf.fromInt (n + i))
+      in
+        loop (0, 1)
+      end
+
+  fun even_places (xs: 'a list) : 'a list =
+    let
+      fun loop ([], _, acc) = List.rev acc
+        | loop (x :: rest, i, acc) =
+            if i mod 2 = 0 then loop (rest, i + 1, x :: acc) else loop (rest, i + 1, acc)
+    in
+      loop (xs, 0, [])
+    end
+
+  fun odd_places (xs: 'a list) : 'a list =
+    let
+      fun loop ([], _, acc) = List.rev acc
+        | loop (x :: rest, i, acc) =
+            if i mod 2 = 1 then loop (rest, i + 1, x :: acc) else loop (rest, i + 1, acc)
+    in
+      loop (xs, 0, [])
+    end
+
+  (* Product of a list of permutations, matching `permutation_product` in `.at`:
+     permutations are composed left-to-right (p0 ∘ p1 ∘ ...). *)
+  fun permutation_product (ps: permutation list) : permutation =
+    (case ps of
+       [] => []
+     | p0 :: _ =>
+         let
+           val n = length p0
+           val () = if List.all (fn p => length p = n) ps then () else raise Fail "Combinatorics.permutation_product: length mismatch"
+           val () = if List.all is_permutation ps then () else raise Fail "Combinatorics.permutation_product: non-permutation"
+           val id = List.tabulate (n, fn i => i)
+           fun apply (p: permutation, x: int) = List.nth (p, x)
+           fun compose (acc: permutation, p: permutation) : permutation =
+             List.map (fn x => apply (acc, apply (p, x))) id
+         in
+           List.foldl compose id ps
+         end)
+
+  (* Product of many cycles (disjoint or not), in the same order as `.at`. *)
+  fun cycle_product (n: int) (cycles: int list list) : permutation =
+    permutation_product (List.map (cyclic_permutation n) cycles)
+
+  (* Permutation action on an int vector/list, matching `.at` convention:
+       result[pi[j]] = v[j].
+  *)
+  fun permute_vec (pi: permutation, v: int list) : int list =
+    if length pi <> length v orelse not (is_permutation pi) then
+      raise Fail "Combinatorics.permute_vec: size/permutation mismatch"
+    else
+      let
+        val n = length v
+        val out = Array.array (n, 0)
+        fun loop (j, []) = ()
+          | loop (j, pj :: rest) = (Array.update (out, pj, List.nth (v, j)); loop (j + 1, rest))
+        val () = loop (0, pi)
+      in
+        List.tabulate (n, fn i => Array.sub (out, i))
+      end
+
+  fun permute_list (pi: permutation, xs: 'a list) : 'a list =
+    if length pi <> length xs orelse not (is_permutation pi) then
+      raise Fail "Combinatorics.permute_list: size/permutation mismatch"
+    else
+      let
+        val n = length xs
+        val out = Array.array (n, List.nth (xs, 0))
+        fun loop (j, []) = ()
+          | loop (j, pj :: rest) = (Array.update (out, pj, List.nth (xs, j)); loop (j + 1, rest))
+        val () = loop (0, pi)
+      in
+        List.tabulate (n, fn i => Array.sub (out, i))
+      end
 end
