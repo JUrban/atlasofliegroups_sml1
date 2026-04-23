@@ -156,4 +156,20 @@ structure Unity = struct
         else
           false
       end
+
+  (* ---------------------------------------------------------------------- *)
+  (* `.at`-style compatibility wrappers                                      *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* The `.at` code has several “interrupt” variants that accept a list of
+     height bounds. The current SML port either ignores `hts` (exact test) or
+     uses `ToHT` for safe early-disproof in specialized callers. We keep these
+     wrapper names so future `.at`→`.sml` translations can remain close to the
+     original call structure. *)
+
+  fun is_unitary_test_big_SIMPLE_interrupt (p: param, hts: int list) : bool =
+    is_unitary_test_hts (p, hts)
+
+  fun is_unitary_test_big_SIMPLE_interrupt1 (p: param, hts: int list) : bool =
+    is_unitary_test_hts (p, hts)
 end

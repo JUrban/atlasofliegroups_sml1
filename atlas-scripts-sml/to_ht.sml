@@ -223,4 +223,26 @@ structure ToHT = struct
       in
         d
       end
+
+  (* ---------------------------------------------------------------------- *)
+  (* `.at`-style compatibility wrappers                                      *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* The `.at` scripts frequently call variants with names like:
+       is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst
+     The SML port does not implement the full interrupt/to_ht-first machinery
+     yet, but we provide these entry points as aliases to the current pruning
+     predicates to make future translations more literal. *)
+
+  fun is_unitary_to_ht_big_SIMPLE_interrupt_TOHTfirst (p: param, ht: int) : bool =
+    is_unitary_to_ht (p, ht)
+
+  fun is_unitary_to_hts_big_SIMPLE_interrupt_TOHTfirst (p: param, hts: int list) : bool =
+    is_unitary_to_hts (p, hts)
+
+  fun is_unitary_to_ht_big_SIMPLE_interrupt (p: param, ht: int) : bool =
+    is_unitary_to_ht (p, ht)
+
+  fun is_unitary_to_hts_big_SIMPLE_interrupt (p: param, hts: int list) : bool =
+    is_unitary_to_hts (p, hts)
 end
