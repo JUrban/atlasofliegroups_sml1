@@ -3541,6 +3541,161 @@ extern "C" void atlas_ktype_free(void* t_handle)
   }
 }
 
+extern "C" long atlas_param_LKTs_size(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_LKTs_size: null param handle";
+      return -1;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_LKTs_size: null group/Rep_table";
+      return -1;
+    }
+    auto& rt = *p->group->rt;
+    if (!rt.is_standard(p->sr))
+    {
+      g_last_error = "atlas_param_LKTs_size: parameter not standard";
+      return -1;
+    }
+
+    atlas::repr::StandardRepr sr = p->sr;
+    const auto& du = rt.deformation(sr);
+    long n = 0;
+    for (const auto& term : du.LKTs())
+      if (term.second != 0)
+        ++n;
+    return n;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" void* atlas_param_LKTs_get_ktype_clone(void* p_handle, long index)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_LKTs_get_ktype_clone: null param handle";
+      return nullptr;
+    }
+    if (index < 0)
+    {
+      g_last_error = "atlas_param_LKTs_get_ktype_clone: negative index";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_LKTs_get_ktype_clone: null group/Rep_table";
+      return nullptr;
+    }
+    auto& rt = *p->group->rt;
+    if (!rt.is_standard(p->sr))
+    {
+      g_last_error = "atlas_param_LKTs_get_ktype_clone: parameter not standard";
+      return nullptr;
+    }
+
+    atlas::repr::StandardRepr sr = p->sr;
+    const auto& lkts = rt.deformation(sr).LKTs();
+
+    long cur = 0;
+    for (const auto& term : lkts)
+    {
+      if (term.second == 0)
+        continue;
+      if (cur == index)
+      {
+        atlas::K_repr::K_type t = rt.stored_K_type(term.first);
+        return static_cast<void*>(new KTypeHandle(p->group, std::move(t)));
+      }
+      ++cur;
+    }
+
+    g_last_error = "atlas_param_LKTs_get_ktype_clone: index out of range";
+    return nullptr;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" long atlas_param_LKTs_get_mult(void* p_handle, long index)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_LKTs_get_mult: null param handle";
+      return -1;
+    }
+    if (index < 0)
+    {
+      g_last_error = "atlas_param_LKTs_get_mult: negative index";
+      return -1;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_LKTs_get_mult: null group/Rep_table";
+      return -1;
+    }
+    auto& rt = *p->group->rt;
+    if (!rt.is_standard(p->sr))
+    {
+      g_last_error = "atlas_param_LKTs_get_mult: parameter not standard";
+      return -1;
+    }
+
+    atlas::repr::StandardRepr sr = p->sr;
+    const auto& lkts = rt.deformation(sr).LKTs();
+
+    long cur = 0;
+    for (const auto& term : lkts)
+    {
+      if (term.second == 0)
+        continue;
+      if (cur == index)
+        return static_cast<long>(term.second);
+      ++cur;
+    }
+
+    g_last_error = "atlas_param_LKTs_get_mult: index out of range";
+    return -1;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 extern "C" void* atlas_param_K_type(void* p_handle)
 {
   try
