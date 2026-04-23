@@ -151,7 +151,17 @@ structure ToHT = struct
       end
 
   fun is_unitary_to_hts (p: param, hts: int list) : bool =
-    List.all (fn ht => is_unitary_to_ht (p, ht)) hts
+    (case hts of
+       [] => true
+     | _ =>
+         if List.exists (fn ht => ht < 0) hts then
+           is_unitary_to_ht (p, ~1)
+         else
+           let
+             val maxHt = List.foldl Int.max 0 hts
+           in
+             is_unitary_to_ht (p, maxHt)
+           end)
 
   fun is_unitary_to_ht_prune_equal_rank (g: AtlasFFI.group, p: param, ht: int) : bool =
     if AtlasFFI.atlas_param_is_hermitian p <> 1 then
