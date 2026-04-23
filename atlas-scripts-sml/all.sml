@@ -39,6 +39,7 @@ val () = tryUse "atlas-scripts-sml/groups_at.sml"
 val () = tryUse "atlas-scripts-sml/center.sml"
 val () = tryUse "atlas-scripts-sml/lietypes.sml"
 val () = tryUse "atlas-scripts-sml/isomorphism.sml"
+val () = tryUse "atlas-scripts-sml/group_operations.sml"
 
 (* Matrix / lattice helpers. *)
 val () = tryUse "atlas-scripts-sml/matrix.sml"
