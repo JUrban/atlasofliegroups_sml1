@@ -69,6 +69,7 @@ val () = tryUse "atlas-scripts-sml/chopping_facets_fast.sml"
 (* KGB / Weyl-group transport and Bruhat order (KGB part). *)
 val () = tryUse "atlas-scripts-sml/WeylWord.sml"
 val () = tryUse "atlas-scripts-sml/Weylgroup.sml"
+val () = tryUse "atlas-scripts-sml/weylgroup_at.sml"
 val () = tryUse "atlas-scripts-sml/bruhat.sml"
 val () = tryUse "atlas-scripts-sml/standardize.sml"
 
