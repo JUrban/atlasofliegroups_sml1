@@ -194,6 +194,8 @@ structure AtlasFFI = struct
   val atlas_ktype_parameter_sym = Foreign.getSymbol lib "atlas_ktype_parameter"
   val atlas_ktype_is_final_sym = Foreign.getSymbol lib "atlas_ktype_is_final"
   val atlas_ktype_x_sym = Foreign.getSymbol lib "atlas_ktype_x"
+  val atlas_ktype_height_sym = Foreign.getSymbol lib "atlas_ktype_height"
+  val atlas_ktype_next_to_lowest_sym = Foreign.getSymbol lib "atlas_ktype_next_to_lowest"
   val atlas_ktype_lambda_rho_text_sym = Foreign.getSymbol lib "atlas_ktype_lambda_rho_text"
   val atlas_ktype_new_from_x_lambda_rho_text_sym =
     Foreign.getSymbol lib "atlas_ktype_new_from_x_lambda_rho_text"
@@ -704,6 +706,12 @@ structure AtlasFFI = struct
 
   val atlas_ktype_x =
     Foreign.buildCall1 (atlas_ktype_x_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_ktype_height =
+    Foreign.buildCall1 (atlas_ktype_height_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_ktype_next_to_lowest =
+    Foreign.buildCall1 (atlas_ktype_next_to_lowest_sym, Foreign.cPointer, Foreign.cPointer)
 
   val atlas_ktype_lambda_rho_text =
     Foreign.buildCall1 (atlas_ktype_lambda_rho_text_sym, Foreign.cPointer, Foreign.cString)

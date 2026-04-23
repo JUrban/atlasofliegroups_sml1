@@ -3812,6 +3812,96 @@ extern "C" int atlas_ktype_x(void* t_handle)
   }
 }
 
+extern "C" int atlas_ktype_height(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_height: null K_type handle";
+      return -1;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    return static_cast<int>(t->t.height());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" void* atlas_ktype_next_to_lowest(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_next_to_lowest: null K_type handle";
+      return nullptr;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr)
+    {
+      g_last_error = "atlas_ktype_next_to_lowest: null group pointer in K_type";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(t->group->G);
+    const int start = static_cast<int>(t->t.height()) + 1;
+
+    // Incrementally widen the cutoff until the K-type formula shows a term
+    // above the lowest K-type. We cap iterations to avoid infinite loops if a
+    // pathological case occurs.
+    for (int cutoff = start; cutoff < start + 512; ++cutoff)
+    {
+      atlas::K_repr::K_type base = t->t;
+      atlas::K_repr::KT_pol kt_int = rc.K_type_formula(base, static_cast<atlas::repr::level>(cutoff));
+
+      bool found = false;
+      atlas::K_repr::K_type best = t->t;
+      int best_h = 0;
+
+      for (const auto& term : kt_int)
+      {
+        if (term.second == 0)
+          continue;
+        const auto& tau = term.first;
+        if (tau == t->t)
+          continue;
+        const int h = static_cast<int>(tau.height());
+        if (!found || h < best_h)
+        {
+          best = tau.copy();
+          best_h = h;
+          found = true;
+        }
+      }
+
+      if (found)
+        return static_cast<void*>(new KTypeHandle(t->group, std::move(best)));
+    }
+
+    g_last_error = "atlas_ktype_next_to_lowest: no higher K-type found within cutoff budget";
+    return nullptr;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" const char* atlas_ktype_lambda_rho_text(void* t_handle)
 {
   try

@@ -56,6 +56,14 @@ structure KType = struct
       if n < 0 then raise Fail ("KType.x: failed: " ^ AtlasFFI.atlas_last_error ()) else n
     end
 
+  (* Height of the K-type. *)
+  fun height (t: ktype) : int =
+    let
+      val h = AtlasFFI.atlas_ktype_height t
+    in
+      if h < 0 then raise Fail ("KType.height: failed: " ^ AtlasFFI.atlas_last_error ()) else h
+    end
+
   (* Lambda+rho text attached to the K-type (Atlas format). *)
   fun lambdaRhoText (t: ktype) : string =
     let
@@ -88,5 +96,28 @@ structure KType = struct
           ()
     in
       pol
+    end
+
+  (*
+    Next-to-lowest K-type in the standard module with lowest K-type `t`.
+
+    Atlas correspondence
+    - Mirrors `next_to_lowest(KType mu)` from `FPP_faces_herm.at`:
+      search for the first cutoff where `K_type_formula_to_ht(mu,cutoff)-mu`
+      is nonzero, and return the lowest-height term above `mu`.
+
+    Ownership
+    - Returns a fresh `ktype` handle; caller must free it with `free`.
+  *)
+  fun nextToLowest (t: ktype) : ktype =
+    let
+      val u = AtlasFFI.atlas_ktype_next_to_lowest t
+      val () =
+        if u = Foreign.Memory.null then
+          raise Fail ("KType.nextToLowest: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+    in
+      u
     end
 end
