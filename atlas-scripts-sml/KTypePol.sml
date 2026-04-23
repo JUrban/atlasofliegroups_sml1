@@ -117,7 +117,10 @@ structure KTypePol = struct
 
   (* Coefficient-wise purity test `is_pure(KTypePol)` from `basic.at`. *)
   fun isPure (pol: ktypepol, rank: int) : bool =
-    List.all coefIsPure (terms (pol, rank))
+    if pol = Foreign.Memory.null then
+      raise Fail "KTypePol.isPure: null handle"
+    else
+      AtlasFFI.atlas_ktypepol_is_pure pol = 1
 
   (* Lowest term height with a mixed coefficient `a + s*b` where both parts are
      nonzero; returns `~1` if all coefficients are pure.
@@ -127,19 +130,17 @@ structure KTypePol = struct
        used by `to_ht.at` to report the first truncation height at which
        unitarity-to-height fails. *)
   fun impureHeight (pol: ktypepol, rank: int) : int =
-    let
-      fun step (t: term, best: int option) : int option =
-        if #e t <> 0 andalso #s t <> 0 then
-          (case best of
-             NONE => SOME (#height t)
-           | SOME h => SOME (Int.min (h, #height t)))
+    if pol = Foreign.Memory.null then
+      raise Fail "KTypePol.impureHeight: null handle"
+    else
+      let
+        val d = AtlasFFI.atlas_ktypepol_impure_height pol
+      in
+        if d < ~1 then
+          raise Fail ("KTypePol.impureHeight: failed: " ^ AtlasFFI.atlas_last_error ())
         else
-          best
-    in
-      case List.foldl step NONE (terms (pol, rank)) of
-        NONE => ~1
-      | SOME h => h
-    end
+          d
+      end
 
   (* `.at`-style alias. *)
   val impure_height = impureHeight

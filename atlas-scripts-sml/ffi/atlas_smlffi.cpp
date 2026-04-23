@@ -3478,6 +3478,42 @@ extern "C" int atlas_ktypepol_is_pure(void* kt_handle)
   return atlas_ktypepol_is_typewise_pure(kt_handle);
 }
 
+extern "C" int atlas_ktypepol_impure_height(void* kt_handle)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_impure_height: null handle";
+      return -2;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+
+    int best = -1;
+    for (const auto& term : kt->poly)
+    {
+      const auto& c = term.second;
+      if (c.e() != 0 && c.s() != 0)
+      {
+        const int h = static_cast<int>(term.first.height());
+        if (best < 0 || h < best)
+          best = h;
+      }
+    }
+    return best;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -2;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -2;
+  }
+}
+
 extern "C" void atlas_ktypepol_free(void* kt_handle)
 {
   try

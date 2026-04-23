@@ -176,6 +176,7 @@ structure AtlasFFI = struct
   val atlas_ktypepol_term_text_sym = Foreign.getSymbol lib "atlas_ktypepol_term_text"
   val atlas_ktypepol_is_typewise_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_typewise_pure"
   val atlas_ktypepol_is_pure_sym = Foreign.getSymbol lib "atlas_ktypepol_is_pure"
+  val atlas_ktypepol_impure_height_sym = Foreign.getSymbol lib "atlas_ktypepol_impure_height"
   val atlas_ktypepol_to_ht_sym = Foreign.getSymbol lib "atlas_ktypepol_to_ht"
   val atlas_ktypepol_clone_sym = Foreign.getSymbol lib "atlas_ktypepol_clone"
   val atlas_ktypepol_add_sym = Foreign.getSymbol lib "atlas_ktypepol_add"
@@ -642,6 +643,9 @@ structure AtlasFFI = struct
 
   val atlas_ktypepol_is_pure =
     Foreign.buildCall1 (atlas_ktypepol_is_pure_sym, Foreign.cPointer, Foreign.cInt)
+
+  val atlas_ktypepol_impure_height =
+    Foreign.buildCall1 (atlas_ktypepol_impure_height_sym, Foreign.cPointer, Foreign.cInt)
 
   val atlas_ktypepol_to_ht =
     Foreign.buildCall2 (atlas_ktypepol_to_ht_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)
