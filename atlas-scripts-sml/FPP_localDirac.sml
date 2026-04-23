@@ -125,7 +125,7 @@ structure FPP_localDirac = struct
     , faceCtx: FPPFaceKey.t
     , barycenters: ratvec list
     , gammaFaceTable: (int list * face_key) array
-    , twoRhoCheck: int list
+    , twoRhoCheck: int list option ref
     }
 
   fun create_ctx (g: group) : ctx =
@@ -236,9 +236,13 @@ structure FPP_localDirac = struct
           SOME tab => tab
         | NONE => computeGammaFaceTable (faceCtx, barycenters)
 
-      val twoRhoCheck = two_rho_check g
     in
-      { g = g, faceCtx = faceCtx, barycenters = barycenters, gammaFaceTable = gammaFaceTable, twoRhoCheck = twoRhoCheck }
+      { g = g
+      , faceCtx = faceCtx
+      , barycenters = barycenters
+      , gammaFaceTable = gammaFaceTable
+      , twoRhoCheck = ref NONE
+      }
     end
 
   fun global_face_of_gamma_ctx (c: ctx, gamma: ratvec) : face_key =
@@ -564,6 +568,17 @@ structure FPP_localDirac = struct
   (* `.at` helpers: pmax / pmin                                              *)
   (* ---------------------------------------------------------------------- *)
 
+  fun twoRhoCheck_ctx (c: ctx) : int list =
+    case !(#twoRhoCheck c) of
+      SOME v => v
+    | NONE =>
+        let
+          val v = two_rho_check (#g c)
+          val () = #twoRhoCheck c := SOME v
+        in
+          v
+        end
+
   (* Pair an integer coweight with a rational weight, returning (num,den) without normalization. *)
   fun pairingNumDen (coweight: int list, w: ratvec) : IntInf.int * int =
     let
@@ -661,7 +676,7 @@ structure FPP_localDirac = struct
         let
           val vd = #vd (#faceCtx c)
           val fd = localFD_Lvd_simple (g, x, lambda, vd)
-          val p0 = pmax_twoRhoCheck (#twoRhoCheck c) (g, x, lambda, #Lvd fd)
+          val p0 = pmax_twoRhoCheck (twoRhoCheck_ctx c) (g, x, lambda, #Lvd fd)
           val p1 = AtlasFFI.atlas_param_normalise p0
           val () = AtlasFFI.atlas_param_free p0
           val () =
@@ -1382,6 +1397,13 @@ structure FPP_localDirac = struct
 
   fun local_test_GEO_hash2_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     local_test_GEO_hash2_into_hash_limit_ctx (c, x, lambda, ~1, uhash)
+
+  fun local_test_GEO_hash2_into_hash_limit
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, uhash: ParamHash.t) : int =
+    local_test_GEO_hash2_into_hash_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, uhash)
+
+  fun local_test_GEO_hash2_into_hash (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash2_into_hash_limit (g, x, lambda, ~1, uhash)
 
   fun local_test_GEO_hash_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
     local_test_GEO_hash2_limit_ctx (c, x, lambda, maxFacesPerDim)
