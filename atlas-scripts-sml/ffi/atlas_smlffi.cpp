@@ -7080,3 +7080,68 @@ extern "C" void* atlas_param_new_from_lambda_nu_text(void* group_handle,
     return nullptr;
   }
 }
+
+extern "C" void* atlas_param_new_from_lambda_rho_gamma_text(void* group_handle,
+                                                           int x,
+                                                           const char* lambda_rho_nums_text,
+                                                           int lambda_rho_denom,
+                                                           const char* gamma_nums_text,
+                                                           int gamma_denom)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_param_new_from_lambda_rho_gamma_text: null group handle";
+      return nullptr;
+    }
+    if (lambda_rho_denom == 0 || gamma_denom == 0)
+    {
+      g_last_error = "atlas_param_new_from_lambda_rho_gamma_text: zero denominator";
+      return nullptr;
+    }
+    if (lambda_rho_denom != 1)
+    {
+      g_last_error = "atlas_param_new_from_lambda_rho_gamma_text: lambda_rho must be integral (den=1)";
+      return nullptr;
+    }
+
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::repr::Rep_context rc(g->G);
+    const auto rank = rc.rank();
+
+    if (x < 0 || static_cast<unsigned int>(x) >= g->G.KGB_size())
+    {
+      g_last_error = "atlas_param_new_from_lambda_rho_gamma_text: invalid KGB index";
+      return nullptr;
+    }
+
+    std::vector<int32_t> lambda_rho_nums;
+    std::vector<int32_t> gamma_nums;
+    if (!parse_int32_list(lambda_rho_nums_text, rank, lambda_rho_nums))
+      return nullptr;
+    if (!parse_int32_list(gamma_nums_text, rank, gamma_nums))
+      return nullptr;
+
+    atlas::Weight lambda_rho(rank);
+    for (std::size_t i = 0; i < rank; ++i)
+      lambda_rho[i] = static_cast<int>(lambda_rho_nums[i]);
+
+    atlas::RatWeight gamma = ratweight_from_int32(gamma_nums.data(), rank, gamma_denom);
+
+    atlas::repr::StandardRepr sr =
+      rc.sr_gamma(static_cast<atlas::KGBElt>(x), lambda_rho, std::move(gamma));
+
+    return static_cast<void*>(new ParamHandle(g, std::move(sr)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}

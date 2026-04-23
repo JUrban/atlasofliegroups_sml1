@@ -184,6 +184,8 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_param_new_from_lambda_nu"
   val atlas_param_new_from_lambda_nu_text_sym =
     Foreign.getSymbol lib "atlas_param_new_from_lambda_nu_text"
+  val atlas_param_new_from_lambda_rho_gamma_text_sym =
+    Foreign.getSymbol lib "atlas_param_new_from_lambda_rho_gamma_text"
   val atlas_param_equal_sym = Foreign.getSymbol lib "atlas_param_equal"
   val atlas_param_hash_sym = Foreign.getSymbol lib "atlas_param_hash"
   val atlas_param_contragredient_sym = Foreign.getSymbol lib "atlas_param_contragredient"
@@ -730,6 +732,16 @@ structure AtlasFFI = struct
   val atlas_param_new_from_lambda_nu_text =
     Foreign.buildCall6
       ( atlas_param_new_from_lambda_nu_text_sym
+      , (Foreign.cPointer, Foreign.cInt, Foreign.cString, Foreign.cInt, Foreign.cString, Foreign.cInt)
+      , Foreign.cPointer
+      )
+
+  (* Construct a parameter by specifying the integral `lambda_rho` and the
+     infinitesimal character `gamma` directly (Atlas `param(x,lambda_rho,gamma)`
+     primitive; internally `Rep_context::sr_gamma`). *)
+  val atlas_param_new_from_lambda_rho_gamma_text =
+    Foreign.buildCall6
+      ( atlas_param_new_from_lambda_rho_gamma_text_sym
       , (Foreign.cPointer, Foreign.cInt, Foreign.cString, Foreign.cInt, Foreign.cString, Foreign.cInt)
       , Foreign.cPointer
       )

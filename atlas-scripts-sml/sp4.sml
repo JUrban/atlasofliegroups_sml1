@@ -1,8 +1,6 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/groups.sml";
 use "atlas-scripts-sml/RootDatum.sml";
-use "atlas-scripts-sml/parameters.sml";
-use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/ParamBlocks.sml";
 use "atlas-scripts-sml/Rat.sml";
 
@@ -25,9 +23,9 @@ use "atlas-scripts-sml/Rat.sml";
     the existing group constructor `Groups.Sp_R(4)` (type C2, quasisplit).
   - The `.at` `param(x,lambda_rho,gamma)` primitive uses an integral
     `lambda_rho` and a rational “infinitesimal character” vector. The Poly/ML
-    shim constructor is `atlas_param_new_from_lambda_nu_text`, which expects
-    `lambda = lambda_rho + rho(G)` and `nu = gamma`. We perform that conversion
-    in `param`.
+    shim constructor `atlas_param_new_from_lambda_rho_gamma_text` is a direct
+    wrapper for the Atlas C++ `Rep_context::sr_gamma` constructor, matching the
+    `.at` semantics.
 
   Ownership
   - `sp4R` and `sp4` are allocated handles held globally in this structure (as
@@ -138,16 +136,13 @@ structure Sp4 = struct
   (* Build `param(x,lambda_rho,gamma)` (script semantics). *)
   fun param (xIndex: int, lambdaRho: int list, gamma: ratvec) : param =
     let
-      val rho = Parameters.parseRatvecText (AtlasFFI.atlas_group_rho_text sp4R)
-      val lambda = Parameters.ratvecAdd (rho, {den = 1, nums = lambdaRho})
-      val lambda = Lattice.ratvecNormalize lambda
       val gamma = Lattice.ratvecNormalize gamma
       val p =
-        AtlasFFI.atlas_param_new_from_lambda_nu_text
+        AtlasFFI.atlas_param_new_from_lambda_rho_gamma_text
           ( sp4R
           , xIndex
-          , intsToCText (#nums lambda)
-          , #den lambda
+          , intsToCText lambdaRho
+          , 1
           , intsToCText (#nums gamma)
           , #den gamma
           )

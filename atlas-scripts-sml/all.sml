@@ -79,6 +79,7 @@ val () = tryUse "atlas-scripts-sml/standardize.sml"
 (* FFI-facing representation utilities (partial ports). *)
 val () = tryUse "atlas-scripts-sml/representations.sml"
 val () = tryUse "atlas-scripts-sml/parameters.sml"
+val () = tryUse "atlas-scripts-sml/translate.sml"
 val () = tryUse "atlas-scripts-sml/complex.sml"
 val () = tryUse "atlas-scripts-sml/is_normal.sml"
 val () = tryUse "atlas-scripts-sml/complementary_series.sml"
