@@ -10,6 +10,7 @@ use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/unity.sml";
 use "atlas-scripts-sml/F4_FPP_barycenters.sml";
 use "atlas-scripts-sml/F4_FPP_lambdas.sml";
+use "atlas-scripts-sml/hash.sml";
 
 (*
   File: atlas-scripts-sml/F4_FPP_points_compute.sml
@@ -105,6 +106,9 @@ structure F4_FPP_points_compute = struct
         else
           FPP_barycenters_fold.barycenters_all g
 
+      val baryA = Array.fromList barycenters
+      val baryN = Array.length baryA
+
       val lambdasByX =
         if looksLikeF4s () then
           (F4_FPP_lambdas.loadRatvecs kgbSize handle _ => FPP_lambdas_fold.FPP_lambdas_table g)
@@ -180,11 +184,61 @@ structure F4_FPP_points_compute = struct
             end
         end
 
+      type gamma_bucket =
+        { keysH: int list Hash.t
+        , idxsByKey: int list array
+        }
+
+      fun gammaBucketForTheta (onePlus: Lattice.mat) : gamma_bucket =
+        let
+          val keysH = Hash.make_hash_reserve ({hash_code = Hash.hash_code_vec, eq = (op =) }, baryN)
+          val idxsByKey : int list array ref = ref (Array.array (Int.max (16, baryN div 4), []))
+
+          fun ensureCap need =
+            let
+              val a = !idxsByKey
+              val cap = Array.length a
+            in
+              if need <= cap then
+                ()
+              else
+                let
+                  val newCap = Int.max (need, cap * 2)
+                  val b = Array.array (newCap, ([]: int list))
+                  fun copy i =
+                    if i = cap then () else (Array.update (b, i, Array.sub (a, i)); copy (i + 1))
+                in
+                  copy 0;
+                  idxsByKey := b
+                end
+            end
+
+          fun loop i =
+            if i = baryN then
+              ()
+            else
+              let
+                val gamma = Array.sub (baryA, i)
+                val key = ratvecKey (Lattice.matVecMulRatvec onePlus gamma)
+                val sizeBefore = #size keysH ()
+                val j = #match keysH key
+                val sizeAfter = #size keysH ()
+                val () = if sizeAfter = sizeBefore + 1 then ensureCap (j + 1) else ()
+                val a = !idxsByKey
+              in
+                Array.update (a, j, i :: Array.sub (a, j));
+                loop (i + 1)
+              end
+        in
+          loop 0;
+          { keysH = keysH, idxsByKey = !idxsByKey }
+        end
+
       fun loopX x =
         let
           val theta = parseTheta x
           val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
-          val baryKeys = List.map (fn gam => ratvecKey (Lattice.matVecMulRatvec onePlus gam)) barycenters
+          val bucket = gammaBucketForTheta onePlus
 
           fun loopLambda (lambda: ratvec) =
             let
@@ -192,13 +246,16 @@ structure F4_FPP_points_compute = struct
               val thetaPlusHalf = Lattice.ratvecScale (thetaPlus, 1, 2)
               val k = ratvecKey thetaPlus
 
-              fun scan ([], []) = ()
-                | scan (gam :: gs, k2 :: ks) =
-                    (if k2 = k then mkParamAndMaybeAdd (x, lambda, thetaPlusHalf, gam) else ();
-                     scan (gs, ks))
-                | scan _ = raise Fail "F4_FPP_points_compute: internal error (bary/key mismatch)"
+              val j = Hash.lookup (#keysH bucket) k
+
+              fun loopIdxs idxs =
+                (case idxs of
+                   [] => ()
+                 | i :: rest =>
+                     (mkParamAndMaybeAdd (x, lambda, thetaPlusHalf, Array.sub (baryA, i));
+                      loopIdxs rest))
             in
-              scan (barycenters, baryKeys)
+              if j < 0 then () else loopIdxs (Array.sub (#idxsByKey bucket, j))
             end
 
           val lambdas = Array.sub (lambdasByX, x)
