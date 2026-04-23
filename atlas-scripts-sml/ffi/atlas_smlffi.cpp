@@ -3541,6 +3541,101 @@ extern "C" void atlas_ktype_free(void* t_handle)
   }
 }
 
+extern "C" void* atlas_ktype_clone(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_clone: null handle";
+      return nullptr;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    return static_cast<void*>(new KTypeHandle(t->group, atlas::K_repr::K_type(t->t)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" int atlas_ktype_equal(void* a_handle, void* b_handle)
+{
+  try
+  {
+    if (a_handle == nullptr || b_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_equal: null handle";
+      return -1;
+    }
+    const auto* a = static_cast<const KTypeHandle*>(a_handle);
+    const auto* b = static_cast<const KTypeHandle*>(b_handle);
+    if (a->group != b->group)
+      return 0;
+    return (a->t == b->t) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" long atlas_ktype_hash_code(void* t_handle, long mod)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_hash_code: null handle";
+      return -1;
+    }
+    if (mod <= 1)
+    {
+      g_last_error = "atlas_ktype_hash_code: nonpositive modulus";
+      return -1;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    const std::int64_t m = static_cast<std::int64_t>(mod);
+    const std::int64_t base = 8647;
+    std::int64_t h = 0;
+
+    auto reduce = [&](std::int64_t x) -> std::int64_t {
+      const std::int64_t r = x % m;
+      return r < 0 ? r + m : r;
+    };
+    auto mix = [&](std::int64_t e) { h = reduce(reduce(e) + base * h); };
+
+    mix(static_cast<std::int64_t>(t->t.x()));
+    const auto& lam = t->t.lambda_rho();
+    for (std::size_t j = 0; j < lam.size(); ++j)
+      mix(static_cast<std::int64_t>(lam[j]));
+
+    return static_cast<long>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 extern "C" long atlas_param_LKTs_size(void* p_handle)
 {
   try

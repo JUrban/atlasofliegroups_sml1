@@ -189,6 +189,9 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_param_good_range_induced_from_first_text"
 
   val atlas_ktype_free_sym = Foreign.getSymbol lib "atlas_ktype_free"
+  val atlas_ktype_clone_sym = Foreign.getSymbol lib "atlas_ktype_clone"
+  val atlas_ktype_equal_sym = Foreign.getSymbol lib "atlas_ktype_equal"
+  val atlas_ktype_hash_code_sym = Foreign.getSymbol lib "atlas_ktype_hash_code"
   val atlas_param_LKTs_size_sym = Foreign.getSymbol lib "atlas_param_LKTs_size"
   val atlas_param_LKTs_get_ktype_clone_sym = Foreign.getSymbol lib "atlas_param_LKTs_get_ktype_clone"
   val atlas_param_LKTs_get_mult_sym = Foreign.getSymbol lib "atlas_param_LKTs_get_mult"
@@ -693,6 +696,15 @@ structure AtlasFFI = struct
 
   val atlas_ktype_free =
     Foreign.buildCall1 (atlas_ktype_free_sym, Foreign.cPointer, Foreign.cVoid)
+
+  val atlas_ktype_clone =
+    Foreign.buildCall1 (atlas_ktype_clone_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_ktype_equal =
+    Foreign.buildCall2 (atlas_ktype_equal_sym, (Foreign.cPointer, Foreign.cPointer), Foreign.cInt)
+
+  val atlas_ktype_hash_code =
+    Foreign.buildCall2 (atlas_ktype_hash_code_sym, (Foreign.cPointer, Foreign.cLong), Foreign.cLong)
 
   val atlas_param_LKTs_size =
     Foreign.buildCall1 (atlas_param_LKTs_size_sym, Foreign.cPointer, Foreign.cLong)
