@@ -4008,6 +4008,60 @@ extern "C" void* atlas_param_full_deform(void* p_handle)
   }
 }
 
+extern "C" void* atlas_param_deform(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_deform: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_deform: null group/Rep_table";
+      return nullptr;
+    }
+
+    auto& rt = *p->group->rt;
+    atlas::repr::Rep_context rc(p->group->G);
+
+    auto finals = rc.finals_for(p->sr);
+    auto* out = new ParamListHandle(p->group);
+
+    for (auto it = finals.begin(); not finals.at_end(it); ++it)
+    {
+      auto q = it->first;
+      const int mult = it->second;
+
+      atlas::BlockElt q_index;
+      atlas::repr::block_modifier bm;
+      auto& block = rt.lookup(q, q_index, bm);
+      for (auto&& term : rt.deformation_terms(block, q_index, bm, q.gamma()))
+      {
+        const long long c = static_cast<long long>(term.second) * static_cast<long long>(mult);
+        if (c < static_cast<long long>(std::numeric_limits<int>::min()) ||
+            c > static_cast<long long>(std::numeric_limits<int>::max()))
+          throw std::runtime_error("atlas_param_deform: coefficient out of int range");
+        out->terms.emplace_back(std::move(term.first), static_cast<int>(c));
+      }
+    }
+
+    return static_cast<void*>(out);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" void* atlas_param_c_form_irreducible(void* p_handle)
 {
   try

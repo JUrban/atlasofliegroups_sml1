@@ -177,6 +177,7 @@ structure AtlasFFI = struct
   val atlas_param_hash_sym = Foreign.getSymbol lib "atlas_param_hash"
   val atlas_param_contragredient_sym = Foreign.getSymbol lib "atlas_param_contragredient"
   val atlas_param_full_deform_sym = Foreign.getSymbol lib "atlas_param_full_deform"
+  val atlas_param_deform_sym = Foreign.getSymbol lib "atlas_param_deform"
   val atlas_param_c_form_irreducible_sym = Foreign.getSymbol lib "atlas_param_c_form_irreducible"
   val atlas_param_hermitian_form_irreducible_sym =
     Foreign.getSymbol lib "atlas_param_hermitian_form_irreducible"
@@ -687,6 +688,9 @@ structure AtlasFFI = struct
 
   val atlas_param_full_deform =
     Foreign.buildCall1 (atlas_param_full_deform_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_param_deform =
+    Foreign.buildCall1 (atlas_param_deform_sym, Foreign.cPointer, Foreign.cPointer)
 
   val atlas_param_c_form_irreducible =
     Foreign.buildCall1 (atlas_param_c_form_irreducible_sym, Foreign.cPointer, Foreign.cPointer)
