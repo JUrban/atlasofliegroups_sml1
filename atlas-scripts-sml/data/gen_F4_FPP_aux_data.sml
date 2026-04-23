@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/FPP_lambdas_fold.sml";
+use "atlas-scripts-sml/FPP_vertices_fold.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
@@ -65,6 +66,24 @@ structure GenF4FPPAuxData = struct
       (List.app line barys; TextIO.closeOut out) handle e => (TextIO.closeOut out; raise e)
     end
 
+  fun writeVertices (path: string, verts: ratvec list) : unit =
+    let
+      val out = TextIO.openOut path
+      fun line u =
+        let
+          val u = Lattice.ratvecNormalize u
+          val nums = #nums u
+        in
+          case nums of
+            [a, b, c, d] =>
+              TextIO.output
+                (out, Int.toString (#den u) ^ " " ^ Int.toString a ^ " " ^ Int.toString b ^ " " ^ Int.toString c ^ " " ^ Int.toString d ^ "\n")
+          | _ => raise Fail "writeVertices: expected length 4"
+        end
+    in
+      (List.app line verts; TextIO.closeOut out) handle e => (TextIO.closeOut out; raise e)
+    end
+
   fun writeLambdas (path: string, lambdasByX: ratvec list array) : unit =
     let
       val out = TextIO.openOut path
@@ -104,21 +123,26 @@ structure GenF4FPPAuxData = struct
           ()
 
       val barys = noReps (FPP_barycenters_fold.barycenters_all g)
+      val verts = noReps (FPP_vertices_fold.vertices g)
       val lambdasByX = FPP_lambdas_fold.FPP_lambdas_table g
 
       val () = AtlasFFI.atlas_group_free g
 
       val baryBase = "atlas-scripts-sml/data/F4_FPP_barycenters.txt"
+      val vertBase = "atlas-scripts-sml/data/F4_FPP_vertices.txt"
       val lamBase = "atlas-scripts-sml/data/F4_FPP_lambdas.txt"
       val baryPath = if overwrite then baryBase else baryBase ^ ".new"
+      val vertPath = if overwrite then vertBase else vertBase ^ ".new"
       val lamPath = if overwrite then lamBase else lamBase ^ ".new"
       val () = writeBarycenters (baryPath, barys)
+      val () = writeVertices (vertPath, verts)
       val () = writeLambdas (lamPath, lambdasByX)
 
       val () =
         TextIO.print
           ("Wrote:\n"
            ^ "  " ^ baryPath ^ " (" ^ Int.toString (length barys) ^ " rows)\n"
+           ^ "  " ^ vertPath ^ " (" ^ Int.toString (length verts) ^ " rows)\n"
            ^ "  " ^ lamPath ^ " (" ^ Int.toString (Array.length lambdasByX) ^ " x-buckets)\n")
     in
       ()

@@ -100,6 +100,23 @@ structure FPPFaceKey = struct
       Array.fromList sorted
     end
 
+  (*
+    Build a minimal `FPPFaceKey.t` from a vertex list, for callers that only
+    need the global folded-FPP vertex table (`vd`/`verts`).
+
+    This deliberately omits the barycenter-dimension lookup and pair-sum table,
+    so it cannot be used with `faceKeyOfGamma`.
+  *)
+  fun createVerticesOnlyFromList (vertsList: ratvec list) : t =
+    let
+      val vd = VertexData.fromList vertsList
+      val verts = #verts vd
+      val gammaDim = (fn (_: key) => NONE)
+      val pairSums : (key * (int * int)) array = Array.fromList []
+    in
+      {verts = verts, vd = vd, gammaDim = gammaDim, pairSums = pairSums}
+    end
+
   (* Construct the face-key context for `g`, including vertices and pair sums. *)
   fun create (g: AtlasFFI.group) : t =
     let
@@ -126,15 +143,7 @@ structure FPPFaceKey = struct
     - `pairSums` is empty.
   *)
   fun createVerticesOnly (g: AtlasFFI.group) : t =
-    let
-      val vertsList = FPP_vertices_fold.vertices g
-      val vd = VertexData.fromList vertsList
-      val verts = #verts vd
-      val gammaDim = (fn (_: key) => NONE)
-      val pairSums : (key * (int * int)) array = Array.fromList []
-    in
-      {verts = verts, vd = vd, gammaDim = gammaDim, pairSums = pairSums}
-    end
+    createVerticesOnlyFromList (FPP_vertices_fold.vertices g)
 
   (* Lookup all vertex index pairs `(i,j)` with `v_i + v_j` having key `k`. *)
   fun lookupPairSums ({pairSums, ...}: t, k: key) : (int * int) list =

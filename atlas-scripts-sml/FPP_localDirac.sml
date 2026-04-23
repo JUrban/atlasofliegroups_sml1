@@ -3,6 +3,7 @@ use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/FPP_barycenters_fold.sml";
 use "atlas-scripts-sml/F4_FPP_barycenters.sml";
+use "atlas-scripts-sml/F4_FPP_vertices.sml";
 use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/ParamHash.sml";
@@ -114,6 +115,12 @@ structure FPP_localDirac = struct
              (SOME (F4_FPP_barycenters.loadRatvecs ()) handle _ => NONE)
          | _ => NONE)
 
+      fun loadVertices (path: string) : ratvec list option =
+        (case path of
+           "atlas-scripts-sml/data/F4_FPP_vertices.txt" =>
+             (SOME (F4_FPP_vertices.loadRatvecs ()) handle _ => NONE)
+         | _ => NONE)
+
       fun loadGammaFaceTable (path: string) : (int list * face_key) array option =
         let
           val ins = TextIO.openIn path
@@ -180,7 +187,9 @@ structure FPP_localDirac = struct
 
       val faceCtx =
         if looksLikeF4s () andalso Option.isSome gammaFaceTableOpt then
-          FPPFaceKey.createVerticesOnly g
+          (case loadVertices "atlas-scripts-sml/data/F4_FPP_vertices.txt" of
+             SOME verts => FPPFaceKey.createVerticesOnlyFromList verts
+           | NONE => FPPFaceKey.createVerticesOnly g)
         else
           FPPFaceKey.create g
 
