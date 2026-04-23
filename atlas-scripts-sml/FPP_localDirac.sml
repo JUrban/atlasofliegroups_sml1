@@ -11,6 +11,7 @@ use "atlas-scripts-sml/BigUnitaryCache.sml";
 use "atlas-scripts-sml/FPP_unipotents.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
+use "atlas-scripts-sml/RootDatum.sml";
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
 use "atlas-scripts-sml/hash.sml";
@@ -516,6 +517,99 @@ structure FPP_localDirac = struct
 
   fun localFD_Lvd2_simple (g: group, x: int, lambda: ratvec) : (VertexData.t * perm2 * int array) =
     localFD_Lvd2_simple_ctx (create_ctx g, x, lambda)
+
+  (* ---------------------------------------------------------------------- *)
+  (* `.at` helpers: pmax / pmin                                              *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* Sum integer vectors (assumes nonempty, equal length). *)
+  fun sumVecs (vs: int list list) : int list =
+    (case vs of
+       [] => []
+     | v0 :: rest =>
+         let
+           val n = length v0
+           val () = if List.all (fn v => length v = n) rest then () else raise Fail "sumVecs: ragged"
+           fun add2 (xs, ys) = ListPair.mapEq (op +) (xs, ys)
+         in
+           List.foldl add2 v0 rest
+         end)
+
+  (* `2rho_check` as an integer coweight: sum of positive coroots. *)
+  fun two_rho_check (g: group) : int list =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("two_rho_check: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val tworc = sumVecs (RootDatum.posCorootsCols rd)
+      val () = AtlasFFI.atlas_rootdatum_free rd
+    in
+      tworc
+    end
+
+  (* Pair an integer coweight with a rational weight, returning (num,den) without normalization. *)
+  fun pairingNumDen (coweight: int list, w: ratvec) : IntInf.int * int =
+    let
+      val nums = #nums w
+      val den = #den w
+      val () = if length coweight = length nums then () else raise Fail "pairingNumDen: length mismatch"
+      val s =
+        List.foldl (op +) (0:IntInf.int)
+          (ListPair.mapEq (fn (a, b) => IntInf.fromInt a * IntInf.fromInt b) (coweight, nums))
+    in
+      (s, den)
+    end
+
+  fun fracGT ((aNum, aDen): IntInf.int * int, (bNum, bDen): IntInf.int * int) : bool =
+    aNum * IntInf.fromInt bDen > bNum * IntInf.fromInt aDen
+
+  fun fracLT ((aNum, aDen): IntInf.int * int, (bNum, bDen): IntInf.int * int) : bool =
+    aNum * IntInf.fromInt bDen < bNum * IntInf.fromInt aDen
+
+  (* `.at` `pmax(x,lambda,Lvd)`: pick the vertex `nu` in `Lvd.list` maximizing `<2rho_check,nu>`. *)
+  fun pmax (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
+    let
+      val tworc = two_rho_check g
+      val vs = VertexData.toList Lvd
+      val () = if null vs then raise Fail "pmax: empty local vertex list" else ()
+
+      fun best (v, (bestV, bestScore)) =
+        let
+          val sc = pairingNumDen (tworc, v)
+        in
+          if fracGT (sc, bestScore) then (v, sc) else (bestV, bestScore)
+        end
+
+      val v0 = hd vs
+      val init = (v0, pairingNumDen (tworc, v0))
+      val (vBest, _) = List.foldl best init (tl vs)
+    in
+      Representations.parameter (g, x, lambda, vBest)
+    end
+
+  (* `.at` `pmin(x,lambda,Lvd)`: pick the vertex `nu` in `Lvd.list` minimizing `<2rho_check,nu>`. *)
+  fun pmin (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
+    let
+      val tworc = two_rho_check g
+      val vs = VertexData.toList Lvd
+      val () = if null vs then raise Fail "pmin: empty local vertex list" else ()
+
+      fun best (v, (bestV, bestScore)) =
+        let
+          val sc = pairingNumDen (tworc, v)
+        in
+          if fracLT (sc, bestScore) then (v, sc) else (bestV, bestScore)
+        end
+
+      val v0 = hd vs
+      val init = (v0, pairingNumDen (tworc, v0))
+      val (vBest, _) = List.foldl best init (tl vs)
+    in
+      Representations.parameter (g, x, lambda, vBest)
+    end
 
   (*
     Enumerate all *stable* local faces meeting the `(x,lambda)` slice, as a list
