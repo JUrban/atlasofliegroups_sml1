@@ -78,6 +78,38 @@ structure FPP_localDirac = struct
       #den u :: #nums u
     end
 
+  (* ---------------------------------------------------------------------- *)
+  (* Root-datum helpers used by pmax/pmin and height schedules.              *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* Sum integer vectors (assumes nonempty, equal length). *)
+  fun sumVecs (vs: int list list) : int list =
+    (case vs of
+       [] => []
+     | v0 :: rest =>
+         let
+           val n = length v0
+           val () = if List.all (fn v => length v = n) rest then () else raise Fail "sumVecs: ragged"
+           fun add2 (xs, ys) = ListPair.mapEq (op +) (xs, ys)
+         in
+           List.foldl add2 v0 rest
+         end)
+
+  (* `2rho_check` as an integer coweight: sum of positive coroots. *)
+  fun two_rho_check (g: group) : int list =
+    let
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () =
+        if rd = Foreign.Memory.null then
+          raise Fail ("two_rho_check: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val tworc = sumVecs (RootDatum.posCorootsCols rd)
+      val () = AtlasFFI.atlas_rootdatum_free rd
+    in
+      tworc
+    end
+
   (*
     Group-level context
 
@@ -93,6 +125,7 @@ structure FPP_localDirac = struct
     , faceCtx: FPPFaceKey.t
     , barycenters: ratvec list
     , gammaFaceTable: (int list * face_key) array
+    , twoRhoCheck: int list
     }
 
   fun create_ctx (g: group) : ctx =
@@ -202,8 +235,10 @@ structure FPP_localDirac = struct
         case gammaFaceTableOpt of
           SOME tab => tab
         | NONE => computeGammaFaceTable (faceCtx, barycenters)
+
+      val twoRhoCheck = two_rho_check g
     in
-      { g = g, faceCtx = faceCtx, barycenters = barycenters, gammaFaceTable = gammaFaceTable }
+      { g = g, faceCtx = faceCtx, barycenters = barycenters, gammaFaceTable = gammaFaceTable, twoRhoCheck = twoRhoCheck }
     end
 
   fun global_face_of_gamma_ctx (c: ctx, gamma: ratvec) : face_key =
@@ -529,34 +564,6 @@ structure FPP_localDirac = struct
   (* `.at` helpers: pmax / pmin                                              *)
   (* ---------------------------------------------------------------------- *)
 
-  (* Sum integer vectors (assumes nonempty, equal length). *)
-  fun sumVecs (vs: int list list) : int list =
-    (case vs of
-       [] => []
-     | v0 :: rest =>
-         let
-           val n = length v0
-           val () = if List.all (fn v => length v = n) rest then () else raise Fail "sumVecs: ragged"
-           fun add2 (xs, ys) = ListPair.mapEq (op +) (xs, ys)
-         in
-           List.foldl add2 v0 rest
-         end)
-
-  (* `2rho_check` as an integer coweight: sum of positive coroots. *)
-  fun two_rho_check (g: group) : int list =
-    let
-      val rd = AtlasFFI.atlas_group_rootdatum_new g
-      val () =
-        if rd = Foreign.Memory.null then
-          raise Fail ("two_rho_check: failed: " ^ AtlasFFI.atlas_last_error ())
-        else
-          ()
-      val tworc = sumVecs (RootDatum.posCorootsCols rd)
-      val () = AtlasFFI.atlas_rootdatum_free rd
-    in
-      tworc
-    end
-
   (* Pair an integer coweight with a rational weight, returning (num,den) without normalization. *)
   fun pairingNumDen (coweight: int list, w: ratvec) : IntInf.int * int =
     let
@@ -577,46 +584,50 @@ structure FPP_localDirac = struct
     aNum * IntInf.fromInt bDen < bNum * IntInf.fromInt aDen
 
   (* `.at` `pmax(x,lambda,Lvd)`: pick the vertex `nu` in `Lvd.list` maximizing `<2rho_check,nu>`. *)
-  fun pmax (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
+  fun pmax_twoRhoCheck (twoRhoCheck: int list) (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
     let
-      val tworc = two_rho_check g
       val vs = VertexData.toList Lvd
       val () = if null vs then raise Fail "pmax: empty local vertex list" else ()
 
       fun best (v, (bestV, bestScore)) =
         let
-          val sc = pairingNumDen (tworc, v)
+          val sc = pairingNumDen (twoRhoCheck, v)
         in
           if fracGT (sc, bestScore) then (v, sc) else (bestV, bestScore)
         end
 
       val v0 = hd vs
-      val init = (v0, pairingNumDen (tworc, v0))
+      val init = (v0, pairingNumDen (twoRhoCheck, v0))
       val (vBest, _) = List.foldl best init (tl vs)
     in
       Representations.parameter (g, x, lambda, vBest)
     end
 
   (* `.at` `pmin(x,lambda,Lvd)`: pick the vertex `nu` in `Lvd.list` minimizing `<2rho_check,nu>`. *)
-  fun pmin (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
+  fun pmin_twoRhoCheck (twoRhoCheck: int list) (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
     let
-      val tworc = two_rho_check g
       val vs = VertexData.toList Lvd
       val () = if null vs then raise Fail "pmin: empty local vertex list" else ()
 
       fun best (v, (bestV, bestScore)) =
         let
-          val sc = pairingNumDen (tworc, v)
+          val sc = pairingNumDen (twoRhoCheck, v)
         in
           if fracLT (sc, bestScore) then (v, sc) else (bestV, bestScore)
         end
 
       val v0 = hd vs
-      val init = (v0, pairingNumDen (tworc, v0))
+      val init = (v0, pairingNumDen (twoRhoCheck, v0))
       val (vBest, _) = List.foldl best init (tl vs)
     in
       Representations.parameter (g, x, lambda, vBest)
     end
+
+  fun pmax (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
+    pmax_twoRhoCheck (two_rho_check g) (g, x, lambda, Lvd)
+
+  fun pmin (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
+    pmin_twoRhoCheck (two_rho_check g) (g, x, lambda, Lvd)
 
   (* Compute a per-dimension truncation-height schedule for `(x,lambda)` that
      can be used for `ToHT` pruning. Returns a list of length `rank(g)+1`.
@@ -632,17 +643,25 @@ structure FPP_localDirac = struct
       val r = AtlasFFI.atlas_group_rank g
       val need = r + 1
 
-      fun padTo xs =
+      fun extendToNeed (xs: int list) : int list =
         if length xs >= need then
           List.take (xs, need)
         else
-          xs @ List.tabulate (need - length xs, fn _ => ~1)
+          (case List.rev xs of
+             [] =>
+               let
+                 val step = Int.max (1, !ht_schedule_step)
+               in
+                 List.tabulate (need, fn i => (i + 1) * step)
+               end
+           | last :: _ =>
+               xs @ List.tabulate (need - length xs, fn j => last + j + 1))
     in
       if !ht_schedule_from_pmax_flag then
         let
           val vd = #vd (#faceCtx c)
           val fd = localFD_Lvd_simple (g, x, lambda, vd)
-          val p0 = pmax (g, x, lambda, #Lvd fd)
+          val p0 = pmax_twoRhoCheck (#twoRhoCheck c) (g, x, lambda, #Lvd fd)
           val p1 = AtlasFFI.atlas_param_normalise p0
           val () = AtlasFFI.atlas_param_free p0
           val () =
@@ -653,14 +672,14 @@ structure FPP_localDirac = struct
           val hs = (UnityFPP.next_heights_lkts (p1, need) handle _ => Unity.next_heights (p1, need))
           val () = AtlasFFI.atlas_param_free p1
         in
-          padTo hs
+          extendToNeed hs
         end
       else
         let
           val step = Int.max (1, !ht_schedule_step)
           val hs = List.tabulate (need, fn i => (i + 1) * step)
         in
-          padTo hs
+          extendToNeed hs
         end
     end
 
