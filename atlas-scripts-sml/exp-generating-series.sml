@@ -36,6 +36,14 @@ structure Exp_generating_series = struct
   (* Helper: get nth element from a vector, 0-based. *)
   fun vecNth (v, i) = Vector.sub (v, i)
 
+  fun intOfIntInf (x: IntInf.int) : int =
+    let
+      val maxI = IntInf.fromInt (Option.valOf Int.maxInt)
+      val minI = IntInf.fromInt (Option.valOf Int.minInt)
+    in
+      if x > maxI orelse x < minI then raise Fail "Exp_generating_series: int overflow" else IntInf.toInt x
+    end
+
   (* Binomial-weighted convolution for EGF multiplication:
        (f*g)_n = Σ_{i=0..n} binom(n,i) * f_i * g_{n-i}.
   *)
@@ -123,5 +131,63 @@ structure Exp_generating_series = struct
       val S.InfNode (_, tail) = S.force f
     in
       tail
+    end
+
+  (*
+    Count permutations with allowed cycles of distinct lengths in `L`.
+
+    This ports `count_permutations_with_cycles([int] L)` from
+    `exp-generating-series.at`.
+
+    The resulting EGF is:
+      exp( Σ_{l in L} X^l / l )
+
+    The coefficient at n is:
+      a_n = Σ ...  (but the `.at` script constructs it as a finite product of
+      exp(X^l/l) factors, where each factor has coefficients:
+        if l | n with q=n/l:
+          a_n = n! / (l^q q!)  (an integer)
+        else 0
+  *)
+  fun count_permutations_with_cycles (ls: int list) : inf_list =
+    let
+      fun coeff_for_length (l: int) : inf_list =
+        if l <= 0 then raise Fail "count_permutations_with_cycles: nonpositive cycle length"
+        else
+          S.series
+            (fn n =>
+               if n mod l <> 0 then
+                 0
+               else
+                 let
+                   val q = n div l
+                   fun prodRange (lo: int, hi: int) : IntInf.int =
+                     if hi < lo then 1
+                     else
+                       let
+                         fun loop (k, acc) =
+                           if k > hi then acc else loop (k + 1, acc * IntInf.fromInt k)
+                       in
+                         loop (lo, 1)
+                       end
+
+                   (* product over i=0..q-1 of product over j=1..l-1 (l*i+j) *)
+                   fun loopI (i, acc) =
+                     if i >= q then acc
+                     else
+                       let
+                         val lo = l * i + 1
+                         val hi = l * i + (l - 1)
+                       in
+                         loopI (i + 1, acc * prodRange (lo, hi))
+                       end
+                   val x = loopI (0, 1)
+                 in
+                   intOfIntInf x
+                 end)
+
+      fun step (l, acc) = exp_multiply (acc, coeff_for_length l)
+    in
+      List.foldl step S.series_1 ls
     end
 end
