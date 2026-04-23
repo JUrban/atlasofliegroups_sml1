@@ -1297,6 +1297,53 @@ structure FPP_localDirac = struct
     end
 
   (* ---------------------------------------------------------------------- *)
+  (* Minimal `local_testK_hash` analogue (exact unitarity + K-character index) *)
+  (* ---------------------------------------------------------------------- *)
+
+  (*
+    A deliberately simplified, functional analogue of the `.at`
+    `local_testK_hash*` family:
+    - uses the exact cached unitary predicate on barycenter parameters
+    - enforces closure (a face kept only if its codim-1 subfaces are kept)
+    - then attaches K-character hash indices / #Langlands quotients
+
+    It returns a `[[FaceVertsKHash]]`-style table containing only the kept faces.
+  *)
+  fun local_testK_hash_simple_limit_ctx_cached
+    (cache: unitary_cache)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t)
+    : face_verts_khash_table =
+    let
+      val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val {Lvd, ...} = localFD_Lvd_simple (g, x, lambda, vd)
+      val keptFacesByDim = unitary_local_faces_by_dim_exact_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim)
+    in
+      face_table_khash_from_facesByDim_limit (g, x, lambda, thetaPlusHalf, Lvd, keptFacesByDim, ~1, polHash)
+    end
+
+  fun local_testK_hash_simple_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t)
+    : face_verts_khash_table =
+    let
+      val cache = BigUnitaryCache.create 4096
+      val res = local_testK_hash_simple_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim, polHash)
+      val () = BigUnitaryCache.freeAll cache
+    in
+      res
+    end
+
+  fun local_testK_hash_simple_limit
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t)
+    : face_verts_khash_table =
+    local_testK_hash_simple_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash)
+
+  (* ---------------------------------------------------------------------- *)
   (* To-height pruning variant (safe early disproof, then exact check later) *)
   (* ---------------------------------------------------------------------- *)
 
