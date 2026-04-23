@@ -8,6 +8,8 @@ use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/FPPFaceKey.sml";
 use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/unity.sml";
+use "atlas-scripts-sml/F4_FPP_barycenters.sml";
+use "atlas-scripts-sml/F4_FPP_lambdas.sml";
 
 (*
   File: atlas-scripts-sml/F4_FPP_points_compute.sml
@@ -83,8 +85,31 @@ structure F4_FPP_points_compute = struct
       val rank = AtlasFFI.atlas_group_rank g
       val kgbSize = AtlasFFI.atlas_group_kgb_size g
 
-      val barycenters = FPP_barycenters_fold.barycenters_all g
-      val lambdasByX = FPP_lambdas_fold.FPP_lambdas_table g
+      fun parseLeadingInt (s: string) : int option =
+        case String.tokens Char.isSpace s of
+          [] => NONE
+        | tok :: _ => Int.fromString tok
+
+      val isSplit = AtlasFFI.atlas_group_is_split g = 1
+      val nPosRoots =
+        (case parseLeadingInt (AtlasFFI.atlas_group_posroots_text g) of
+           SOME n => n
+         | NONE => ~1)
+
+      fun looksLikeF4s () : bool =
+        isSplit andalso rank = 4 andalso kgbSize = 229 andalso nPosRoots = 24
+
+      val barycenters =
+        if looksLikeF4s () then
+          (F4_FPP_barycenters.loadRatvecs () handle _ => FPP_barycenters_fold.barycenters_all g)
+        else
+          FPP_barycenters_fold.barycenters_all g
+
+      val lambdasByX =
+        if looksLikeF4s () then
+          (F4_FPP_lambdas.loadRatvecs kgbSize handle _ => FPP_lambdas_fold.FPP_lambdas_table g)
+        else
+          FPP_lambdas_fold.FPP_lambdas_table g
 
       (* Equal-rank predicate: true iff some KGB element has involution `-I`. *)
       val equalRank =

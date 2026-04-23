@@ -9,7 +9,9 @@
   - The modern pipeline computes lambdas via `FPP_lambdas_fold`; this fixture is
     retained for debugging/regression comparisons.
 *)
+use "atlas-scripts-sml/Lattice.sml";
 structure F4_FPP_lambdas = struct
+  type ratvec = Lattice.ratvec
   type ratvec_text = {numsText: string, denom: int}
 
   (* Parse whitespace-separated integers. *)
@@ -68,6 +70,48 @@ structure F4_FPP_lambdas = struct
                  ( buckets
                  , x
                  , {numsText = intsToText [a, b, c, d], denom = den} :: Array.sub (buckets, x)
+                 )
+         | _ => raise Fail ("F4_FPP_lambdas: unexpected row: " ^ line))
+
+      fun loop () =
+        case TextIO.inputLine input of
+          NONE => ()
+        | SOME line =>
+            let
+              val s = rstripNewlines line
+            in
+              if s = "" orelse (String.size s > 0 andalso String.sub (s, 0) = #"#")
+              then loop ()
+              else (handleRow s; loop ())
+            end
+
+      val () = (loop (); TextIO.closeIn input) handle e => (TextIO.closeIn input; raise e)
+      val result = Array.tabulate (kgbSize, fn i => List.rev (Array.sub (buckets, i)))
+    in
+      result
+    end
+
+  (*
+    Load the lambda table as `Lattice.ratvec` values.
+
+    This is the representation used by the folded-FPP computation code and is
+    suitable for fast fixture-driven runs (e.g. in `F4_FPP_points_compute`).
+  *)
+  fun loadRatvecs (kgbSize: int) : ratvec list array =
+    let
+      val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_lambdas.txt"
+      val buckets = Array.array (kgbSize, ([]: ratvec list))
+
+      fun handleRow line =
+        (case parseInts line of
+           [x, den, a, b, c, d] =>
+             if x < 0 orelse x >= kgbSize then
+               raise Fail ("F4_FPP_lambdas: x out of range: " ^ Int.toString x)
+             else
+               Array.update
+                 ( buckets
+                 , x
+                 , Lattice.ratvecNormalize {den = den, nums = [a, b, c, d]} :: Array.sub (buckets, x)
                  )
          | _ => raise Fail ("F4_FPP_lambdas: unexpected row: " ^ line))
 
