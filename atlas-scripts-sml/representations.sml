@@ -48,6 +48,7 @@ use "atlas-scripts-sml/ParamBlocks.sml";
 structure Representations = struct
   type group = AtlasFFI.group
   type param = AtlasFFI.param
+  type ktype = AtlasFFI.ktype
   type ratvec = Lattice.ratvec
   type weyl_word = WeylWord.t
 
@@ -208,6 +209,54 @@ structure Representations = struct
       else
         p
     end
+
+  (*
+    Lowest K-types (LKTs)
+
+    Atlas correspondence
+    - Mirrors `LKTs(p)` from the `.at` environment: the (integer) multiset of
+      lowest K-types attached to the deformation unit (alcove) of `p`.
+
+    Ownership
+    - Returns freshly allocated `ktype` handles; callers must free each with
+      `AtlasFFI.atlas_ktype_free`.
+
+    Notes
+    - The underlying FFI requires `p` to be standard.
+  *)
+  fun LKTs (p: param) : (ktype * int) list =
+    let
+      val n = AtlasFFI.atlas_param_LKTs_size p
+      val () =
+        if n < 0 then
+          raise Fail ("Representations.LKTs: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+
+      fun one i =
+        let
+          val t = AtlasFFI.atlas_param_LKTs_get_ktype_clone (p, i)
+          val () =
+            if t = Foreign.Memory.null then
+              raise Fail ("Representations.LKTs: get_ktype_clone failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+          val m = AtlasFFI.atlas_param_LKTs_get_mult (p, i)
+          val () =
+            if m < 0 then
+              raise Fail ("Representations.LKTs: get_mult failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+        in
+          (t, m)
+        end
+    in
+      List.tabulate (n, one)
+    end
+
+  (* Free the K-type handles returned by `LKTs`. *)
+  fun freeLKTs (xs: (ktype * int) list) : unit =
+    List.app (fn (t, _) => AtlasFFI.atlas_ktype_free t) xs
 
   (* Full block (survivors) of a parameter, returning the parameter list only
      (mirrors `basic.at`’s `block_of`). Returned parameters are cloned and owned. *)
