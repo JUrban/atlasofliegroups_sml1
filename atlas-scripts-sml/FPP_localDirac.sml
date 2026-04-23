@@ -435,6 +435,10 @@ structure FPP_localDirac = struct
   val to_ht_prune_flag : bool ref = ref false
   (* When true, seed graph classes from a known-unitary `ParamHash` when provided. *)
   val seed_known_unitaries_flag : bool ref = ref true
+  (* When true, attempt a `.at`-style seed: a class is known unitary if all final
+     terms of its representative face barycenter standard module are present in
+     the known unitary hash. This is more accurate but can be expensive. *)
+  val seed_known_unitaries_by_finals_flag : bool ref = ref false
   (* When true, compute a per-dimension height schedule from `pmax` using
      LKTs-based `next_heights`; otherwise use a cheap arithmetic schedule. *)
   val ht_schedule_from_pmax_flag : bool ref = ref false
@@ -1442,6 +1446,45 @@ structure FPP_localDirac = struct
       Sort.sort_u (op <=) cids
     end
 
+  (* `.at`-style seed predicate: for the standard module attached to a face barycenter,
+     check that every nonzero-multiplicity final term is already in `knownUhash`. *)
+  fun face_finals_all_in_hash
+    (knownUhash: ParamHash.t)
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key)
+    : bool =
+    let
+      val gammaLocal = VertexData.face_bary (Lvd, face)
+      val nu = Lattice.ratvecSub (gammaLocal, thetaPlusHalf)
+      val p0 = Representations.parameter (g, x, lambda, nu)
+      val p1 = AtlasFFI.atlas_param_normalise p0
+      val () = AtlasFFI.atlas_param_free p0
+      val () =
+        if p1 = Foreign.Memory.null then
+          raise Fail ("face_finals_all_in_hash: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+
+      fun okFinal q =
+        let
+          val ok = ParamHash.contains knownUhash q
+          val () = AtlasFFI.atlas_param_free q
+        in
+          ok
+        end
+    in
+      if AtlasFFI.atlas_param_is_final p1 = 1 then
+        okFinal p1
+      else
+        let
+          val finals = ParamFinals.finals p1
+          val () = AtlasFFI.atlas_param_free p1
+          fun okTerm (q, mult) =
+            if mult = 0 then (AtlasFFI.atlas_param_free q; true) else okFinal q
+        in
+          List.all okTerm finals
+        end
+    end
+
   (*
     Graph-based variant closer in spirit to `.at` `local_testK_hash`:
     - build a `[[FaceVertsKHash]]` table for *all* stable local faces (bounded by `maxFacesPerDim`)
@@ -1529,8 +1572,33 @@ structure FPP_localDirac = struct
         else
           (case Array.sub (status, cid) of
              Q =>
-               if testClass cid then (markDown cid; loop (cid + 1))
-               else (markUp cid; loop (cid + 1))
+               let
+                 val seeded =
+                   if !seed_known_unitaries_by_finals_flag then
+                     (case knownUhashOpt of
+                        NONE => false
+                      | SOME uhash =>
+                          ((let
+                              val nodes = List.nth (classes, cid)
+                              val node =
+                                case nodes of
+                                  [] => raise Fail "local_testK_hash_graph_exact: empty SCC class"
+                                | n :: _ => n
+                              val face = faceKeyOfNode node
+                              val ok = face_finals_all_in_hash uhash (g, x, lambda, thetaPlusHalf, Lvd, face)
+                            in
+                              if ok then (markDown cid; true) else false
+                            end) handle _ => false))
+                   else
+                     false
+               in
+                 if seeded then
+                   loop (cid + 1)
+                 else if testClass cid then
+                   (markDown cid; loop (cid + 1))
+                 else
+                   (markUp cid; loop (cid + 1))
+               end
            | _ => loop (cid + 1))
 
       (* Optional seeding: if a class contains a face whose barycenter parameter is in a
@@ -1787,10 +1855,33 @@ structure FPP_localDirac = struct
         else
           (case Array.sub (status, cid) of
              Q =>
-               if testToHt impCache cid then
-                 passToHt (cid + 1)
-               else
-                 (markUp cid; passToHt (cid + 1))
+               let
+                 val seeded =
+                   if !seed_known_unitaries_by_finals_flag then
+                     (case knownUhashOpt of
+                        NONE => false
+                      | SOME uhash =>
+                          ((let
+                              val nodes = List.nth (classes, cid)
+                              val node =
+                                case nodes of
+                                  [] => raise Fail "local_testK_hash_graph_to_ht_then_exact: empty SCC class"
+                                | n :: _ => n
+                              val face = faceKeyOfNode node
+                              val ok = face_finals_all_in_hash uhash (g, x, lambda, thetaPlusHalf, Lvd, face)
+                            in
+                              if ok then (markDown cid; true) else false
+                            end) handle _ => false))
+                   else
+                     false
+               in
+                 if seeded then
+                   passToHt (cid + 1)
+                 else if testToHt impCache cid then
+                   passToHt (cid + 1)
+                 else
+                   (markUp cid; passToHt (cid + 1))
+               end
            | _ => passToHt (cid + 1))
 
       fun passExact cid =
