@@ -4282,6 +4282,103 @@ extern "C" void* atlas_ktypepol_scale_split(void* kt_handle, int e, int s)
   }
 }
 
+static inline bool is_power_of_two_u64(std::uint64_t x) { return x != 0 && ((x & (x - 1)) == 0); }
+
+extern "C" int atlas_ktypepol_equal(void* a_handle, void* b_handle)
+{
+  try
+  {
+    if (a_handle == nullptr || b_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_equal: null handle";
+      return -1;
+    }
+    const auto* a = static_cast<const KTypePolHandle*>(a_handle);
+    const auto* b = static_cast<const KTypePolHandle*>(b_handle);
+    if (a->group != b->group)
+      return 0;
+    return (a->poly == b->poly) ? 1 : 0;
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
+extern "C" long atlas_ktypepol_hash_code(void* kt_handle, long mod)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_hash_code: null handle";
+      return -1;
+    }
+    if (mod <= 1)
+    {
+      g_last_error = "atlas_ktypepol_hash_code: nonpositive modulus";
+      return -1;
+    }
+
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    const std::uint64_t m = static_cast<std::uint64_t>(mod);
+    const bool pow2 = is_power_of_two_u64(m);
+    const std::uint64_t mask = pow2 ? (m - 1) : 0;
+    const std::uint64_t base = 8647ULL;
+
+    auto reduce = [&](std::int64_t x) -> std::uint64_t {
+      if (pow2)
+      {
+        const std::uint64_t ux = static_cast<std::uint64_t>(x);
+        return ux & mask;
+      }
+      const std::int64_t r = x % static_cast<std::int64_t>(m);
+      return static_cast<std::uint64_t>(r < 0 ? r + static_cast<std::int64_t>(m) : r);
+    };
+
+    // Hash polynomial in the same spirit as `.at`:
+    // flatten terms as [e, s, x, lambda_rho...] and Horner-evaluate mod m.
+    std::uint64_t h = 0;
+    auto mix = [&](std::int64_t e) {
+      const std::uint64_t ee = reduce(e);
+      if (pow2)
+        h = (ee + base * h) & mask;
+      else
+        h = (ee + base * h) % m;
+    };
+
+    for (const auto& term : kt->poly)
+    {
+      const auto& t = term.first;
+      const auto& c = term.second;
+      mix(static_cast<std::int64_t>(c.e()));
+      mix(static_cast<std::int64_t>(c.s()));
+      mix(static_cast<std::int64_t>(t.x()));
+      const auto& lam = t.lambda_rho();
+      for (std::size_t j = 0; j < lam.size(); ++j)
+        mix(static_cast<std::int64_t>(lam[j]));
+    }
+
+    return static_cast<long>(h);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 extern "C" void* atlas_intmat_echelon(const char* mat_text)
 {
   try

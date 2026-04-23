@@ -181,6 +181,8 @@ structure AtlasFFI = struct
   val atlas_ktypepol_clone_sym = Foreign.getSymbol lib "atlas_ktypepol_clone"
   val atlas_ktypepol_add_sym = Foreign.getSymbol lib "atlas_ktypepol_add"
   val atlas_ktypepol_scale_split_sym = Foreign.getSymbol lib "atlas_ktypepol_scale_split"
+  val atlas_ktypepol_equal_sym = Foreign.getSymbol lib "atlas_ktypepol_equal"
+  val atlas_ktypepol_hash_code_sym = Foreign.getSymbol lib "atlas_ktypepol_hash_code"
   val atlas_param_is_unitary_c_form_sym = Foreign.getSymbol lib "atlas_param_is_unitary_c_form"
   val atlas_param_is_unitary_sym = Foreign.getSymbol lib "atlas_param_is_unitary"
   val atlas_param_good_range_induced_from_first_text_sym =
@@ -667,6 +669,12 @@ structure AtlasFFI = struct
       , (Foreign.cPointer, Foreign.cInt, Foreign.cInt)
       , Foreign.cPointer
       )
+
+  val atlas_ktypepol_equal =
+    Foreign.buildCall2 (atlas_ktypepol_equal_sym, (Foreign.cPointer, Foreign.cPointer), Foreign.cInt)
+
+  val atlas_ktypepol_hash_code =
+    Foreign.buildCall2 (atlas_ktypepol_hash_code_sym, (Foreign.cPointer, Foreign.cLong), Foreign.cLong)
 
   val atlas_param_is_unitary_c_form =
     Foreign.buildCall1 (atlas_param_is_unitary_c_form_sym, Foreign.cPointer, Foreign.cInt)
