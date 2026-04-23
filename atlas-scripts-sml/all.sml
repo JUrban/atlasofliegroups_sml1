@@ -45,6 +45,7 @@ val () = tryUse "atlas-scripts-sml/lattice.sml"
 val () = tryUse "atlas-scripts-sml/polynomial.sml"
 val () = tryUse "atlas-scripts-sml/inverse.sml"
 val () = tryUse "atlas-scripts-sml/laurentPolynomial.sml"
+val () = tryUse "atlas-scripts-sml/KL_polynomial_matrices.sml"
 
 (* Geometry / polytope helpers used by FPP code. *)
 val () = tryUse "atlas-scripts-sml/aff_cube.sml"
@@ -76,4 +77,3 @@ val () = tryUse "atlas-scripts-sml/test_unitarity.sml"
      `families.at`, `FPP_globalDirac.at`, `L_packet.at`, `adams_johnson.at`,
      `speh.at`, ...
 *)
-

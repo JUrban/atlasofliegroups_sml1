@@ -11,12 +11,14 @@
 #include "matreduc.h"
 #include "lattice.h"
 #include "lietype.h"
+#include "polynomials.h"
 #include "prerootdata.h"
 #include "rootdata.h"
 #include "innerclass.h"
 #include "realredgp.h"
 #include "repr.h"
 #include "blocks.h"
+#include "kl.h"
 #include "K_repr.h"
 #include "alcoves.h"
 #include "bitmap.h"
@@ -2958,6 +2960,37 @@ extern "C" long atlas_param_height(void* param_handle)
   }
 }
 
+extern "C" long atlas_param_length(void* param_handle)
+{
+  try
+  {
+    if (param_handle == nullptr)
+    {
+      g_last_error = "atlas_param_length: null param handle";
+      return -1;
+    }
+    const auto* p = static_cast<const ParamHandle*>(param_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_length: null group/Rep_table";
+      return -1;
+    }
+    auto& rt = *p->group->rt;
+    const unsigned short len = rt.length(p->sr); // by value
+    return static_cast<long>(len);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return -1;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return -1;
+  }
+}
+
 // Expose the group handle associated to a parameter.
 //
 // Ownership / lifetime
@@ -3031,6 +3064,153 @@ extern "C" const char* atlas_param_gamma_text(void* p_handle)
   {
     g_last_error = "unknown C++ exception";
     return nullptr;
+  }
+}
+
+extern "C" const char* atlas_param_KL_block_data_text(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_KL_block_data_text: null param handle";
+      return store_result("-1");
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr || p->group->rt == nullptr)
+    {
+      g_last_error = "atlas_param_KL_block_data_text: null group/Rep_table";
+      return store_result("-1");
+    }
+
+    auto& G = p->group->G;
+    auto& rt = *p->group->rt;
+    atlas::repr::Rep_context rc(G);
+
+    auto sr = p->sr; // local copy; lookup_full_block normalises in-place
+    if (!rc.is_standard(sr))
+    {
+      g_last_error = "atlas_param_KL_block_data_text: parameter is not standard";
+      return store_result("-1");
+    }
+
+    atlas::BlockElt start;
+    atlas::repr::block_modifier bm;
+    auto& block = rt.lookup_full_block(sr, start, bm);
+    const auto& gamma = sr.gamma();
+    const atlas::RankFlags singular = block.singular(bm, gamma);
+
+    std::vector<atlas::BlockElt> survivors;
+    survivors.reserve(block.size());
+    std::vector<long> loc(block.size(), -1);
+    long start_pos = -1;
+    for (atlas::BlockElt z = 0; z < block.size(); ++z)
+      if (block.survives(z, singular))
+      {
+        if (z == start)
+          start_pos = static_cast<long>(survivors.size());
+        loc[z] = static_cast<long>(survivors.size());
+        survivors.push_back(z);
+      }
+
+    const atlas::kl::KL_table& kl_tab = block.KL_tab(nullptr); // fill full block
+    using Pol = atlas::polynomials::Polynomial<int>;
+    atlas::matrix::Matrix<Pol> M(survivors.size(), survivors.size(), Pol());
+
+    std::size_t start_idx = 0;
+    for (atlas::BlockElt x = 0; x < block.size(); ++x)
+    {
+      while (start_idx < survivors.size() && survivors[start_idx] < x)
+        ++start_idx;
+      const auto finals = block.finals_for(x, singular);
+      for (const auto f : finals)
+      {
+        const long i = loc[f];
+        if (i < 0)
+          continue;
+        const bool even = (kl_tab.l(x, f) % 2 == 0);
+        for (std::size_t t = start_idx; t < survivors.size(); ++t)
+        {
+          const atlas::BlockElt y = survivors[t];
+          const auto& P = kl_tab.KL_pol(x, y);
+          if (P.is_zero())
+            continue;
+          const long j = loc[y];
+          if (j < 0)
+            continue;
+          if (even)
+            M(static_cast<unsigned int>(i), static_cast<unsigned int>(j)) += Pol(P);
+          else
+            M(static_cast<unsigned int>(i), static_cast<unsigned int>(j)) -= Pol(P);
+        }
+      }
+    }
+
+    std::vector<Pol> pool{Pol(), Pol(1)};
+    std::unordered_map<std::string, unsigned int> seen;
+
+    auto key_of = [](const Pol& p) -> std::string {
+      std::ostringstream out;
+      out << p.size() << ':';
+      bool first = true;
+      for (auto it = p.begin(); it != p.end(); ++it)
+      {
+        if (!first)
+          out << ',';
+        first = false;
+        out << *it;
+      }
+      return out.str();
+    };
+
+    seen.emplace(key_of(pool[0]), 0u);
+    seen.emplace(key_of(pool[1]), 1u);
+
+    auto match = [&](const Pol& p) -> unsigned int {
+      if (p.is_zero())
+        return 0u;
+      if (p == Pol(1))
+        return 1u;
+      const std::string k = key_of(p);
+      const auto it = seen.find(k);
+      if (it != seen.end())
+        return it->second;
+      pool.push_back(p);
+      const unsigned int idx = static_cast<unsigned int>(pool.size() - 1);
+      seen.emplace(k, idx);
+      return idx;
+    };
+
+    const unsigned int n = static_cast<unsigned int>(survivors.size());
+    std::vector<unsigned int> pind(static_cast<std::size_t>(n) * n, 0u);
+    for (unsigned int i = 0; i < n; ++i)
+      pind[static_cast<std::size_t>(i) * n + i] = 1u; // identity diagonal
+    for (unsigned int i = 0; i < n; ++i)
+      for (unsigned int j = i + 1; j < n; ++j)
+        pind[static_cast<std::size_t>(i) * n + j] = match(M(i, j));
+
+    std::ostringstream out;
+    out << n << ' ' << start_pos;
+    for (unsigned int v : pind)
+      out << ' ' << v;
+    out << ' ' << pool.size();
+    for (const auto& poly : pool)
+    {
+      out << ' ' << poly.size();
+      for (auto it = poly.begin(); it != poly.end(); ++it)
+        out << ' ' << *it;
+    }
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
   }
 }
 
