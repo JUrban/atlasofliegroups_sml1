@@ -27,3 +27,12 @@ val () = assert "is_prime 1" (not (Number_theory.is_prime 1));
 val () = assert "is_prime 2" (Number_theory.is_prime 2);
 val () = assert "is_prime 221" (not (Number_theory.is_prime 221)); (* 13*17 *)
 
+val (ef, q) = Number_theory.easy_factors (60, 5);
+val () = assert "easy_factors factors" (ef = [(2, 2), (3, 1), (5, 1)]);
+val () = assert "easy_factors quotient" (q = 1);
+
+val invs10 = Number_theory.invertibles_modulo 10;
+val () = assert "invertibles_modulo 10" (invs10 = [1, 3, 7, 9]);
+
+val g17 = Number_theory.search_probable_generator 17;
+val () = assert "generator 17" (g17 = 3 orelse g17 = 5 orelse g17 = 6 orelse g17 = 7);

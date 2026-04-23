@@ -117,6 +117,38 @@ structure Number_theory = struct
       loop (n0, primes, [])
     end
 
+  (* Find prime factors up to `limit` and return (factors, quotient).
+     The quotient may be 1 or composite, matching `easy_factors` in `.at`. *)
+  fun easy_factors (n0: int, limit: int) : (int * int) list * int =
+    let
+      val () = if n0 = 0 then raise Fail "Number_theory.easy_factors: cannot factor 0" else ()
+      val () = if limit < 2 then raise Fail "Number_theory.easy_factors: limit < 2" else ()
+      val n0 = Int.abs n0
+      fun loop (n: int, ps: Stream.inf_list, acc: (int * int) list) =
+        if n = 1 then
+          (List.rev acc, 1)
+        else
+          let
+            val Stream.InfNode (p, psTail) = Stream.force ps
+          in
+            if p > limit orelse IntInf.fromInt p * IntInf.fromInt p > IntInf.fromInt n then
+              (* Mirror `.at` behavior: if remainder is prime and <=limit we include it. *)
+              if n = 1 then (List.rev acc, 1)
+              else if p <= limit andalso isPrimeTrial n then (List.rev ((n, 1) :: acc), 1)
+              else (List.rev acc, n)
+            else
+              let
+                fun countPow (m, c) =
+                  if m mod p <> 0 then (m, c) else countPow (m div p, c + 1)
+                val (n', c) = countPow (n, 0)
+              in
+                if c = 0 then loop (n, psTail, acc) else loop (n', psTail, (p, c) :: acc)
+              end
+          end
+    in
+      loop (n0, primes, [])
+    end
+
   (* Prime divisors of n (no multiplicity). *)
   fun prime_divisors (n: int) : int list =
     List.map #1 (factorization n)
@@ -134,6 +166,14 @@ structure Number_theory = struct
         end
     in
       List.foldl (fn ((p, c), acc) => extend (acc, p, c)) [1] (factorization n)
+    end
+
+  fun invertibles_modulo (n: int) : int list =
+    let
+      val n = Int.abs n
+      val () = if n = 0 then raise Fail "Number_theory.invertibles_modulo: modulus 0" else ()
+    in
+      List.filter (fn i => gcd (i, n) = 1) (List.tabulate (n, fn i => i))
     end
 
   (* Euler totient function for n > 0. *)
@@ -218,5 +258,48 @@ structure Number_theory = struct
     power_mod (x, p, p) = (x mod p + p) mod p
 
   fun is_prime (n: int) : bool = isPrimeTrial n
-end
 
+  (* ---------- primitive root heuristics (ported directly from `.at`) ---------- *)
+
+  type phi_data = {n: int, phi_n: int, prime_factors_phi: int list}
+
+  fun phi_data_of (n: int) : phi_data =
+    let
+      val phi_n = phi n
+    in
+      {n = n, phi_n = phi_n, prime_factors_phi = prime_divisors phi_n}
+    end
+
+  fun prime_phi_data (p: int) : phi_data =
+    {n = p, phi_n = p - 1, prime_factors_phi = prime_divisors (p - 1)}
+
+  fun is_multiplicative_generator_data (i: int, d: phi_data) : bool =
+    let
+      val n = #n d
+      val phi_n = #phi_n d
+      val factors = #prime_factors_phi d
+    in
+      List.all (fn p => power_mod (i, phi_n div p, n) <> 1) factors
+    end
+
+  fun is_multiplicative_generator (i: int, n: int) : bool =
+    is_multiplicative_generator_data (i, phi_data_of n)
+
+  fun search_probable_generator_data (d: phi_data) : int =
+    let
+      val n = #n d
+      fun loop i =
+        if i >= n then 1
+        else if gcd (i, n) = 1 andalso is_multiplicative_generator_data (i, d) then i
+        else loop (i + 1)
+    in
+      if n <= 2 then 1 else loop 2
+    end
+
+  fun search_probable_generator (n: int) : int =
+    let
+      val d = if test_Fermat (2, n) then prime_phi_data n else phi_data_of n
+    in
+      search_probable_generator_data d
+    end
+end
