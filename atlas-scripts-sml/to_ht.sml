@@ -146,7 +146,11 @@ structure ToHT = struct
       let
         val hf = hermitian_form_irreducible_to_ht (p, ht)
         val r = AtlasFFI.atlas_group_rank g
-        val ok = KTypePol.isPureModule (hf, r)
+        (* Atlas `.at` tests coefficient-wise purity (`is_pure`), not the stronger
+           “pure module” predicate. Using module purity here would be UNSAFE as a
+           pruning test, because it could reject parameters whose truncated form
+           has a mix of integer and `s*Z` coefficients but no mixed coefficients. *)
+        val ok = KTypePol.isPure (hf, r)
         val () = KTypePol.free hf
       in
         ok
