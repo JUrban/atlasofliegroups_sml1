@@ -1552,6 +1552,146 @@ structure FPP_localDirac = struct
       ok
     end
 
+  (*
+    Two-stage graph-based test:
+    (1) Safe early-disproof via `ToHT` (c-form purity) at height `ht`, marking
+        classes proven nonunitary and propagating upward.
+    (2) Exact unitary test for the remaining classes, with unitary/nonunitary
+        propagation as in `local_testK_hash_graph_exact_*`.
+
+    This is closer to the `.at` intent: spend cheap time eliminating obviously
+    nonunitary classes, then do the expensive exact unitary checks on the rest.
+  *)
+  fun local_testK_hash_graph_to_ht_then_exact_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int, ht: int)
+    : face_verts_khash_table =
+    let
+      val g = #g c
+      val allowPrune = !to_ht_prune_flag andalso Representations.is_equal_rank g
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val {Lvd, ...} = localFD_Lvd_simple (g, x, lambda, vd)
+
+      val fd = local_face_table_khash_limit_ctx (c, x, lambda, maxFacesPerDim, polHash)
+
+      val (gd, down, classListByFace) =
+        if level < 0 then
+          localGraphK_FDKH fd
+        else
+          localGraphK_FDKH_kpol (fd, polHash, level, 0)
+
+      val up = FaceClasses.full_up_classes gd
+      val {classes, ...} = gd
+      val k = length classes
+
+      datatype st = U | N | Q
+      val status = Array.array (k, Q)
+
+      fun setU j =
+        case Array.sub (status, j) of
+          N => raise Fail "local_testK_hash_graph_to_ht_then_exact: conflicting class statuses (U vs N)"
+        | _ => Array.update (status, j, U)
+
+      fun setN j =
+        case Array.sub (status, j) of
+          U => raise Fail "local_testK_hash_graph_to_ht_then_exact: conflicting class statuses (N vs U)"
+        | _ => Array.update (status, j, N)
+
+      fun markDown (cid: int) =
+        List.app setU (Array.sub (down, cid))
+
+      fun markUp (cid: int) =
+        List.app setN (Array.sub (up, cid))
+
+      fun faceKeyOfNode (node: int) : face_key =
+        let
+          val (d, j) = FaceClasses.coords_f fd node
+          val entry = List.nth (List.nth (fd, d), j)
+        in
+          List.take (entry, d + 1)
+        end
+
+      fun testToHt (impCache: ImpureHeightCache.t) (cid: int) : bool =
+        let
+          val nodes = List.nth (classes, cid)
+          val node =
+            case nodes of
+              [] => raise Fail "local_testK_hash_graph_to_ht_then_exact: empty SCC class"
+            | n :: _ => n
+          val face = faceKeyOfNode node
+        in
+          face_is_unitary_to_ht_thetaPlusHalf_cached impCache (g, x, lambda, thetaPlusHalf, Lvd, face, ht)
+        end
+
+      fun testExact (uCache: unitary_cache) (cid: int) : bool =
+        let
+          val nodes = List.nth (classes, cid)
+          val node =
+            case nodes of
+              [] => raise Fail "local_testK_hash_graph_to_ht_then_exact: empty SCC class"
+            | n :: _ => n
+          val face = faceKeyOfNode node
+        in
+          face_is_unitary_exact_thetaPlusHalf_cached uCache allowPrune (g, x, lambda, thetaPlusHalf, Lvd, face)
+        end
+
+      val impCache = ImpureHeightCache.create 2048
+      val uCache = BigUnitaryCache.create 4096
+
+      fun passToHt cid =
+        if cid = k then
+          ()
+        else
+          (case Array.sub (status, cid) of
+             Q =>
+               if testToHt impCache cid then
+                 passToHt (cid + 1)
+               else
+                 (markUp cid; passToHt (cid + 1))
+           | _ => passToHt (cid + 1))
+
+      fun passExact cid =
+        if cid = k then
+          ()
+        else
+          (case Array.sub (status, cid) of
+             Q =>
+               if testExact uCache cid then
+                 (markDown cid; passExact (cid + 1))
+               else
+                 (markUp cid; passExact (cid + 1))
+           | _ => passExact (cid + 1))
+
+      val () = (passToHt 0; passExact 0)
+      val () = (ImpureHeightCache.freeAll impCache; BigUnitaryCache.freeAll uCache)
+
+      fun keepFace (d: int, j: int) : bool =
+        let
+          val cid = List.nth (List.nth (classListByFace, d), j)
+        in
+          Array.sub (status, cid) = U
+        end
+
+      fun filterDim d =
+        let
+          val row = List.nth (fd, d)
+          fun pick (j, entry) = if keepFace (d, j) then SOME entry else NONE
+        in
+          List.mapPartial pick (ListPair.zipEq (List.tabulate (length row, fn i => i), row))
+        end
+    in
+      List.tabulate (length fd, filterDim)
+    end
+
+  fun local_testK_hash_graph_to_ht_then_exact_limit
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int, ht: int)
+    : face_verts_khash_table =
+    local_testK_hash_graph_to_ht_then_exact_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash, level, ht)
+
   (* Dimension-by-dimension face filtering using `ToHT` at per-dimension bounds.
      This is intended as a pruning pre-pass; callers should still do an exact
      `is_unitary` verification on the resulting barycenter parameters. *)
