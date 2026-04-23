@@ -81,6 +81,7 @@ val () = tryUse "atlas-scripts-sml/representations.sml"
 val () = tryUse "atlas-scripts-sml/parameters.sml"
 val () = tryUse "atlas-scripts-sml/complex.sml"
 val () = tryUse "atlas-scripts-sml/is_normal.sml"
+val () = tryUse "atlas-scripts-sml/complementary_series.sml"
 val () = tryUse "atlas-scripts-sml/tits.sml"
 val () = tryUse "atlas-scripts-sml/test_unitarity.sml"
 
