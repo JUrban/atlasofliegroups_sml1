@@ -1266,6 +1266,24 @@ structure FPP_localDirac = struct
       ps
     end
 
+  (* Exact unitary parameters from the ToHT-pruned face sets. *)
+  fun unitary_params_from_unitary_faces_by_dim_to_ht_exact_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    let
+      val g = #g c
+      val cache = BigUnitaryCache.create 1024
+      val () =
+        if !unip_flag then
+          FPP_unipotents.insert_unipotents_to_paramhash (g, BigUnitaryCache.uhash cache)
+        else
+          ()
+      val ps =
+        unitary_params_from_unitary_faces_by_dim_to_ht_exact_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim)
+      val () = BigUnitaryCache.freeAll cache
+    in
+      ps
+    end
+
   (* `.at`-style naming: a baseline analogue of `local_test_GEO_hash2` that
      uses closure-filtered unitary faces, with exact Atlas unitary checks. *)
   fun local_test_GEO_hash2_exact_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
@@ -1305,22 +1323,46 @@ structure FPP_localDirac = struct
       - `local_test_GEO`
 
     For now, we provide *compiling* SML entry points with the same base names,
-    delegating to the exact-baseline `*_hash2_exact*` routines above. This lets
-    subsequent `.at`→`.sml` translation preserve call structure while we
-    incrementally replace internals with true `to_ht`-style pruning.
+    selecting between:
+      - the exact-baseline `*_hash2_exact*` routines above, and
+      - the ToHT-pruning pipeline (`unitary_local_faces_by_dim_to_ht_*`)
+    depending on the flag `prefer_to_hts`.
+
+    This mirrors the `.at` scripts’ intent: use ToHT as a safe early-disproof
+    pass for speed, but still verify exact unitarity before returning results.
   *)
 
   fun local_test_GEO_hash2_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
-    local_test_GEO_hash2_exact_limit_ctx (c, x, lambda, maxFacesPerDim)
+    if !prefer_to_hts then
+      unitary_params_from_unitary_faces_by_dim_to_ht_exact_limit_ctx (c, x, lambda, maxFacesPerDim)
+    else
+      local_test_GEO_hash2_exact_limit_ctx (c, x, lambda, maxFacesPerDim)
 
   fun local_test_GEO_hash2_ctx (c: ctx, x: int, lambda: ratvec) : param list =
-    local_test_GEO_hash2_exact_ctx (c, x, lambda)
+    local_test_GEO_hash2_limit_ctx (c, x, lambda, ~1)
 
   fun local_test_GEO_hash2_limit (g: group, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
-    local_test_GEO_hash2_exact_limit (g, x, lambda, maxFacesPerDim)
+    local_test_GEO_hash2_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim)
 
   fun local_test_GEO_hash2 (g: group, x: int, lambda: ratvec) : param list =
-    local_test_GEO_hash2_exact (g, x, lambda)
+    local_test_GEO_hash2_limit (g, x, lambda, ~1)
+
+  fun local_test_GEO_hash2_into_hash_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, uhash: ParamHash.t) : int =
+    let
+      val ps = local_test_GEO_hash2_limit_ctx (c, x, lambda, maxFacesPerDim)
+      val sizeBefore = ParamHash.size uhash
+      fun one p =
+        (ignore (ParamHash.match uhash p);
+         AtlasFFI.atlas_param_free p)
+      val () = List.app one ps
+      val sizeAfter = ParamHash.size uhash
+    in
+      sizeAfter - sizeBefore
+    end
+
+  fun local_test_GEO_hash2_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash2_into_hash_limit_ctx (c, x, lambda, ~1, uhash)
 
   fun local_test_GEO_hash_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
     local_test_GEO_hash2_limit_ctx (c, x, lambda, maxFacesPerDim)
