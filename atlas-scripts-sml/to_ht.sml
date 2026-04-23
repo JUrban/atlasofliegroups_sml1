@@ -52,14 +52,13 @@ structure ToHT = struct
     calculations (and cached/interrupted variants) to quickly DISPROVE unitarity
     at low “height” bounds.
 
-    For the SML port we currently keep the default predicate *exact* by
-    delegating to `AtlasFFI.atlas_param_is_unitary` (height ignored), because
-    the correct truncated-form logic depends on equal-rank vs non-equal-rank
-    branching and conversions that are not yet fully ported.
+    For the SML port we implement the core `.at` semantics:
+    - for `HT < 0`, fall back to the exact Atlas predicate `is_unitary(p)`;
+    - otherwise, compute `hermitian_form_irreducible(p)` (via FFI), truncate it
+      to height `HT`, and check coefficient-wise purity.
 
-    A separate helper `is_unitary_to_ht_prune_equal_rank` is provided for
-    experiments in equal-rank cases, based on truncating the hermitian form and
-    checking module purity.
+    This is a *pruning* predicate: it can return false positives but should not
+    return false negatives.
   *)
 
   fun paramRank (p: param) : int =
@@ -126,18 +125,22 @@ structure ToHT = struct
     end
 
   fun is_unitary_to_ht (p: param, ht: int) : bool =
-    let
-      val _ = ht
-    in
+    if ht < 0 then
       AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1
-    end
+    else if AtlasFFI.atlas_param_is_hermitian p <> 1 then
+      false
+    else
+      let
+        val hf = hermitian_form_irreducible_to_ht (p, ht)
+        val r = paramRank p
+        val ok = KTypePol.isPure (hf, r)
+        val () = KTypePol.free hf
+      in
+        ok
+      end
 
   fun is_unitary_to_hts (p: param, hts: int list) : bool =
-    let
-      val _ = hts
-    in
-      AtlasFFI.atlas_param_is_hermitian p = 1 andalso AtlasFFI.atlas_param_is_unitary p = 1
-    end
+    List.all (fn ht => is_unitary_to_ht (p, ht)) hts
 
   fun is_unitary_to_ht_prune_equal_rank (g: AtlasFFI.group, p: param, ht: int) : bool =
     if AtlasFFI.atlas_param_is_hermitian p <> 1 then
