@@ -83,9 +83,25 @@ structure FPP_faces_herm = struct
       []
     else
       let
-        val lkts = Representations.LKTs p
+        (* LKTs FFI requires a standard parameter; normalize on demand. *)
+        val (pStd, freePStd) =
+          if AtlasFFI.atlas_param_is_standard p = 1 then
+            (p, false)
+          else
+            let
+              val q = AtlasFFI.atlas_param_normalise p
+              val () =
+                if q = Foreign.Memory.null then
+                  raise Fail ("FPP_faces_herm.next_heights: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+                else
+                  ()
+            in
+              (q, true)
+            end
 
-        fun collect ((mu, _mult), acc) =
+        val lkts = Representations.LKTs pStd
+
+        fun collect ((mu, _), acc) =
           let
             val hs = next_heights_ktype (mu, d)
             val () = KType.free mu
@@ -95,7 +111,18 @@ structure FPP_faces_herm = struct
 
         val hs = List.foldl collect [] lkts
         val hs = Sort.sort_u (op <=) hs
+        val () = if freePStd then AtlasFFI.atlas_param_free pStd else ()
       in
         List.take (hs, Int.min (d, length hs))
       end
+
+  (* `.at` helper: height of a smallest non-lowest K-type of (standard) `p`. *)
+  fun next_height (p: param) : int =
+    let
+      val hs = next_heights (p, 1)
+    in
+      case hs of
+        [] => ~1
+      | h :: _ => h
+    end
 end
