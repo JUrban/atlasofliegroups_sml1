@@ -75,6 +75,7 @@ val () = tryUse "atlas-scripts-sml/Weylgroup.sml"
 val () = tryUse "atlas-scripts-sml/weylgroup_at.sml"
 val () = tryUse "atlas-scripts-sml/bruhat.sml"
 val () = tryUse "atlas-scripts-sml/standardize.sml"
+val () = tryUse "atlas-scripts-sml/K_norm.sml"
 
 (* FFI-facing representation utilities (partial ports). *)
 val () = tryUse "atlas-scripts-sml/representations.sml"
