@@ -158,10 +158,13 @@ structure ToHT = struct
       false
     else
       let
-        val hf = AtlasFFI.atlas_param_hermitian_form_irreducible p
+        (* Equal-rank optimization: coefficient mixedness is preserved under the
+           `c_form -> hermitian_form` conversion (multiplication by `s` only
+           swaps integer/s parts), so for pruning we can inspect `c_form`. *)
+        val hf = AtlasFFI.atlas_param_c_form_irreducible p
         val () =
           if hf = Foreign.Memory.null then
-            raise Fail ("is_unitary_to_ht_prune_equal_rank: hermitian_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+            raise Fail ("is_unitary_to_ht_prune_equal_rank: c_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
           else
             ()
         val r = AtlasFFI.atlas_group_rank g
@@ -193,10 +196,11 @@ structure ToHT = struct
       ~1
     else
       let
-        val hf = AtlasFFI.atlas_param_hermitian_form_irreducible p
+        (* Same equal-rank optimization as in `is_unitary_to_ht_prune_equal_rank`. *)
+        val hf = AtlasFFI.atlas_param_c_form_irreducible p
         val () =
           if hf = Foreign.Memory.null then
-            raise Fail ("is_unitary_to_ht_prune_equal_rank_depth: hermitian_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+            raise Fail ("is_unitary_to_ht_prune_equal_rank_depth: c_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
           else
             ()
         val r = AtlasFFI.atlas_group_rank g
