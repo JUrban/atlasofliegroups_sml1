@@ -88,6 +88,10 @@ structure AtlasFFI = struct
   val atlas_group_is_compact_sym = Foreign.getSymbol lib "atlas_group_is_compact"
   val atlas_group_component_rank_sym = Foreign.getSymbol lib "atlas_group_component_rank"
   val atlas_group_rho_text_sym = Foreign.getSymbol lib "atlas_group_rho_text"
+  val atlas_group_rho_check_text_sym =
+    Foreign.getSymbol lib "atlas_group_rho_check_text"
+  val atlas_group_base_grading_vector_text_sym =
+    Foreign.getSymbol lib "atlas_group_base_grading_vector_text"
   val atlas_group_make_dominant_ratweight_text_sym =
     Foreign.getSymbol lib "atlas_group_make_dominant_ratweight_text"
   val atlas_group_from_dominant_ratweight_text_sym =
@@ -123,6 +127,8 @@ structure AtlasFFI = struct
   val atlas_rootdatum_adjoint_sym = Foreign.getSymbol lib "atlas_rootdatum_adjoint"
   val atlas_rootdatum_rank_sym = Foreign.getSymbol lib "atlas_rootdatum_rank"
   val atlas_rootdatum_rho_text_sym = Foreign.getSymbol lib "atlas_rootdatum_rho_text"
+  val atlas_rootdatum_rho_check_text_sym =
+    Foreign.getSymbol lib "atlas_rootdatum_rho_check_text"
   val atlas_rootdatum_make_dominant_ratweight_text_sym =
     Foreign.getSymbol lib "atlas_rootdatum_make_dominant_ratweight_text"
   val atlas_rootdatum_simple_roots_text_sym =
@@ -437,6 +443,12 @@ structure AtlasFFI = struct
   val atlas_group_rho_text =
     Foreign.buildCall1 (atlas_group_rho_text_sym, Foreign.cPointer, Foreign.cString)
 
+  val atlas_group_rho_check_text =
+    Foreign.buildCall1 (atlas_group_rho_check_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_group_base_grading_vector_text =
+    Foreign.buildCall1 (atlas_group_base_grading_vector_text_sym, Foreign.cPointer, Foreign.cString)
+
   val atlas_group_make_dominant_ratweight_text =
     Foreign.buildCall2
       ( atlas_group_make_dominant_ratweight_text_sym
@@ -562,6 +574,9 @@ structure AtlasFFI = struct
 
   val atlas_rootdatum_rho_text =
     Foreign.buildCall1 (atlas_rootdatum_rho_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_rootdatum_rho_check_text =
+    Foreign.buildCall1 (atlas_rootdatum_rho_check_text_sym, Foreign.cPointer, Foreign.cString)
 
   val atlas_rootdatum_make_dominant_ratweight_text =
     Foreign.buildCall2

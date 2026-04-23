@@ -1238,6 +1238,74 @@ extern "C" const char* atlas_group_rho_text(void* handle)
   }
 }
 
+extern "C" const char* atlas_group_rho_check_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_rho_check_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    atlas::repr::Rep_context rc(h->G);
+    const auto& rd = rc.root_datum();
+    const auto rank = rc.rank();
+    atlas::RatCoweight rho = atlas::rootdata::rho_check(rd);
+    rho.normalize();
+
+    std::ostringstream out;
+    out << rho.denominator();
+    const auto& num = rho.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << static_cast<long long>(num[i]);
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_group_base_grading_vector_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_group_base_grading_vector_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<GroupHandle*>(handle);
+    const auto& v = h->G.g_rho_check();
+    auto vv = v;
+    vv.normalize();
+
+    std::ostringstream out;
+    out << vv.denominator();
+    const auto& num = vv.numerator();
+    for (std::size_t i = 0; i < num.size(); ++i)
+      out << ' ' << static_cast<long long>(num[i]);
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" const char* atlas_group_simple_coroots_text(void* handle)
 {
   try
@@ -1833,6 +1901,39 @@ extern "C" const char* atlas_rootdatum_rho_text(void* handle)
     const auto& num = rho.numerator();
     for (std::size_t i = 0; i < rank; ++i)
       out << ' ' << num[i];
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" const char* atlas_rootdatum_rho_check_text(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_rho_check_text: null handle";
+      return nullptr;
+    }
+    auto* h = static_cast<RootDatumHandle*>(handle);
+    const auto rank = h->rd.rank();
+    atlas::RatCoweight rho = atlas::rootdata::rho_check(h->rd);
+    rho.normalize();
+
+    std::ostringstream out;
+    out << rho.denominator();
+    const auto& num = rho.numerator();
+    for (std::size_t i = 0; i < rank; ++i)
+      out << ' ' << static_cast<long long>(num[i]);
     return store_result(out.str());
   }
   catch (const std::exception& e)
