@@ -64,6 +64,72 @@ structure FPP_localDirac = struct
   type face_key = int list
 
   (* ---------------------------------------------------------------------- *)
+  (* Small cache for ToHT pruning (impure height of c-form).                 *)
+  (* ---------------------------------------------------------------------- *)
+
+  structure ImpureHeightCache = struct
+    type t =
+      { tbl: ParamHash.t
+      , vals: int array ref
+      }
+
+    fun create bucketCount : t =
+      { tbl = ParamHash.create bucketCount
+      , vals = ref (Array.array (Int.max (16, bucketCount), ~3))
+      }
+
+    fun ensureCapacity ({vals, ...}: t) (need: int) =
+      let
+        val a = !vals
+        val cap = Array.length a
+      in
+        if need <= cap then
+          ()
+        else
+          let
+            val newCap = Int.max (need, cap * 2)
+            val b = Array.array (newCap, ~3)
+            fun copy i =
+              if i = cap then () else (Array.update (b, i, Array.sub (a, i)); copy (i + 1))
+          in
+            copy 0;
+            vals := b
+          end
+      end
+
+    fun freeAll (t: t) =
+      (ParamHash.freeAll (#tbl t);
+       #vals t := Array.array (Array.length (!(#vals t)), ~3))
+
+    fun lookup ({tbl, vals}: t) (p: param) : int option =
+      let
+        val j = ParamHash.lookup tbl p
+      in
+        if j < 0 then NONE else SOME (Array.sub (!vals, j))
+      end
+
+    (* Insert a computed value if absent; returns the stored value. *)
+    fun getOrInsert ({tbl, vals}: t) (p: param) (compute: unit -> int) : int =
+      case lookup {tbl = tbl, vals = vals} p of
+        SOME v => v
+      | NONE =>
+          let
+            val sizeBefore = ParamHash.size tbl
+            val j = ParamHash.match tbl p
+            val sizeAfter = ParamHash.size tbl
+            val v = compute ()
+            val () =
+              if sizeAfter = sizeBefore + 1 then
+                (ensureCapacity {tbl = tbl, vals = vals} (j + 1);
+                 Array.update (!vals, j, v))
+              else
+                ()
+          in
+            v
+          end
+  end
+
+  (* ---------------------------------------------------------------------- *)
   (* Small ratvec helpers.                                                   *)
   (* ---------------------------------------------------------------------- *)
 
@@ -1008,7 +1074,8 @@ structure FPP_localDirac = struct
 
   (* Safe early disproof for a local face at height bound `ht`.
      Returns `true` on exceptions (conservative). *)
-  fun face_is_unitary_to_ht_thetaPlusHalf
+  fun face_is_unitary_to_ht_thetaPlusHalf_cached
+    (cache: ImpureHeightCache.t)
     (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key, ht: int) : bool =
     let
       val gammaLocal = VertexData.face_bary (Lvd, face)
@@ -1022,8 +1089,30 @@ structure FPP_localDirac = struct
         else
           ()
 
+      val rank = AtlasFFI.atlas_group_rank g
+
+      fun cFormImpureHeight (q: param) : int =
+        let
+          val cf = AtlasFFI.atlas_param_c_form_irreducible q
+          val () =
+            if cf = Foreign.Memory.null then
+              raise Fail ("face_is_unitary_to_ht: c_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+          val d = KTypePol.impureHeight (cf, rank)
+          val () = KTypePol.free cf
+        in
+          d
+        end
+
       fun okFinal q =
-        AtlasFFI.atlas_param_is_hermitian q = 1 andalso ToHT.is_unitary_to_ht (q, ht)
+        AtlasFFI.atlas_param_is_hermitian q = 1
+        andalso
+        let
+          val d = ImpureHeightCache.getOrInsert cache q (fn () => cFormImpureHeight q)
+        in
+          d = ~1 orelse d > ht
+        end
     in
       if AtlasFFI.atlas_param_is_final p1 = 1 then
         let
@@ -1049,6 +1138,17 @@ structure FPP_localDirac = struct
         in
           List.all okTerm finals
         end
+    end
+
+  fun face_is_unitary_to_ht_thetaPlusHalf
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t, face: face_key, ht: int) : bool =
+    let
+      val cache = ImpureHeightCache.create 1024
+      val ok = (face_is_unitary_to_ht_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face, ht)
+                handle _ => true)
+      val () = ImpureHeightCache.freeAll cache
+    in
+      ok
     end
 
   (* Dimension-by-dimension face filtering using `ToHT` at per-dimension bounds.
@@ -1079,6 +1179,7 @@ structure FPP_localDirac = struct
       val facesByDim = Array.tabulate (r + 1, fn d => takeLim (Array.sub (facesByDim0, d)))
 
       val kept = Array.array (r + 1, ([]: face_key list))
+      val cache = ImpureHeightCache.create 4096
 
       fun faceSetOf (xs: face_key list) : face_key Hash.t =
         Hash.make_hash_data ({hash_code = Hash.hash_code_vec, eq = (op =) }, xs)
@@ -1088,7 +1189,9 @@ structure FPP_localDirac = struct
           val vs = Array.sub (facesByDim, 0)
           val ht0 = htForDim 0
           val ks =
-            List.filter (fn face => face_is_unitary_to_ht_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face, ht0)) vs
+            List.filter
+              (fn face => face_is_unitary_to_ht_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face, ht0))
+              vs
         in
           Array.update (kept, 0, ks)
         end
@@ -1101,7 +1204,8 @@ structure FPP_localDirac = struct
             List.all (fn sf => Hash.lookup prevSet sf >= 0) (codim1_subfaces face)
           val htd = htForDim d
           fun ok face =
-            subfacesOk face andalso face_is_unitary_to_ht_thetaPlusHalf (g, x, lambda, thetaPlusHalf, Lvd, face, htd)
+            subfacesOk face
+            andalso face_is_unitary_to_ht_thetaPlusHalf_cached cache (g, x, lambda, thetaPlusHalf, Lvd, face, htd)
           val fs = Array.sub (facesByDim, d)
           val ks = List.filter ok fs
         in
@@ -1110,6 +1214,7 @@ structure FPP_localDirac = struct
 
       val () = keepDim0 ()
       val () = List.app keepDim (List.tabulate (r, fn i => i + 1))
+      val () = ImpureHeightCache.freeAll cache
     in
       kept
     end
