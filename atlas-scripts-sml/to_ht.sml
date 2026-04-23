@@ -54,13 +54,16 @@ structure ToHT = struct
 
     For the SML port we implement the core `.at` semantics:
     - for `HT < 0`, fall back to the exact Atlas predicate `is_unitary(p)`;
-    - otherwise, compute `hermitian_form_irreducible(p)` (via FFI), truncate it
-      and check coefficient-wise purity up to height `HT`.
+    - otherwise, compute `c_form_irreducible(p)` (via FFI) and check
+      coefficient-wise purity up to height `HT`.
 
     Implementation note
     - We avoid allocating an explicit truncated `KTypePol` by computing the
       first impure height once (via `KTypePol.impureHeight`) and comparing it
       to `HT`.
+    - Coefficient-wise purity / mixedness is invariant under the c-form to
+      hermitian-form conversion (multiplying a split integer by `s` swaps its
+      integer and `s` parts), so c-form is sufficient for this pruning test.
 
     This is a *pruning* predicate: it can return false positives but should not
     return false negatives.
@@ -136,10 +139,10 @@ structure ToHT = struct
       false
     else
       let
-        val hf = AtlasFFI.atlas_param_hermitian_form_irreducible p
+        val hf = AtlasFFI.atlas_param_c_form_irreducible p
         val () =
           if hf = Foreign.Memory.null then
-            raise Fail ("is_unitary_to_ht: hermitian_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+            raise Fail ("is_unitary_to_ht: c_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
           else
             ()
         val r = paramRank p
