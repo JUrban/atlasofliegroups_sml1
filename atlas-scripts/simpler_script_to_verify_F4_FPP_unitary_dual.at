@@ -1,0 +1,5 @@
+set G=F4_s
+set all_barycenters_of_facets = FPP_barycenters(G,-1).##
+<F4_FPP_points.at
+big_unitary_hash.uhash(G).list().# = 1864
+for x in KGB(G) do for lambda in FPP_lambdas(x) do for nu in all_barycenters_of_facets do let pi = first_param(finalize(parameter(x,lambda,nu))) in if is_unitary(pi)=true and big_unitary_hash.long_match(pi,0)=-1 then print("IT'S ALL WRONG!!!") fi od od od
