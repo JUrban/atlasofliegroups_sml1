@@ -1550,4 +1550,39 @@ structure FPP_localDirac = struct
 
   fun local_test_GEO_hash_dumb_into_hash (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     local_test_GEO_hash_dumb_into_hash_limit (g, x, lambda, ~1, uhash)
+
+  (* `.at`-style helper used when a ToHT-driven schedule is unavailable or
+     deemed unhelpful: try the hash2 path if enabled, otherwise fall back to
+     the dumb baseline. *)
+  fun local_test_GEO_hash_else_dumb_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    if !prefer_to_hts then
+      local_test_GEO_hash2_limit_ctx (c, x, lambda, maxFacesPerDim)
+    else
+      local_test_GEO_hash_dumb_limit_ctx (c, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash_else_dumb_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash_else_dumb_limit_ctx (c, x, lambda, ~1)
+
+  fun local_test_GEO_hash_else_dumb_limit (g: group, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
+    local_test_GEO_hash_else_dumb_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim)
+
+  fun local_test_GEO_hash_else_dumb (g: group, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash_else_dumb_limit (g, x, lambda, ~1)
+
+  fun local_test_GEO_hash_else_dumb_into_hash_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, uhash: ParamHash.t) : int =
+    if !prefer_to_hts then
+      local_test_GEO_hash2_into_hash_limit_ctx (c, x, lambda, maxFacesPerDim, uhash)
+    else
+      local_test_GEO_hash_dumb_into_hash_limit_ctx (c, x, lambda, maxFacesPerDim, uhash)
+
+  fun local_test_GEO_hash_else_dumb_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash_else_dumb_into_hash_limit_ctx (c, x, lambda, ~1, uhash)
+
+  fun local_test_GEO_hash_else_dumb_into_hash_limit
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, uhash: ParamHash.t) : int =
+    local_test_GEO_hash_else_dumb_into_hash_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, uhash)
+
+  fun local_test_GEO_hash_else_dumb_into_hash (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash_else_dumb_into_hash_limit (g, x, lambda, ~1, uhash)
 end
