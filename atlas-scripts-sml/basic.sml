@@ -41,6 +41,34 @@ structure Basic = struct
   fun indices (xs: 'a list) : int list =
     List.tabulate (length xs, fn i => i)
 
+  (* `list(limit,pred)` from `basic.at`: all `i` with `0<=i<limit` satisfying `pred`. *)
+  fun list (limit: int, pred: int -> bool) : int list =
+    if limit < 0 then raise Fail "Basic.list: negative limit"
+    else List.filter pred (List.tabulate (limit, fn i => i))
+
+  (* `complement(limit,pred)` from `basic.at`: all `i` with `0<=i<limit` not satisfying `pred`. *)
+  fun complement (limit: int, pred: int -> bool) : int list =
+    list (limit, fn i => not (pred i))
+
+  (* `complement(n,vec list)` from `basic.at` specialized to int lists: *)
+  fun complement_of_list (n: int, xs: int list) : int list =
+    if n < 0 then
+      raise Fail "Basic.complement_of_list: negative n"
+    else
+      let
+        val seen = Array.array (n, false)
+        val () =
+          List.app
+            (fn i =>
+               if 0 <= i andalso i < n then
+                 Array.update (seen, i, true)
+               else
+                 ())
+            xs
+      in
+        List.filter (fn i => not (Array.sub (seen, i))) (List.tabulate (n, fn i => i))
+      end
+
   (* Binary search for the first index where `pred` becomes true on `[low,high)`. *)
   fun binary_search_first (pred: int -> bool, low: int, high: int) : int =
     let
@@ -212,6 +240,11 @@ structure Basic = struct
     in
       loop xs
     end
+
+  (* `power_set(n)` from `basic.at`: power set of `{0,...,n-1}`. *)
+  fun power_set_int (n: int) : int list list =
+    if n < 0 then raise Fail "Basic.power_set_int: negative n"
+    else power_set (List.tabulate (n, fn i => i))
 
   (* All k-subsets of xs, preserving original order inside each subset. *)
   (* Combinations of size `k` from `xs`, preserving original order. *)

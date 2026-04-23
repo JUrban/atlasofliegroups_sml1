@@ -181,6 +181,21 @@ structure Aff_cube = struct
       loopM (n - r)
     end
 
+  (* All faces of the n-cube (no rank bound), as in `cube_faces(n)` in `.at`. *)
+  fun cube_faces_all (n: int) : (int list * vec) list =
+    let
+      val ss = Basic.power_set_int n
+      fun oneS s =
+        let
+          val m = length s
+          val betas = Misc.box (2, m)
+        in
+          List.map (fn beta => (s, beta)) betas
+        end
+    in
+      List.concat (List.map oneS ss)
+    end
+
   (* Restrict Av=b to the face given by fixing v[i]=epsilon[pos] for i in S. *)
   fun face_restrict (a: mat, b: vec, s: int list, epsilon: vec) : mat * vec =
     let
@@ -231,5 +246,24 @@ structure Aff_cube = struct
         end
     in
       List.concat (List.map oneFace faces)
+    end
+
+  (* Short-circuit check: return true if there is at least one “good interior point”
+     on some face up to rank(A), as in `.at` `aff_cube_extrema_short`. *)
+  fun aff_cube_extrema_short (a: mat, b: vec) : bool =
+    let
+      val (_, n) = matShapeCols a
+      val r = rankQ a
+      val faces = cube_faces (n, r)
+      fun ok (s, eps) =
+        let
+          val (ares, bres) = face_restrict (a, b, s, eps)
+        in
+          (case good_interior_point (ares, bres) of
+             [_] => true
+           | _ => false)
+        end
+    in
+      List.exists ok faces
     end
 end

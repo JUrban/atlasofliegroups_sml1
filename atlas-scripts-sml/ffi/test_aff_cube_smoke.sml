@@ -22,3 +22,4 @@ val () = assert "fixed coords are both" (s = [0, 1]);
 val () = assert "epsilon is 0,0" (eps = [0, 0]);
 val () = assert "v is 0,0" (List.all (fn q => BigRat.equal (q, BigRat.zero ())) v);
 
+val () = assert "extrema_short true" (Aff_cube.aff_cube_extrema_short (a, b));
