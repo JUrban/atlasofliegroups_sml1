@@ -114,6 +114,50 @@ structure Polynomial = struct
     else
       List.tabulate (n, fn i => List.tabulate (n, fn j => if i = j then poly_1 else poly_0))
 
+  fun transpose (m: i_poly_mat) : i_poly_mat =
+    let
+      val (r, c) =
+        (case m of
+           [] => (0, 0)
+         | r0 :: rs =>
+             let
+               val c = length r0
+               val () = if List.all (fn r => length r = c) rs then () else raise Fail "Polynomial.transpose: ragged"
+             in
+               (length m, c)
+             end)
+    in
+      List.tabulate (c, fn j => List.tabulate (r, fn i => List.nth (List.nth (m, i), j)))
+    end
+
+  fun zero_poly_row (n: int) : i_poly list =
+    List.tabulate (n, fn _ => poly_0)
+
+  fun zero_poly_matrix (rows: int, cols: int) : i_poly_mat =
+    List.tabulate (rows, fn _ => zero_poly_row cols)
+
+  fun scalar_poly_matrix (n: int, c: int) : i_poly_mat =
+    let
+      val cc = constant_poly c
+      fun row i = List.tabulate (n, fn j => if i = j then cc else poly_0)
+    in
+      List.tabulate (n, row)
+    end
+
+  fun mat_as_poly_mat (m: int list list) : i_poly_mat =
+    List.map (fn row => List.map constant_poly row) m
+
+  fun pow (p: i_poly, n: int) : i_poly =
+    if n < 0 then raise Fail "Polynomial.pow: negative exponent"
+    else if n = 0 then poly_1
+    else
+      let
+        fun loop (acc, k) =
+          if k = 0 then acc else loop (mul (acc, p), k - 1)
+      in
+        loop (p, n - 1)
+      end
+
   fun matShape (m: i_poly_mat) : int * int =
     (case m of
        [] => (0, 0)
@@ -146,6 +190,66 @@ structure Polynomial = struct
     in
       List.tabulate (ra, row)
     end
+
+  fun equalMat (a: i_poly_mat, b: i_poly_mat) : bool =
+    let
+      val (ra, ca) = matShape a
+      val (rb, cb) = matShape b
+      val () = if ra = rb andalso ca = cb then () else raise Fail "Polynomial.equalMat: dim mismatch"
+      fun rowEq (ra, rb) = ListPair.allEq (op =) (ra, rb)
+    in
+      ListPair.allEq rowEq (a, b)
+    end
+
+  fun is_zero_mat (m: i_poly_mat) : bool =
+    List.all (fn row => List.all isZero row) m
+
+  (* `upper_unitriangular_inverse` from `polynomial.at` (row-based). *)
+  fun upper_unitriangular_inverse (m: i_poly_mat) : i_poly_mat =
+    let
+      val n = length m
+      val () = if List.all (fn r => length r = n) m then () else raise Fail "Polynomial.upper_unitriangular_inverse: non-square"
+      val () =
+        if List.all (fn i => strip (List.nth (List.nth (m, i), i)) = poly_1) (List.tabulate (n, fn i => i)) then ()
+        else raise Fail "Polynomial.upper_unitriangular_inverse: diagonal not 1"
+      val r = Array.array (n, ([]: i_poly list))
+      fun computeRow i =
+        let
+          val mi = List.nth (m, i)
+          val prefix = List.tabulate (i, fn _ => poly_0) @ [poly_1]
+          fun entry j =
+            let
+              fun sumLoop (k, acc) =
+                if k > j then acc
+                else
+                  let
+                    val mik = List.nth (mi, k)
+                    val rkj = List.nth (Array.sub (r, k), j)
+                    val acc = sub (acc, mul (mik, rkj))
+                  in
+                    sumLoop (k + 1, acc)
+                  end
+            in
+              sumLoop (i + 1, poly_0)
+            end
+          val suffix =
+            if i = n - 1 then
+              []
+            else
+              List.tabulate (n - i - 1, fn t => entry (i + 1 + t))
+        in
+          prefix @ suffix
+        end
+      fun loop i =
+        if i < 0 then ()
+        else (Array.update (r, i, computeRow i); loop (i - 1))
+      val () = loop (n - 1)
+    in
+      Array.foldr (op ::) [] r
+    end
+
+  fun lower_unitriangular_inverse (m: i_poly_mat) : i_poly_mat =
+    transpose (upper_unitriangular_inverse (transpose m))
 
   (* ---------- evaluation (subset of `polynomial.at`) ---------- *)
 
@@ -203,4 +307,30 @@ structure Polynomial = struct
 
   fun update_matrix_row (m: i_poly_mat, i: int, row: i_poly list) : i_poly_mat =
     List.tabulate (length m, fn k => if k = i then row else List.nth (m, k))
+
+  fun poly_format (p: i_poly, q: string) : string =
+    let
+      val p = strip p
+      fun termPow k =
+        if k > 1 then q ^ "^" ^ Int.toString k
+        else if k = 1 then q
+        else ""
+      fun one (c, k) =
+        if c = 0 then ""
+        else
+          let
+            val sign = if c < 0 then "-" else "+"
+            val absC = Int.abs c
+            val coef =
+              if absC = 1 andalso k > 0 then sign
+              else sign ^ Int.toString absC
+          in
+            coef ^ termPow k
+          end
+      val parts = List.tabulate (length p, fn k => one (List.nth (p, k), k))
+      val s = String.concat parts
+    in
+      if null p then "0"
+      else if String.size s > 0 andalso String.sub (s, 0) = #"+" then String.extract (s, 1, NONE) else s
+    end
 end

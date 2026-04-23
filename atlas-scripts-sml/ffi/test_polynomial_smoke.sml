@@ -27,3 +27,12 @@ val b : i_poly_mat =
 
 val () = assert "matMul dims" (matMul (a, b) = [[poly_1, [1, 2]], [poly_0, poly_1]]);
 val () = assert "matAdd" (matAdd (a, b) = [[poly_2, [1, 2]], [poly_0, poly_2]]);
+
+val u : i_poly_mat =
+  [ [poly_1, [1, 1], [2]]
+  , [poly_0, poly_1, poly_q]
+  , [poly_0, poly_0, poly_1]
+  ];
+val uinv = upper_unitriangular_inverse u;
+val () = assert "upper_unitriangular_inverse left" (matMul (u, uinv) = identity_poly_matrix 3);
+val () = assert "upper_unitriangular_inverse right" (matMul (uinv, u) = identity_poly_matrix 3);
