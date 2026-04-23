@@ -79,11 +79,12 @@ val () = tryUse "atlas-scripts-sml/standardize.sml"
 (* FFI-facing representation utilities (partial ports). *)
 val () = tryUse "atlas-scripts-sml/representations.sml"
 val () = tryUse "atlas-scripts-sml/parameters.sml"
+val () = tryUse "atlas-scripts-sml/complex.sml"
 val () = tryUse "atlas-scripts-sml/tits.sml"
 val () = tryUse "atlas-scripts-sml/test_unitarity.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
-   - `extParamPol.at`, `complex.at`, `modules.at`, `print_K_types.at`, `galois.at`,
+   - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
      `jantzen.at`, `finite_dimensional_signature.at`, `W_reps.at`,
      `hodge_K_type_formula.at`, `all_finite_order.at`, `hodge_test.at`,
      `hodge_tensor.at`, `K_Nilpotent.at`, `exceptionalNilpotentData.at`,
