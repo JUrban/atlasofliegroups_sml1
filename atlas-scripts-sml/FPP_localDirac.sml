@@ -1515,4 +1515,39 @@ structure FPP_localDirac = struct
 
   fun local_test_GEO_simple_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
     add_unitary_from_local_faces_ctx (c, x, lambda, uhash)
+
+  (* ---------------------------------------------------------------------- *)
+  (* Additional `.at`-name compatibility: `*_hash_dumb*`                      *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* The `.at` implementation’s `local_test_GEO_hash_dumb` is a “fallback”
+     variant that avoids the more elaborate face-graph / ToHT pruning logic.
+     In the SML port, the closest analogue is the baseline enumeration
+     provided by `local_test_GEO_simple*`. *)
+
+  fun local_test_GEO_hash_dumb_limit_ctx (c: ctx, x: int, lambda: ratvec, maxFaces: int) : param list =
+    local_test_GEO_simple_limit_ctx (c, x, lambda, maxFaces)
+
+  fun local_test_GEO_hash_dumb_ctx (c: ctx, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash_dumb_limit_ctx (c, x, lambda, ~1)
+
+  fun local_test_GEO_hash_dumb_limit (g: group, x: int, lambda: ratvec, maxFaces: int) : param list =
+    local_test_GEO_hash_dumb_limit_ctx (create_ctx g, x, lambda, maxFaces)
+
+  fun local_test_GEO_hash_dumb (g: group, x: int, lambda: ratvec) : param list =
+    local_test_GEO_hash_dumb_limit (g, x, lambda, ~1)
+
+  fun local_test_GEO_hash_dumb_into_hash_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
+    local_test_GEO_simple_into_hash_limit_ctx (c, x, lambda, maxFaces, uhash)
+
+  fun local_test_GEO_hash_dumb_into_hash_ctx (c: ctx, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash_dumb_into_hash_limit_ctx (c, x, lambda, ~1, uhash)
+
+  fun local_test_GEO_hash_dumb_into_hash_limit
+    (g: group, x: int, lambda: ratvec, maxFaces: int, uhash: ParamHash.t) : int =
+    local_test_GEO_hash_dumb_into_hash_limit_ctx (create_ctx g, x, lambda, maxFaces, uhash)
+
+  fun local_test_GEO_hash_dumb_into_hash (g: group, x: int, lambda: ratvec, uhash: ParamHash.t) : int =
+    local_test_GEO_hash_dumb_into_hash_limit (g, x, lambda, ~1, uhash)
 end
