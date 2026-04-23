@@ -433,6 +433,8 @@ structure FPP_localDirac = struct
   val min_after_flag : bool ref = ref false
   (* When true, attempt `Unity`/`to_ht`-based early-disproof in cached unitary checks. *)
   val to_ht_prune_flag : bool ref = ref false
+  (* When true, seed graph classes from a known-unitary `ParamHash` when provided. *)
+  val seed_known_unitaries_flag : bool ref = ref true
   (* When true, compute a per-dimension height schedule from `pmax` using
      LKTs-based `next_heights`; otherwise use a cheap arithmetic schedule. *)
   val ht_schedule_from_pmax_flag : bool ref = ref false
@@ -1343,6 +1345,103 @@ structure FPP_localDirac = struct
     : face_verts_khash_table =
     local_testK_hash_simple_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash)
 
+  (* ---------------------------------------------------------------------- *)
+  (* Seeding helpers: known unitary classes from a `ParamHash`.              *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* Parameters in `uhash` that match the given `(x,lambda)` (by normalized texts). *)
+  fun params_in_hash_x_lambda (uhash: ParamHash.t, x: int, lambda: ratvec) : param list =
+    let
+      val lambdaKey = ratvecKey lambda
+      fun ok p =
+        AtlasFFI.atlas_param_x p = x
+        andalso
+        let
+          val lamP = Lattice.ratvecNormalize (AllParameters.parseRatWeightText (AtlasFFI.atlas_param_lambda_text p))
+        in
+          ratvecKeyNormalized lamP = lambdaKey
+        end
+    in
+      List.filter ok (ParamHash.list uhash)
+    end
+
+  (* Build a lookup `gammaKey -> classId` for a `[[FaceVertsKHash]]` table with local barycenters. *)
+  fun gammaKey_to_classId
+    (Lvd: VertexData.t, fd: face_verts_khash_table, classListByFace: int list list)
+    : int list -> int option =
+    let
+      val totalFaces = FaceClasses.size_fd fd
+      val h =
+        Hash.make_hash_reserve ({hash_code = Hash.hash_code_vec, eq = (op =) }, totalFaces)
+      val clsA = Array.array (Int.max (1, totalFaces), ~1)
+
+      fun insertEntry (d: int, j: int, entry: int list, cid: int) =
+        let
+          val verts = List.take (entry, d + 1)
+          val gamma = VertexData.face_bary (Lvd, verts)
+          val key = ratvecKey gamma
+          val idx = #match h key
+          val () = Array.update (clsA, idx, cid)
+        in
+          ()
+        end
+
+      fun loopD d =
+        if d >= length fd then
+          ()
+        else
+          let
+            val row = List.nth (fd, d)
+            val clRow = List.nth (classListByFace, d)
+            fun loopJ (j, []) = ()
+              | loopJ (j, e :: rest) =
+                  (insertEntry (d, j, e, List.nth (clRow, j)); loopJ (j + 1, rest))
+          in
+            loopJ (0, row);
+            loopD (d + 1)
+          end
+
+      val () = loopD 0
+    in
+      fn key =>
+        let
+          val idx = Hash.lookup h key
+        in
+          if idx < 0 then NONE
+          else
+            let
+              val cid = Array.sub (clsA, idx)
+            in
+              if cid < 0 then NONE else SOME cid
+            end
+        end
+    end
+
+  (* Class ids corresponding to known unitary parameters (if their local barycenter face is present in `fd`). *)
+  fun known_unitary_class_ids
+    (uhash: ParamHash.t, g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec,
+     Lvd: VertexData.t, fd: face_verts_khash_table, classListByFace: int list list)
+    : int list =
+    let
+      val ps = params_in_hash_x_lambda (uhash, x, lambda)
+      val lookup = gammaKey_to_classId (Lvd, fd, classListByFace)
+
+      fun one (p, acc) =
+        let
+          val nu = Lattice.ratvecNormalize (AllParameters.parseRatWeightText (AtlasFFI.atlas_param_nu_text p))
+          val gammaLocal = ratvecAdd (nu, thetaPlusHalf)
+          val key = ratvecKey gammaLocal
+        in
+          case lookup key of
+            NONE => acc
+          | SOME cid => cid :: acc
+        end
+
+      val cids = List.foldl one [] ps
+    in
+      Sort.sort_u (op <=) cids
+    end
+
   (*
     Graph-based variant closer in spirit to `.at` `local_testK_hash`:
     - build a `[[FaceVertsKHash]]` table for *all* stable local faces (bounded by `maxFacesPerDim`)
@@ -1360,8 +1459,9 @@ structure FPP_localDirac = struct
     - `level`: if < 0 use full tail-equality for reverse edges; if >= 0 use
       KTypePol truncation to this height when deciding reverse edges.
   *)
-  fun local_testK_hash_graph_exact_limit_ctx_cached
+  fun local_testK_hash_graph_exact_limit_ctx_cached_known
     (cache: unitary_cache)
+    (knownUhashOpt: ParamHash.t option)
     (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
     : face_verts_khash_table =
     let
@@ -1433,6 +1533,20 @@ structure FPP_localDirac = struct
                else (markUp cid; loop (cid + 1))
            | _ => loop (cid + 1))
 
+      (* Optional seeding: if a class contains a face whose barycenter parameter is in a
+         known unitary `ParamHash`, mark it unitary and propagate downward. *)
+      fun seedKnown (uhash: ParamHash.t) =
+        let
+          val cids = known_unitary_class_ids (uhash, g, x, lambda, thetaPlusHalf, Lvd, fd, classListByFace)
+        in
+          List.app markDown cids
+        end
+
+      val () =
+        if !seed_known_unitaries_flag then
+          (case knownUhashOpt of NONE => () | SOME uhash => seedKnown uhash)
+        else
+          ()
       val () = loop 0
 
       fun keepFace (d: int, j: int) : bool =
@@ -1453,6 +1567,12 @@ structure FPP_localDirac = struct
       List.tabulate (length fd, filterDim)
     end
 
+  fun local_testK_hash_graph_exact_limit_ctx_cached
+    (cache: unitary_cache)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
+    : face_verts_khash_table =
+    local_testK_hash_graph_exact_limit_ctx_cached_known cache NONE (c, x, lambda, maxFacesPerDim, polHash, level)
+
   fun local_testK_hash_graph_exact_limit_ctx
     (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
     : face_verts_khash_table =
@@ -1464,10 +1584,28 @@ structure FPP_localDirac = struct
       res
     end
 
+  fun local_testK_hash_graph_exact_limit_ctx_known
+    (knownUhash: ParamHash.t)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
+    : face_verts_khash_table =
+    let
+      val cache = BigUnitaryCache.create 4096
+      val res = local_testK_hash_graph_exact_limit_ctx_cached_known cache (SOME knownUhash) (c, x, lambda, maxFacesPerDim, polHash, level)
+      val () = BigUnitaryCache.freeAll cache
+    in
+      res
+    end
+
   fun local_testK_hash_graph_exact_limit
     (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
     : face_verts_khash_table =
     local_testK_hash_graph_exact_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash, level)
+
+  fun local_testK_hash_graph_exact_limit_known
+    (knownUhash: ParamHash.t)
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
+    : face_verts_khash_table =
+    local_testK_hash_graph_exact_limit_ctx_known knownUhash (create_ctx g, x, lambda, maxFacesPerDim, polHash, level)
 
   (* ---------------------------------------------------------------------- *)
   (* To-height pruning variant (safe early disproof, then exact check later) *)
@@ -1562,7 +1700,8 @@ structure FPP_localDirac = struct
     This is closer to the `.at` intent: spend cheap time eliminating obviously
     nonunitary classes, then do the expensive exact unitary checks on the rest.
   *)
-  fun local_testK_hash_graph_to_ht_then_exact_limit_ctx
+  fun local_testK_hash_graph_to_ht_then_exact_limit_ctx_known
+    (knownUhashOpt: ParamHash.t option)
     (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int, ht: int)
     : face_verts_khash_table =
     let
@@ -1666,6 +1805,18 @@ structure FPP_localDirac = struct
                  (markUp cid; passExact (cid + 1))
            | _ => passExact (cid + 1))
 
+      fun seedKnown (uhash: ParamHash.t) =
+        let
+          val cids = known_unitary_class_ids (uhash, g, x, lambda, thetaPlusHalf, Lvd, fd, classListByFace)
+        in
+          List.app markDown cids
+        end
+
+      val () =
+        if !seed_known_unitaries_flag then
+          (case knownUhashOpt of NONE => () | SOME uhash => seedKnown uhash)
+        else
+          ()
       val () = (passToHt 0; passExact 0)
       val () = (ImpureHeightCache.freeAll impCache; BigUnitaryCache.freeAll uCache)
 
@@ -1687,10 +1838,22 @@ structure FPP_localDirac = struct
       List.tabulate (length fd, filterDim)
     end
 
+  fun local_testK_hash_graph_to_ht_then_exact_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int, ht: int)
+    : face_verts_khash_table =
+    local_testK_hash_graph_to_ht_then_exact_limit_ctx_known NONE (c, x, lambda, maxFacesPerDim, polHash, level, ht)
+
   fun local_testK_hash_graph_to_ht_then_exact_limit
     (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int, ht: int)
     : face_verts_khash_table =
     local_testK_hash_graph_to_ht_then_exact_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash, level, ht)
+
+  fun local_testK_hash_graph_to_ht_then_exact_limit_known
+    (knownUhash: ParamHash.t)
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int, ht: int)
+    : face_verts_khash_table =
+    local_testK_hash_graph_to_ht_then_exact_limit_ctx_known (SOME knownUhash)
+      (create_ctx g, x, lambda, maxFacesPerDim, polHash, level, ht)
 
   (* Dimension-by-dimension face filtering using `ToHT` at per-dimension bounds.
      This is intended as a pruning pre-pass; callers should still do an exact
