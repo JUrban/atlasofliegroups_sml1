@@ -600,20 +600,31 @@ structure FPP_localDirac = struct
           raise Fail ("face_is_unitary_exact: normalise failed: " ^ AtlasFFI.atlas_last_error ())
         else
           ()
-      val finals = ParamFinals.finals p1
-      val () = AtlasFFI.atlas_param_free p1
-      fun okTerm (q, mult) =
-        if mult = 0 then
-          (AtlasFFI.atlas_param_free q; true)
-        else
-          let
-            val ok = AtlasFFI.atlas_param_is_hermitian q = 1 andalso AtlasFFI.atlas_param_is_unitary q = 1
-            val () = AtlasFFI.atlas_param_free q
-          in
-            ok
-          end
     in
-      List.all okTerm finals
+      if AtlasFFI.atlas_param_is_final p1 = 1 then
+        let
+          val ok = AtlasFFI.atlas_param_is_hermitian p1 = 1 andalso AtlasFFI.atlas_param_is_unitary p1 = 1
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          ok
+        end
+      else
+        let
+          val finals = ParamFinals.finals p1
+          val () = AtlasFFI.atlas_param_free p1
+          fun okTerm (q, mult) =
+            if mult = 0 then
+              (AtlasFFI.atlas_param_free q; true)
+            else
+              let
+                val ok = AtlasFFI.atlas_param_is_hermitian q = 1 andalso AtlasFFI.atlas_param_is_unitary q = 1
+                val () = AtlasFFI.atlas_param_free q
+              in
+                ok
+              end
+        in
+          List.all okTerm finals
+        end
     end
 
   fun face_is_unitary_exact (g: group, x: int, lambda: ratvec, Lvd: VertexData.t, face: face_key) : bool =
@@ -712,26 +723,43 @@ structure FPP_localDirac = struct
           raise Fail ("face_is_unitary_exact_cached: normalise failed: " ^ AtlasFFI.atlas_last_error ())
         else
           ()
-      val finals = ParamFinals.finals p1
-      val () = AtlasFFI.atlas_param_free p1
-      fun okTerm (q, mult) =
-        if mult = 0 then
-          (AtlasFFI.atlas_param_free q; true)
-        else if AtlasFFI.atlas_param_is_hermitian q <> 1 then
-          (AtlasFFI.atlas_param_free q; false)
-        else
-          let
-            val ok =
-              if allowPrune then
-                BigUnitaryCache.check_unitary_prune_equal_rank_steps cache (g, !bl_step_count, !bl_step_size) q
-              else
-                BigUnitaryCache.check_unitary cache q
-            val () = AtlasFFI.atlas_param_free q
-          in
-            ok
-          end
     in
-      List.all okTerm finals
+      if AtlasFFI.atlas_param_is_final p1 = 1 then
+        let
+          val ok =
+            if AtlasFFI.atlas_param_is_hermitian p1 <> 1 then
+              false
+            else if allowPrune then
+              BigUnitaryCache.check_unitary_prune_equal_rank_steps cache (g, !bl_step_count, !bl_step_size) p1
+            else
+              BigUnitaryCache.check_unitary cache p1
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          ok
+        end
+      else
+        let
+          val finals = ParamFinals.finals p1
+          val () = AtlasFFI.atlas_param_free p1
+          fun okTerm (q, mult) =
+            if mult = 0 then
+              (AtlasFFI.atlas_param_free q; true)
+            else if AtlasFFI.atlas_param_is_hermitian q <> 1 then
+              (AtlasFFI.atlas_param_free q; false)
+            else
+              let
+                val ok =
+                  if allowPrune then
+                    BigUnitaryCache.check_unitary_prune_equal_rank_steps cache (g, !bl_step_count, !bl_step_size) q
+                  else
+                    BigUnitaryCache.check_unitary cache q
+                val () = AtlasFFI.atlas_param_free q
+              in
+                ok
+              end
+        in
+          List.all okTerm finals
+        end
     end
 
   fun unitary_local_faces_by_dim_exact_limit_ctx_cached
@@ -837,10 +865,16 @@ structure FPP_localDirac = struct
               raise Fail ("params_for_local_faces_limit: normalise failed: " ^ AtlasFFI.atlas_last_error ())
             else
               ()
-          val finals = ParamFinals.finals p1
-          val () = AtlasFFI.atlas_param_free p1
         in
-          List.foldl addFinal acc finals
+          if AtlasFFI.atlas_param_is_final p1 = 1 then
+            AllParameters.addUniqueByEquivalent (p1, acc)
+          else
+            let
+              val finals = ParamFinals.finals p1
+              val () = AtlasFFI.atlas_param_free p1
+            in
+              List.foldl addFinal acc finals
+            end
         end
     in
       List.foldl addFromFace [] faces
@@ -874,10 +908,16 @@ structure FPP_localDirac = struct
               raise Fail ("params_for_given_local_faces: normalise failed: " ^ AtlasFFI.atlas_last_error ())
             else
               ()
-          val finals = ParamFinals.finals p1
-          val () = AtlasFFI.atlas_param_free p1
         in
-          List.foldl addFinal acc finals
+          if AtlasFFI.atlas_param_is_final p1 = 1 then
+            AllParameters.addUniqueByEquivalent (p1, acc)
+          else
+            let
+              val finals = ParamFinals.finals p1
+              val () = AtlasFFI.atlas_param_free p1
+            in
+              List.foldl addFinal acc finals
+            end
         end
     in
       List.foldl addFromFace [] faces
