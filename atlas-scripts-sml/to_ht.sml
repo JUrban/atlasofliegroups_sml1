@@ -55,7 +55,12 @@ structure ToHT = struct
     For the SML port we implement the core `.at` semantics:
     - for `HT < 0`, fall back to the exact Atlas predicate `is_unitary(p)`;
     - otherwise, compute `hermitian_form_irreducible(p)` (via FFI), truncate it
-      to height `HT`, and check coefficient-wise purity.
+      and check coefficient-wise purity up to height `HT`.
+
+    Implementation note
+    - We avoid allocating an explicit truncated `KTypePol` by computing the
+      first impure height once (via `KTypePol.impureHeight`) and comparing it
+      to `HT`.
 
     This is a *pruning* predicate: it can return false positives but should not
     return false negatives.
@@ -131,9 +136,15 @@ structure ToHT = struct
       false
     else
       let
-        val hf = hermitian_form_irreducible_to_ht (p, ht)
+        val hf = AtlasFFI.atlas_param_hermitian_form_irreducible p
+        val () =
+          if hf = Foreign.Memory.null then
+            raise Fail ("is_unitary_to_ht: hermitian_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+          else
+            ()
         val r = paramRank p
-        val ok = KTypePol.isPure (hf, r)
+        val d = KTypePol.impureHeight (hf, r)
+        val ok = (d = ~1) orelse (d > ht)
         val () = KTypePol.free hf
       in
         ok
@@ -147,13 +158,19 @@ structure ToHT = struct
       false
     else
       let
-        val hf = hermitian_form_irreducible_to_ht (p, ht)
+        val hf = AtlasFFI.atlas_param_hermitian_form_irreducible p
+        val () =
+          if hf = Foreign.Memory.null then
+            raise Fail ("is_unitary_to_ht_prune_equal_rank: hermitian_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+          else
+            ()
         val r = AtlasFFI.atlas_group_rank g
         (* Atlas `.at` tests coefficient-wise purity (`is_pure`), not the stronger
            “pure module” predicate. Using module purity here would be UNSAFE as a
            pruning test, because it could reject parameters whose truncated form
            has a mix of integer and `s*Z` coefficients but no mixed coefficients. *)
-        val ok = KTypePol.isPure (hf, r)
+        val d = KTypePol.impureHeight (hf, r)
+        val ok = (d = ~1) orelse (d > ht)
         val () = KTypePol.free hf
       in
         ok
@@ -176,9 +193,15 @@ structure ToHT = struct
       ~1
     else
       let
-        val hf = hermitian_form_irreducible_to_ht (p, ht)
+        val hf = AtlasFFI.atlas_param_hermitian_form_irreducible p
+        val () =
+          if hf = Foreign.Memory.null then
+            raise Fail ("is_unitary_to_ht_prune_equal_rank_depth: hermitian_form_irreducible failed: " ^ AtlasFFI.atlas_last_error ())
+          else
+            ()
         val r = AtlasFFI.atlas_group_rank g
-        val d = KTypePol.impureHeight (hf, r)
+        val d0 = KTypePol.impureHeight (hf, r)
+        val d = if d0 = ~1 orelse d0 > ht then ~1 else d0
         val () = KTypePol.free hf
       in
         d
