@@ -62,17 +62,9 @@ structure FPP_unipotents = struct
       ()
     end
 
-  (*
-    Insert known unipotent unitary parameters into `out` (as final terms).
-
-    This mirrors the `.at` behavior at the level of “what ends up in the hash”,
-    but we do not attempt to reconstruct `unipotent_representations(G)` for
-    general groups yet.
-  *)
-  fun unipotents_to_paramhash (g: group, out: ParamHash.t) : unit =
-    if not (!FPPFlags.unip_flag) then
-      ()
-    else if not (looksLikeF4s g) then
+  (* Insert unipotent unitary parameters for supported groups, ignoring flags. *)
+  fun insert_unipotents_to_paramhash (g: group, out: ParamHash.t) : unit =
+    if not (looksLikeF4s g) then
       ()
     else
       let
@@ -94,5 +86,17 @@ structure FPP_unipotents = struct
       in
         List.app addEntry F4_s_unipdata.data
       end
-end
 
+  (*
+    Insert known unipotent unitary parameters into `out` (as final terms).
+
+    This mirrors the `.at` behavior at the level of “what ends up in the hash”,
+    but we do not attempt to reconstruct `unipotent_representations(G)` for
+    general groups yet.
+  *)
+  fun unipotents_to_paramhash (g: group, out: ParamHash.t) : unit =
+    if not (!FPPFlags.unip_flag) then
+      ()
+    else
+      insert_unipotents_to_paramhash (g, out)
+end

@@ -8,6 +8,7 @@ use "atlas-scripts-sml/Lattice.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
 use "atlas-scripts-sml/ParamHash.sml";
 use "atlas-scripts-sml/BigUnitaryCache.sml";
+use "atlas-scripts-sml/FPP_unipotents.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/VertexData.sml";
 use "atlas-scripts-sml/basic.sml";
@@ -918,7 +919,13 @@ structure FPP_localDirac = struct
   fun unitary_params_from_unitary_faces_by_dim_exact_limit_ctx
     (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int) : param list =
     let
+      val g = #g c
       val cache = BigUnitaryCache.create 1024
+      val () =
+        if !unip_flag then
+          FPP_unipotents.insert_unipotents_to_paramhash (g, BigUnitaryCache.uhash cache)
+        else
+          ()
       val ps =
         unitary_params_from_unitary_faces_by_dim_exact_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim)
       val () = BigUnitaryCache.freeAll cache
