@@ -19,6 +19,7 @@
 #include "repr.h"
 #include "blocks.h"
 #include "kl.h"
+#include "ext_kl.h"
 #include "K_repr.h"
 #include "alcoves.h"
 #include "bitmap.h"
@@ -3214,6 +3215,100 @@ extern "C" const char* atlas_param_KL_block_data_text(void* p_handle)
   }
 }
 
+extern "C" const char* atlas_param_partial_extended_KL_block_data_text(void* p_handle, const char* delta_text)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_partial_extended_KL_block_data_text: null param handle";
+      return store_result("-1");
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_partial_extended_KL_block_data_text: null group pointer in param";
+      return store_result("-1");
+    }
+
+    atlas::int_Matrix delta;
+    if (!parse_int_matrix_text(delta_text, delta))
+    {
+      g_last_error = "atlas_param_partial_extended_KL_block_data_text: failed to parse delta matrix";
+      return store_result("-1");
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    const auto rank = static_cast<unsigned int>(rc.rank());
+    if (delta.n_rows() != rank || delta.n_columns() != rank)
+    {
+      std::ostringstream msg;
+      msg << "atlas_param_partial_extended_KL_block_data_text: delta has shape " << delta.n_rows() << "x"
+          << delta.n_columns() << " but group rank is " << rank;
+      g_last_error = msg.str();
+      return store_result("-1");
+    }
+
+    std::vector<atlas::repr::StandardRepr> block_list;
+    atlas::int_Matrix P_index;
+    atlas::IntPolEntry::Pooltype polys;
+    atlas::ext_kl::ext_KL_matrix(p->sr, delta, rc, block_list, P_index, polys);
+
+    const unsigned int n = static_cast<unsigned int>(block_list.size());
+    if (P_index.n_rows() != n || P_index.n_columns() != n)
+    {
+      g_last_error = "atlas_param_partial_extended_KL_block_data_text: P_index shape mismatch";
+      return store_result("-1");
+    }
+
+    std::ostringstream out;
+    out << n;
+
+    for (const auto& sr : block_list)
+    {
+      out << ' ' << static_cast<long>(sr.x());
+
+      atlas::RatWeight lambda = rc.lambda(sr);
+      lambda.normalize();
+      out << ' ' << static_cast<long>(lambda.denominator());
+      const auto& lnum = lambda.numerator();
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << static_cast<long>(lnum[i]);
+
+      atlas::RatWeight nu = rc.nu(sr);
+      nu.normalize();
+      out << ' ' << static_cast<long>(nu.denominator());
+      const auto& nnum = nu.numerator();
+      for (unsigned int i = 0; i < rank; ++i)
+        out << ' ' << static_cast<long>(nnum[i]);
+    }
+
+    for (unsigned int i = 0; i < n; ++i)
+      for (unsigned int j = 0; j < n; ++j)
+        out << ' ' << static_cast<long>(P_index(i, j));
+
+    out << ' ' << static_cast<long>(polys.size());
+    for (const auto& poly : polys)
+    {
+      out << ' ' << static_cast<long>(poly.size());
+      for (auto it = poly.begin(); it != poly.end(); ++it)
+        out << ' ' << static_cast<long>(*it);
+    }
+
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return store_result("-1");
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return store_result("-1");
+  }
+}
+
 extern "C" void* atlas_param_cross(void* p_handle, int s)
 {
   try
@@ -3459,6 +3554,63 @@ extern "C" void* atlas_param_twist(void* p_handle)
     }
     atlas::repr::Rep_context rc(p->group->G);
     atlas::repr::StandardRepr sr2 = rc.inner_twisted(p->sr);
+    return static_cast<void*>(new ParamHandle(p->group, std::move(sr2)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_param_twist_by_delta_text(void* p_handle, const char* delta_text)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_twist_by_delta_text: null param handle";
+      return nullptr;
+    }
+    const auto* p = static_cast<const ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_twist_by_delta_text: null group pointer in param";
+      return nullptr;
+    }
+
+    atlas::int_Matrix delta;
+    if (!parse_int_matrix_text(delta_text, delta))
+    {
+      g_last_error = "atlas_param_twist_by_delta_text: failed to parse delta matrix";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(p->group->G);
+    const auto rank = static_cast<unsigned int>(rc.rank());
+    if (delta.n_rows() != rank || delta.n_columns() != rank)
+    {
+      std::ostringstream msg;
+      msg << "atlas_param_twist_by_delta_text: delta has shape " << delta.n_rows() << "x"
+          << delta.n_columns() << " but group rank is " << rank;
+      g_last_error = msg.str();
+      return nullptr;
+    }
+
+    atlas::repr::StandardRepr sr = p->sr;
+    rc.make_dominant(sr);
+    atlas::repr::StandardRepr sr2 = rc.twisted(std::move(sr), delta);
+    if (sr2.x() == atlas::UndefKGB)
+    {
+      g_last_error = "atlas_param_twist_by_delta_text: twist produced UndefKGB";
+      return nullptr;
+    }
+
     return static_cast<void*>(new ParamHandle(p->group, std::move(sr2)));
   }
   catch (const std::exception& e)

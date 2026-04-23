@@ -2,6 +2,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/polynomial.sml";
 use "atlas-scripts-sml/ParamBlocks.sml";
 use "atlas-scripts-sml/representations.sml";
+use "atlas-scripts-sml/IntMatrix.sml";
 
 (*
   File: atlas-scripts-sml/KL_polynomial_matrices.sml
@@ -41,6 +42,7 @@ structure KL_polynomial_matrices = struct
   type i_poly = Polynomial.i_poly
   type i_poly_mat = Polynomial.i_poly_mat
   type mat = int list list
+  type intmat = IntMatrix.mat
 
   fun parseInts (s: string) : int list =
     let
@@ -51,6 +53,19 @@ structure KL_polynomial_matrices = struct
     in
       List.map toInt (String.tokens Char.isSpace s)
     end
+
+  fun intToCText (n: int) : string =
+    let
+      val s = Int.toString n
+    in
+      if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+        "-" ^ String.extract (s, 1, NONE)
+      else
+        s
+    end
+
+  fun intsToText (xs: int list) : string =
+    String.concatWith " " (List.map intToCText xs)
 
   fun last (xs: 'a list) : 'a =
     (case xs of
@@ -105,6 +120,97 @@ structure KL_polynomial_matrices = struct
       | _ => raise Fail "KL_polynomial_matrices: truncated KL_block data"
     end
 
+  (* Parse `atlas_param_partial_extended_KL_block_data_text` output into:
+       (params, P_index_matrix, polys)
+     where `params` are freshly allocated parameter handles (caller-owned). *)
+  fun parse_partial_extended_KL_block_data
+    (g: AtlasFFI.group, text: string) : param list * int list list * i_poly list =
+    let
+      val xs = parseInts text
+      val rank = AtlasFFI.atlas_group_rank g
+      fun take (k, ys) = (List.take (ys, k), List.drop (ys, k))
+    in
+      case xs of
+        n :: rest =>
+          let
+            val perParam = 2 * rank + 3
+            val (paramFlat, rest1) = take (n * perParam, rest)
+
+            fun parseOne ys =
+              (case ys of
+                 x :: lamDen :: zs =>
+                   let
+                     val lamNums = List.take (zs, rank)
+                     val zs1 = List.drop (zs, rank)
+                   in
+                     (case zs1 of
+                        nuDen :: zs2 =>
+                          let
+                            val nuNums = List.take (zs2, rank)
+                            val tail = List.drop (zs2, rank)
+                            val p =
+                              AtlasFFI.atlas_param_new_from_lambda_nu_text
+                                ( g
+                                , x
+                                , intsToText lamNums
+                                , lamDen
+                                , intsToText nuNums
+                                , nuDen
+                                )
+                            val () =
+                              if p = Foreign.Memory.null then
+                                raise Fail
+                                  ("partial_extended_KL_block: param reconstruction failed: "
+                                   ^ AtlasFFI.atlas_last_error ())
+                              else
+                                ()
+                          in
+                            (p, tail)
+                          end
+                      | _ => raise Fail "partial_extended_KL_block: truncated nu")
+                   end
+               | _ => raise Fail "partial_extended_KL_block: truncated param")
+
+            fun parseParams (0, ys, acc) = (List.rev acc, ys)
+              | parseParams (k, ys, acc) =
+                  let
+                    val (p, ys') = parseOne ys
+                  in
+                    parseParams (k - 1, ys', p :: acc)
+                  end
+
+            val (params, rest2) = parseParams (n, paramFlat, [])
+
+            val (matFlat, rest3) = take (n * n, rest1)
+            val P = reshapeRows (n, matFlat)
+
+            val polys =
+              (case rest3 of
+                 m :: rest4 =>
+                   let
+                     fun readPolys (0, ys, acc) = (List.rev acc, ys)
+                       | readPolys (k, ys, acc) =
+                           (case ys of
+                              len :: zs =>
+                                let
+                                  val (coeffs, zs') = take (len, zs)
+                                in
+                                  readPolys (k - 1, zs', (coeffs: i_poly) :: acc)
+                                end
+                            | _ => raise Fail "partial_extended_KL_block: truncated polys")
+                     val (polys, leftover) = readPolys (m, rest4, [])
+                     val () =
+                       if null leftover then () else raise Fail "partial_extended_KL_block: trailing data"
+                   in
+                     polys
+                   end
+               | _ => raise Fail "partial_extended_KL_block: truncated poly header")
+          in
+            (params, P, polys)
+          end
+      | _ => raise Fail "partial_extended_KL_block: truncated"
+    end
+
   (* Evaluate a polynomial matrix at `k`. *)
   fun eval (m: i_poly_mat, k: int) : mat =
     List.map (fn row => List.map (fn p => Polynomial.eval_int (p, k)) row) m
@@ -133,6 +239,29 @@ structure KL_polynomial_matrices = struct
     in
       (* caller owns the cloned params in `block` *)
       (block, startPos, P, polys)
+    end
+
+  (* Twisted analogue (outer automorphism `delta`), mirroring `.at`’s
+     `partial_extended_KL_block(p,delta)`. Returns caller-owned params. *)
+  fun partial_extended_KL_block (p: param, delta: intmat) : param list * int list list * i_poly list =
+    let
+      val g = AtlasFFI.atlas_param_group_handle p
+      val text =
+        AtlasFFI.atlas_param_partial_extended_KL_block_data_text (p, IntMatrix.matToText delta)
+      val () =
+        if text = "-1" then
+          raise Fail ("partial_extended_KL_block: failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val (params, P, polys) = parse_partial_extended_KL_block_data (g, text)
+      val () =
+        if length params <> length P then
+          (List.app AtlasFFI.atlas_param_free params;
+           raise Fail "partial_extended_KL_block: size mismatch")
+        else
+          ()
+    in
+      (params, P, polys)
     end
 
   (* Map from index in B1 to matching index in B2, and whether it's well-defined. *)
@@ -195,6 +324,47 @@ structure KL_polynomial_matrices = struct
       List.map (fn row => List.map polyAt row) P
     end
 
+  fun KL_P_signed_polynomials_twisted (p: param, delta: intmat) : i_poly_mat =
+    let
+      val (block, Pind, polys) = partial_extended_KL_block (p, delta)
+      val n = length block
+      fun polyAt idx =
+        if idx < 0 orelse idx >= length polys then
+          (List.app AtlasFFI.atlas_param_free block;
+           raise Fail ("KL_P_signed_polynomials_twisted: bad poly index " ^ Int.toString idx))
+        else
+          List.nth (polys, idx)
+      fun entry i j = polyAt (List.nth (List.nth (Pind, i), j))
+      val m = List.tabulate (n, fn i => List.tabulate (n, fn j => entry i j))
+      val () = List.app AtlasFFI.atlas_param_free block
+    in
+      m
+    end
+
+  fun KL_P_polynomials_twisted (p: param, delta: intmat) : i_poly_mat =
+    let
+      val (block, Pind, polys) = partial_extended_KL_block (p, delta)
+      val n = length block
+      val lens = List.map (fn q => AtlasFFI.atlas_param_length q) block
+      fun sign i j =
+        let
+          val d = List.nth (lens, j) - List.nth (lens, i)
+        in
+          if d mod 2 = 0 then 1 else ~1
+        end
+      fun polyAt idx = List.nth (polys, idx)
+      fun entry i j =
+        let
+          val p = polyAt (List.nth (List.nth (Pind, i), j))
+        in
+          if sign i j = 1 then p else Polynomial.neg p
+        end
+      val m = List.tabulate (n, fn i => List.tabulate (n, fn j => entry i j))
+      val () = List.app AtlasFFI.atlas_param_free block
+    in
+      m
+    end
+
   fun KL_P_polynomials_at_minus_one (p: param) : mat =
     eval (KL_P_polynomials p, ~1)
 
@@ -234,6 +404,12 @@ structure KL_polynomial_matrices = struct
   fun KL_P_signed_polynomials_at_minus_one (p: param) : mat =
     eval (KL_P_signed_polynomials p, ~1)
 
+  fun KL_P_polynomials_at_minus_one_twisted (p: param, delta: intmat) : mat =
+    eval (KL_P_polynomials_twisted (p, delta), ~1)
+
+  fun KL_P_signed_polynomials_at_minus_one_twisted (p: param, delta: intmat) : mat =
+    eval (KL_P_signed_polynomials_twisted (p, delta), ~1)
+
   fun KL_P_polynomials_B (B: param list) : i_poly_mat =
     let
       val () = if null B then raise Fail "KL_P_polynomials: empty B" else ()
@@ -258,6 +434,58 @@ structure KL_polynomial_matrices = struct
     in
       (List.tabulate (n, fn i => List.tabulate (n, fn j => polyAt (at i j)))
        before ParamBlocks.freeTerms terms)
+    end
+
+  fun KL_P_polynomials_B_twisted (B_fixed: param list, delta: intmat) : i_poly_mat =
+    let
+      val () = if null B_fixed then raise Fail "KL_P_polynomials(B_fixed,delta): empty" else ()
+      val p0 = last B_fixed
+      val (block, Pind, polys) = partial_extended_KL_block (p0, delta)
+      val (perm, ok) = permutation (B_fixed, block)
+      val () =
+        if ok then () else (List.app AtlasFFI.atlas_param_free block; raise Fail "KL_P_polynomials(B_fixed,delta): B mismatch")
+      val n = length block
+      val lens = List.map (fn q => AtlasFFI.atlas_param_length q) block
+      fun sign i j =
+        let
+          val d = List.nth (lens, j) - List.nth (lens, i)
+        in
+          if d mod 2 = 0 then 1 else ~1
+        end
+      fun polyAt idx = List.nth (polys, idx)
+      fun idxAt i j =
+        List.nth (List.nth (Pind, List.nth (perm, i)), List.nth (perm, j))
+      fun entry i j =
+        let
+          val ii = List.nth (perm, i)
+          val jj = List.nth (perm, j)
+          val p = polyAt (idxAt i j)
+        in
+          if sign ii jj = 1 then p else Polynomial.neg p
+        end
+      val m = List.tabulate (n, fn i => List.tabulate (n, fn j => entry i j))
+      val () = List.app AtlasFFI.atlas_param_free block
+    in
+      m
+    end
+
+  fun KL_P_signed_polynomials_B_twisted (B_fixed: param list, delta: intmat) : i_poly_mat =
+    let
+      val () = if null B_fixed then raise Fail "KL_P_signed_polynomials(B_fixed,delta): empty" else ()
+      val p0 = last B_fixed
+      val (block, Pind, polys) = partial_extended_KL_block (p0, delta)
+      val (perm, ok) = permutation (B_fixed, block)
+      val () =
+        if ok then () else (List.app AtlasFFI.atlas_param_free block; raise Fail "KL_P_signed_polynomials(B_fixed,delta): B mismatch")
+      val n = length block
+      fun polyAt idx = List.nth (polys, idx)
+      fun idxAt i j =
+        List.nth (List.nth (Pind, List.nth (perm, i)), List.nth (perm, j))
+      fun entry i j = polyAt (idxAt i j)
+      val m = List.tabulate (n, fn i => List.tabulate (n, fn j => entry i j))
+      val () = List.app AtlasFFI.atlas_param_free block
+    in
+      m
     end
 
   fun KL_P_polynomials_at_minus_one_B (B: param list) : mat =

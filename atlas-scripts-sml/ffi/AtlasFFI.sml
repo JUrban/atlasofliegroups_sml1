@@ -152,6 +152,8 @@ structure AtlasFFI = struct
   val atlas_param_is_standard_sym = Foreign.getSymbol lib "atlas_param_is_standard"
   val atlas_param_is_final_sym = Foreign.getSymbol lib "atlas_param_is_final"
   val atlas_param_twist_sym = Foreign.getSymbol lib "atlas_param_twist"
+  val atlas_param_twist_by_delta_text_sym =
+    Foreign.getSymbol lib "atlas_param_twist_by_delta_text"
   val atlas_param_equivalent_sym = Foreign.getSymbol lib "atlas_param_equivalent"
   val atlas_param_is_hermitian_sym = Foreign.getSymbol lib "atlas_param_is_hermitian"
   val atlas_param_finals_sym = Foreign.getSymbol lib "atlas_param_finals"
@@ -192,6 +194,8 @@ structure AtlasFFI = struct
 
   val atlas_param_KL_block_data_text_sym =
     Foreign.getSymbol lib "atlas_param_KL_block_data_text"
+  val atlas_param_partial_extended_KL_block_data_text_sym =
+    Foreign.getSymbol lib "atlas_param_partial_extended_KL_block_data_text"
 
   val atlas_ktype_free_sym = Foreign.getSymbol lib "atlas_ktype_free"
   val atlas_ktype_clone_sym = Foreign.getSymbol lib "atlas_ktype_clone"
@@ -572,6 +576,13 @@ structure AtlasFFI = struct
   val atlas_param_twist =
     Foreign.buildCall1 (atlas_param_twist_sym, Foreign.cPointer, Foreign.cPointer)
 
+  val atlas_param_twist_by_delta_text =
+    Foreign.buildCall2
+      ( atlas_param_twist_by_delta_text_sym
+      , (Foreign.cPointer, Foreign.cString)
+      , Foreign.cPointer
+      )
+
   val atlas_param_equivalent =
     Foreign.buildCall2 (atlas_param_equivalent_sym, (Foreign.cPointer, Foreign.cPointer), Foreign.cInt)
 
@@ -706,6 +717,13 @@ structure AtlasFFI = struct
 
   val atlas_param_KL_block_data_text =
     Foreign.buildCall1 (atlas_param_KL_block_data_text_sym, Foreign.cPointer, Foreign.cString)
+
+  val atlas_param_partial_extended_KL_block_data_text =
+    Foreign.buildCall2
+      ( atlas_param_partial_extended_KL_block_data_text_sym
+      , (Foreign.cPointer, Foreign.cString)
+      , Foreign.cString
+      )
 
   type ktype = Foreign.Memory.voidStar
 

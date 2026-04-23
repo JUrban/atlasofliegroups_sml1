@@ -46,6 +46,8 @@ val () = tryUse "atlas-scripts-sml/polynomial.sml"
 val () = tryUse "atlas-scripts-sml/inverse.sml"
 val () = tryUse "atlas-scripts-sml/laurentPolynomial.sml"
 val () = tryUse "atlas-scripts-sml/KL_polynomial_matrices.sml"
+val () = tryUse "atlas-scripts-sml/extended_misc.sml"
+val () = tryUse "atlas-scripts-sml/bigMatrices.sml"
 
 (* Geometry / polytope helpers used by FPP code. *)
 val () = tryUse "atlas-scripts-sml/aff_cube.sml"
