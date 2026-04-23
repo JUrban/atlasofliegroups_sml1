@@ -119,6 +119,31 @@ structure KTypePol = struct
   fun isPure (pol: ktypepol, rank: int) : bool =
     List.all coefIsPure (terms (pol, rank))
 
+  (* Lowest term height with a mixed coefficient `a + s*b` where both parts are
+     nonzero; returns `~1` if all coefficients are pure.
+
+     Atlas correspondence
+     - Mirrors `KTypePol.impure_height` from the `.at` environment. This is
+       used by `to_ht.at` to report the first truncation height at which
+       unitarity-to-height fails. *)
+  fun impureHeight (pol: ktypepol, rank: int) : int =
+    let
+      fun step (t: term, best: int option) : int option =
+        if #e t <> 0 andalso #s t <> 0 then
+          (case best of
+             NONE => SOME (#height t)
+           | SOME h => SOME (Int.min (h, #height t)))
+        else
+          best
+    in
+      case List.foldl step NONE (terms (pol, rank)) of
+        NONE => ~1
+      | SOME h => h
+    end
+
+  (* `.at`-style alias. *)
+  val impure_height = impureHeight
+
   (* Stronger “module purity” test from `basic.at`: pure if all coefficients
      are integers (`s=0` for all terms) OR all are `s`-multiples (`e=0` for all). *)
   fun isPureModule (pol: ktypepol, rank: int) : bool =

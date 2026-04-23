@@ -155,4 +155,29 @@ structure ToHT = struct
       in
         ok
       end
+
+  (*
+    Depth-style variant for pruning: returns the first impure height, or `~1`
+    if the form is pure up to `ht` (and therefore not disproved at that bound).
+
+    Atlas correspondence
+    - Mirrors `is_unitary_to_ht_base_depth(p,HT)` from `to_ht.at` in the
+      equal-rank branch, but in a simplified form:
+        - returns `~2` for non-hermitian parameters
+        - does not attempt to compute the full `is_unitary_depth` for `HT<0`
+  *)
+  fun is_unitary_to_ht_prune_equal_rank_depth (g: AtlasFFI.group, p: param, ht: int) : int =
+    if AtlasFFI.atlas_param_is_hermitian p <> 1 then
+      ~2
+    else if ht < 0 then
+      ~1
+    else
+      let
+        val hf = hermitian_form_irreducible_to_ht (p, ht)
+        val r = AtlasFFI.atlas_group_rank g
+        val d = KTypePol.impureHeight (hf, r)
+        val () = KTypePol.free hf
+      in
+        d
+      end
 end
