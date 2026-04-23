@@ -1343,6 +1343,132 @@ structure FPP_localDirac = struct
     : face_verts_khash_table =
     local_testK_hash_simple_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash)
 
+  (*
+    Graph-based variant closer in spirit to `.at` `local_testK_hash`:
+    - build a `[[FaceVertsKHash]]` table for *all* stable local faces (bounded by `maxFacesPerDim`)
+    - build the SCC class graph (`localGraphK_FDKH` or the truncation variant)
+    - test one representative face per class (exact unitary predicate)
+    - propagate unitary downward and nonunitary upward in the class DAG
+    - keep only faces belonging to unitary classes
+
+    Notes
+    - This is still much simpler than the full `.at` code: it does not yet
+      incorporate bottom-layer/Dirac tests or special-case “wiggle” logic.
+    - It is intended as a functional staging point for further ports.
+
+    Parameters
+    - `level`: if < 0 use full tail-equality for reverse edges; if >= 0 use
+      KTypePol truncation to this height when deciding reverse edges.
+  *)
+  fun local_testK_hash_graph_exact_limit_ctx_cached
+    (cache: unitary_cache)
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
+    : face_verts_khash_table =
+    let
+      val g = #g c
+      val allowPrune = !to_ht_prune_flag andalso Representations.is_equal_rank g
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val {Lvd, ...} = localFD_Lvd_simple (g, x, lambda, vd)
+
+      val fd = local_face_table_khash_limit_ctx (c, x, lambda, maxFacesPerDim, polHash)
+
+      val (gd, down, classListByFace) =
+        if level < 0 then
+          localGraphK_FDKH fd
+        else
+          localGraphK_FDKH_kpol (fd, polHash, level, 0)
+
+      val up = FaceClasses.full_up_classes gd
+      val {classes, ...} = gd
+      val k = length classes
+
+      datatype st = U | N | Q
+      val status = Array.array (k, Q)
+
+      fun setU j =
+        case Array.sub (status, j) of
+          N => raise Fail "local_testK_hash_graph_exact: conflicting class statuses (U vs N)"
+        | _ => Array.update (status, j, U)
+
+      fun setN j =
+        case Array.sub (status, j) of
+          U => raise Fail "local_testK_hash_graph_exact: conflicting class statuses (N vs U)"
+        | _ => Array.update (status, j, N)
+
+      fun markDown (cid: int) =
+        List.app setU (Array.sub (down, cid))
+
+      fun markUp (cid: int) =
+        List.app setN (Array.sub (up, cid))
+
+      fun faceKeyOfNode (node: int) : face_key =
+        let
+          val (d, j) = FaceClasses.coords_f fd node
+          val entry = List.nth (List.nth (fd, d), j)
+        in
+          List.take (entry, d + 1)
+        end
+
+      fun testClass (cid: int) : bool =
+        let
+          val nodes = List.nth (classes, cid)
+          val node = case nodes of [] => raise Fail "local_testK_hash_graph_exact: empty SCC class" | n :: _ => n
+          val face = faceKeyOfNode node
+        in
+          face_is_unitary_exact_thetaPlusHalf_cached cache allowPrune (g, x, lambda, thetaPlusHalf, Lvd, face)
+        end
+
+      fun loop cid =
+        if cid = k then
+          ()
+        else
+          (case Array.sub (status, cid) of
+             Q =>
+               if testClass cid then (markDown cid; loop (cid + 1))
+               else (markUp cid; loop (cid + 1))
+           | _ => loop (cid + 1))
+
+      val () = loop 0
+
+      fun keepFace (d: int, j: int) : bool =
+        let
+          val cid = List.nth (List.nth (classListByFace, d), j)
+        in
+          Array.sub (status, cid) = U
+        end
+
+      fun filterDim d =
+        let
+          val row = List.nth (fd, d)
+          fun pick (j, entry) = if keepFace (d, j) then SOME entry else NONE
+        in
+          List.mapPartial pick (ListPair.zipEq (List.tabulate (length row, fn i => i), row))
+        end
+    in
+      List.tabulate (length fd, filterDim)
+    end
+
+  fun local_testK_hash_graph_exact_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
+    : face_verts_khash_table =
+    let
+      val cache = BigUnitaryCache.create 4096
+      val res = local_testK_hash_graph_exact_limit_ctx_cached cache (c, x, lambda, maxFacesPerDim, polHash, level)
+      val () = BigUnitaryCache.freeAll cache
+    in
+      res
+    end
+
+  fun local_testK_hash_graph_exact_limit
+    (g: group, x: int, lambda: ratvec, maxFacesPerDim: int, polHash: KTypePolHash.t, level: int)
+    : face_verts_khash_table =
+    local_testK_hash_graph_exact_limit_ctx (create_ctx g, x, lambda, maxFacesPerDim, polHash, level)
+
   (* ---------------------------------------------------------------------- *)
   (* To-height pruning variant (safe early disproof, then exact check later) *)
   (* ---------------------------------------------------------------------- *)

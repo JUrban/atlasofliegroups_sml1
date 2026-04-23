@@ -219,6 +219,43 @@ structure FaceClasses = struct
       Array.tabulate (k, closureFrom)
     end
 
+  (*
+    Upward closure of classes in the condensed DAG.
+
+    Returns an array `up[i]` listing all classes `j` such that `i <= j` in the
+    reachability preorder (including `i` itself). This is the dual of
+    `full_down_classes` and is useful for propagating “nonunitary” statuses
+    upward when `covers` points from subfaces to faces.
+  *)
+  fun full_up_classes ({covers, ...}: graph_data) : int list array =
+    let
+      val k = length covers
+
+      fun closureFrom (start: int) : int list =
+        let
+          val seen = Array.array (k, false)
+          val () = Array.update (seen, start, true)
+          fun bfs [] = ()
+            | bfs (x :: xs) =
+                let
+                  val nbrs = List.nth (covers, x)
+                  val new =
+                    List.filter
+                      (fn y =>
+                        if Array.sub (seen, y) then false else (Array.update (seen, y, true); true))
+                      nbrs
+                in
+                  bfs (xs @ new)
+                end
+          val () = bfs [start]
+          val all = List.tabulate (k, fn i => i)
+        in
+          Sort.sort_u (op <=) (List.filter (fn i => Array.sub (seen, i)) all)
+        end
+    in
+      Array.tabulate (k, closureFrom)
+    end
+
   (* ---------------------------------------------------------------------- *)
   (* Face-table helpers (`face_classes.at` indexing utilities).              *)
   (* ---------------------------------------------------------------------- *)
