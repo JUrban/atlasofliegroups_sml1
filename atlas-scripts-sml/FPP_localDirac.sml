@@ -18,6 +18,7 @@ use "atlas-scripts-sml/hash.sml";
 use "atlas-scripts-sml/unity.sml";
 use "atlas-scripts-sml/unity_fpp.sml";
 use "atlas-scripts-sml/to_ht.sml";
+use "atlas-scripts-sml/FaceClasses.sml";
 
 (*
   File: atlas-scripts-sml/FPP_localDirac.sml
@@ -62,6 +63,8 @@ structure FPP_localDirac = struct
   type ratvec = Lattice.ratvec
   type mat = Lattice.mat
   type face_key = int list
+  type face_verts_khash_table = int list list list
+  type graph_data = FaceClasses.graph_data
 
   (* ---------------------------------------------------------------------- *)
   (* Small cache for ToHT pruning (impure height of c-form).                 *)
@@ -780,6 +783,53 @@ structure FPP_localDirac = struct
       val (vBest, _) = List.foldl best init (tl vs)
     in
       Representations.parameter (g, x, lambda, vBest)
+    end
+
+  (* ---------------------------------------------------------------------- *)
+  (* Face-graph class data (`localGraphK` family; partial port).             *)
+  (* ---------------------------------------------------------------------- *)
+
+  (*
+    Build SCC class data for a `[[FaceVertsKHash]]`-style table.
+
+    This mirrors `.at`:
+      `localGraphK([[FaceVertsKHash]] LFvertsK)`
+
+    Returns:
+    - `gd`: SCC classes + condensed adjacency
+    - `iucl`: per-class downward-closure lists (class ids reachable “downwards”)
+    - `classListByFace`: per-dimension lists mapping face index -> class id
+  *)
+  fun localGraphK_FDKH (fd: face_verts_khash_table) : graph_data * int list array * int list list =
+    let
+      val gd = FaceClasses.up_data_FDKH fd
+      val classListByFace = FaceClasses.class_lists_FDKH (fd, gd)
+      val iucl = FaceClasses.full_down_classes gd
+    in
+      (gd, iucl, classListByFace)
+    end
+
+  (*
+    Variant where reverse edges are added only when K-type polynomials agree
+    up to a truncation height `level`, using `polHash` indices stored in `fd`.
+
+    This mirrors `.at`:
+      `localGraphK([[FaceVertsKHash]] FDKH, KTypePol_hash pol_hash, int level)`
+
+    Parameters
+    - `polHash`: owning `KTypePolHash` used for face K-character indices
+    - `level`: truncation height (>= 0 enables truncation mode)
+    - `redShift`: 0 when no `red_count` coord is present; 1 if present
+  *)
+  fun localGraphK_FDKH_kpol
+    (fd: face_verts_khash_table, polHash: KTypePolHash.t, level: int, redShift: int)
+    : graph_data * int list array * int list list =
+    let
+      val gd = FaceClasses.up_data_FDKH_kpol (fd, polHash, level, redShift)
+      val classListByFace = FaceClasses.class_lists_FDKH (fd, gd)
+      val iucl = FaceClasses.full_down_classes gd
+    in
+      (gd, iucl, classListByFace)
     end
 
   fun pmax (g: group, x: int, lambda: ratvec, Lvd: VertexData.t) : param =
