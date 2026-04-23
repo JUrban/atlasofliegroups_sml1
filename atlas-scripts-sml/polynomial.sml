@@ -146,5 +146,61 @@ structure Polynomial = struct
     in
       List.tabulate (ra, row)
     end
-end
 
+  (* ---------- evaluation (subset of `polynomial.at`) ---------- *)
+
+  fun evaluate_at_1 (p: i_poly) : int =
+    List.foldl (op +) 0 (strip p)
+
+  (* Horner evaluation at an integer. *)
+  fun eval_int (p: i_poly, k: int) : int =
+    let
+      fun step (e, acc) = e + k * acc
+    in
+      List.foldr step 0 (strip p)
+    end
+
+  (* ---------- polynomial matrices (subset of `polynomial.at`) ---------- *)
+
+  fun shape (m: i_poly_mat) : int * int =
+    matShape m
+
+  fun poly_list_add (v: i_poly list, w: i_poly list) : i_poly list =
+    if length v <> length w then raise Fail "Polynomial.poly_list_add: length mismatch"
+    else ListPair.mapEq add (v, w)
+
+  fun poly_list_sub (v: i_poly list, w: i_poly list) : i_poly list =
+    if length v <> length w then raise Fail "Polynomial.poly_list_sub: length mismatch"
+    else ListPair.mapEq sub (v, w)
+
+  fun matNeg (m: i_poly_mat) : i_poly_mat =
+    List.map (fn row => List.map neg row) m
+
+  fun matAdd (a: i_poly_mat, b: i_poly_mat) : i_poly_mat =
+    if length a <> length b then raise Fail "Polynomial.matAdd: row mismatch"
+    else ListPair.mapEq poly_list_add (a, b)
+
+  fun matSub (a: i_poly_mat, b: i_poly_mat) : i_poly_mat =
+    if length a <> length b then raise Fail "Polynomial.matSub: row mismatch"
+    else ListPair.mapEq poly_list_sub (a, b)
+
+  fun scalar_multiply_row (row: i_poly list, f: i_poly) : i_poly list =
+    List.map (fn p => mul (p, f)) row
+
+  fun matScalarMulPoly (f: i_poly, m: i_poly_mat) : i_poly_mat =
+    List.map (fn row => scalar_multiply_row (row, f)) m
+
+  fun matScalarMulInt (c: int, m: i_poly_mat) : i_poly_mat =
+    let
+      fun mulIntPoly p =
+        if c = 0 then poly_0 else strip (List.map (fn x => c * x) p)
+    in
+      List.map (fn row => List.map mulIntPoly row) m
+    end
+
+  fun update_row (r: i_poly list, j: int, v: i_poly) : i_poly list =
+    List.tabulate (length r, fn k => if k = j then v else List.nth (r, k))
+
+  fun update_matrix_row (m: i_poly_mat, i: int, row: i_poly list) : i_poly_mat =
+    List.tabulate (length m, fn k => if k = i then row else List.nth (m, k))
+end
