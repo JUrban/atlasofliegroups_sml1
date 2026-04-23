@@ -124,6 +124,79 @@ structure F4_FPP_points = struct
       (loop (); TextIO.closeIn input) handle e => (TextIO.closeIn input; raise e)
     end
 
+  (*
+    Iterate over all parameters described in `data/F4_FPP_points.txt`.
+
+    The callback `f` must NOT free its input parameter handle; this iterator
+    will free it after `f` returns.
+  *)
+  fun foreachParam (g: AtlasFFI.group, f: AtlasFFI.param -> unit) : unit =
+    let
+      val input = TextIO.openIn "atlas-scripts-sml/data/F4_FPP_points.txt"
+      val rows = ref 0
+
+      fun handleRow ns =
+        (case ns of
+           [x, lamDen, l1, l2, l3, l4, nuDen, n1, n2, n3, n4] =>
+             let
+               val expectedLam = Int.toString lamDen ^ " " ^ intsToText [l1, l2, l3, l4]
+               val expectedNu = Int.toString nuDen ^ " " ^ intsToText [n1, n2, n3, n4]
+               val p =
+                 AtlasFFI.atlas_param_new_from_lambda_nu_text
+                   ( g
+                   , x
+                   , intsToText [l1, l2, l3, l4]
+                   , lamDen
+                   , intsToText [n1, n2, n3, n4]
+                   , nuDen
+                   )
+             in
+               if p = Foreign.Memory.null then
+                 raise Fail ("F4_FPP_points: param construction failed: " ^ AtlasFFI.atlas_last_error ())
+               else
+                 let
+                   val () = rows := !rows + 1
+                   val gotX = AtlasFFI.atlas_param_x p
+                   val gotLam = AtlasFFI.atlas_param_lambda_text p
+                   val gotNu = AtlasFFI.atlas_param_nu_text p
+                   val () =
+                     if gotX <> x then
+                       raise Fail ("F4_FPP_points: x mismatch: expected=" ^ Int.toString x ^ " got=" ^ Int.toString gotX)
+                     else
+                       ()
+                   val () =
+                     if gotLam <> expectedLam then
+                       raise Fail ("F4_FPP_points: lambda mismatch: expected=" ^ expectedLam ^ " got=" ^ gotLam)
+                     else
+                       ()
+                   val () =
+                     if gotNu <> expectedNu then
+                       raise Fail ("F4_FPP_points: nu mismatch: expected=" ^ expectedNu ^ " got=" ^ gotNu)
+                     else
+                       ()
+                   val () = f p
+                   val () = AtlasFFI.atlas_param_free p
+                 in
+                   ()
+                 end
+             end
+         | _ => raise Fail "F4_FPP_points: unexpected row length")
+
+      fun loop () =
+        case TextIO.inputLine input of
+          NONE => ()
+        | SOME line =>
+            let
+              val s = rstripNewlines line
+            in
+              if s = "" orelse (String.size s > 0 andalso String.sub (s, 0) = #"#")
+              then loop ()
+              else (handleRow (parseInts s); loop ())
+            end
+    in
+      (loop (); TextIO.closeIn input) handle e => (TextIO.closeIn input; raise e)
+    end
+
   (* Load the fixture into a `ParamHash` (which stores clones of inserted handles). *)
   fun loadIntoParamHash (g: AtlasFFI.group, (hash: ParamHash.t)) =
     let
