@@ -85,6 +85,7 @@ val () = tryUse "atlas-scripts-sml/complementary_series.sml"
 val () = tryUse "atlas-scripts-sml/tits.sml"
 val () = tryUse "atlas-scripts-sml/test_unitarity.sml"
 val () = tryUse "atlas-scripts-sml/sp4.sml"
+val () = tryUse "atlas-scripts-sml/restricted_roots.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
    - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
