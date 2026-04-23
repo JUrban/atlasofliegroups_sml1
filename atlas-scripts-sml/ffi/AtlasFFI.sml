@@ -138,6 +138,7 @@ structure AtlasFFI = struct
   val atlas_param_clone_sym = Foreign.getSymbol lib "atlas_param_clone"
   val atlas_param_normalise_sym = Foreign.getSymbol lib "atlas_param_normalise"
   val atlas_param_height_sym = Foreign.getSymbol lib "atlas_param_height"
+  val atlas_param_group_handle_sym = Foreign.getSymbol lib "atlas_param_group_handle"
   val atlas_param_x_sym = Foreign.getSymbol lib "atlas_param_x"
   val atlas_param_lambda_text_sym = Foreign.getSymbol lib "atlas_param_lambda_text"
   val atlas_param_nu_text_sym = Foreign.getSymbol lib "atlas_param_nu_text"
@@ -522,6 +523,10 @@ structure AtlasFFI = struct
 
   val atlas_param_height =
     Foreign.buildCall1 (atlas_param_height_sym, Foreign.cPointer, Foreign.cLong)
+
+  (* Borrowed pointer to the group handle associated to this parameter. *)
+  val atlas_param_group_handle =
+    Foreign.buildCall1 (atlas_param_group_handle_sym, Foreign.cPointer, Foreign.cPointer)
 
   val atlas_param_x =
     Foreign.buildCall1 (atlas_param_x_sym, Foreign.cPointer, Foreign.cLong)

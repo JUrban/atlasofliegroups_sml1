@@ -2958,6 +2958,44 @@ extern "C" long atlas_param_height(void* param_handle)
   }
 }
 
+// Expose the group handle associated to a parameter.
+//
+// Ownership / lifetime
+// - The returned pointer is owned by the creator of the group handle (typically
+//   the SML side via atlas_group_new_*). This function does NOT create a new
+//   group object and must not be paired with atlas_group_free.
+// - The returned pointer is valid as long as the underlying group handle
+//   remains alive. (If the group is freed while the param is still in use,
+//   subsequent operations are invalid anyway.)
+extern "C" void* atlas_param_group_handle(void* p_handle)
+{
+  try
+  {
+    if (p_handle == nullptr)
+    {
+      g_last_error = "atlas_param_group_handle: null param handle";
+      return nullptr;
+    }
+    auto* p = static_cast<ParamHandle*>(p_handle);
+    if (p->group == nullptr)
+    {
+      g_last_error = "atlas_param_group_handle: null group pointer in param";
+      return nullptr;
+    }
+    return static_cast<void*>(p->group);
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" const char* atlas_param_gamma_text(void* p_handle)
 {
   try
