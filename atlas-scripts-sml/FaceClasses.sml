@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
+use "atlas-scripts-sml/hash.sml";
 
 (*
   File: atlas-scripts-sml/FaceClasses.sml
@@ -215,5 +216,175 @@ structure FaceClasses = struct
     in
       Array.tabulate (k, closureFrom)
     end
-end
 
+  (* ---------------------------------------------------------------------- *)
+  (* Face-table helpers (`face_classes.at` indexing utilities).              *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* Prefix sums of row lengths. `levels fd` has length `#fd + 1` and starts with 0. *)
+  fun levels (fd: 'a list list) : int list =
+    let
+      fun loop ([], total, acc) = List.rev (total :: acc)
+        | loop (row :: rest, total, acc) =
+            let
+              val total' = total + length row
+            in
+              loop (rest, total', total :: acc)
+            end
+    in
+      loop (fd, 0, [])
+    end
+
+  fun size_fd (fd: 'a list list) : int =
+    case List.rev (levels fd) of
+      [] => 0
+    | n :: _ => n
+
+  (* Flattened index function `(d,j) -> n` for a face table. *)
+  fun index_f (fd: 'a list list) : int * int -> int =
+    let
+      val lvls = levels fd
+    in
+      fn (d, j) => List.nth (lvls, d) + j
+    end
+
+  (* Inverse of `index_f`: map flattened `n` to `(d,j)`. *)
+  fun coords_f (fd: 'a list list) : int -> int * int =
+    let
+      val lvls = levels fd
+      val nLvls = length lvls
+    in
+      fn n =>
+        let
+          val d = Basic.binary_search_first (fn i => List.nth (lvls, i) > n, 0, nLvls) - 1
+          val j = n - List.nth (lvls, d)
+        in
+          (d, j)
+        end
+    end
+
+  (* Build per-dimension lookup functions for a `[[FaceVertsKHash]]`-style table.
+     For dimension `d`, the lookup maps the vertex-index list (length `d+1`) to
+     the face index `j` in that dimension, or `~1` if absent. *)
+  fun lookups_face_verts (fd: int list list list) : (int list -> int) list =
+    let
+      fun oneDim (d: int, row: int list list) : int list -> int =
+        let
+          val keys = List.map (fn v => List.take (v, d + 1)) row
+          val h = Hash.make_vec_hash_data keys
+        in
+          fn key => Hash.lookup h key
+        end
+    in
+      ListPair.mapEq oneDim (List.tabulate (length fd, fn i => i), fd)
+    end
+
+  (* ---------------------------------------------------------------------- *)
+  (* `up_graph_gens` / `up_data` for `[[FaceVertsKHash]]`-style tables.       *)
+  (* ---------------------------------------------------------------------- *)
+
+  (* Delete an element at position `i` from a list (0-based). *)
+  fun deleteAt (xs: 'a list, i: int) : 'a list =
+    List.take (xs, i) @ List.drop (xs, i + 1)
+
+  (* Base `up_graph_gens(FDKH)` from `face_classes.at` (red_count_flag=false case).
+     - Always adds closure edges from a codim-1 subface to a face.
+     - Adds a reverse edge when the “tail data” matches.
+
+     Representation
+     - `fd[d][j]` is an `int list` whose first `d+1` entries are vertex indices.
+     - Any remaining entries encode auxiliary invariants (e.g. K-character hash indices).
+  *)
+  fun up_graph_gens_FDKH (fd: int list list list) : int list list =
+    let
+      val dims = length fd
+      val index = index_f fd
+      val lvls = levels fd
+      val total = size_fd fd
+      val edgeGens = Array.array (total, ([]: int list))
+      val lookups = lookups_face_verts fd
+
+      fun addEdge (u: int, v: int) =
+        Array.update (edgeGens, u, v :: Array.sub (edgeGens, u))
+
+      fun nth2 (xs: 'a list list, d: int, j: int) : 'a =
+        List.nth (List.nth (xs, d), j)
+
+      fun loopD d =
+        if d >= dims then
+          ()
+        else if d = 0 then
+          loopD 1
+        else
+          let
+            val row = List.nth (fd, d)
+            val lookupSub = List.nth (lookups, d - 1)
+            fun loopJ (j1, []) = ()
+              | loopJ (j1, find :: rest) =
+                  let
+                    val verts = List.take (find, d + 1)
+                    fun loopE e =
+                      if e > d then
+                        ()
+                      else
+                        let
+                          val subVerts = deleteAt (verts, e)
+                          val j0 = lookupSub subVerts
+                        in
+                          if j0 >= 0 then
+                            let
+                              val u = index (d - 1, j0)
+                              val v = index (d, j1)
+                              val () = addEdge (u, v)
+                              val sub = nth2 (fd, d - 1, j0)
+                            in
+                              if List.drop (find, d + 1) = List.drop (sub, d) then
+                                addEdge (v, u)
+                              else
+                                ();
+                              loopE (e + 1)
+                            end
+                          else
+                            loopE (e + 1)
+                        end
+                  in
+                    loopE 0;
+                    loopJ (j1 + 1, rest)
+                  end
+          in
+            loopJ (0, row);
+            loopD (d + 1)
+          end
+
+      val () = loopD 0
+
+      fun uniq xs = Sort.sort_u (op <=) xs
+    in
+      List.tabulate (total, fn i => uniq (Array.sub (edgeGens, i)))
+    end
+
+  fun up_data_FDKH (fd: int list list list) : graph_data =
+    strong_components (up_graph_gens_FDKH fd)
+
+  (* `class_lists(FDKH, GD)` from `face_classes.at`: return per-dimension vectors
+     mapping each face index to its SCC class id. *)
+  fun class_lists_FDKH (fd: int list list list, gd: graph_data) : int list list =
+    let
+      val lvls = levels fd
+      val total = size_fd fd
+      val cll = class_list_linear (gd, total)
+
+      fun slice (start: int, len: int) =
+        List.take (List.drop (cll, start), len)
+
+      fun oneDim d =
+        let
+          val start = List.nth (lvls, d)
+          val len = length (List.nth (fd, d))
+        in
+          slice (start, len)
+        end
+    in
+      List.tabulate (length fd, oneDim)
+    end
+end
