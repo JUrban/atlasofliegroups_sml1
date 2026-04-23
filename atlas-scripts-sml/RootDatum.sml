@@ -677,6 +677,40 @@ structure RootDatum = struct
                end)
     end
 
+  (*
+    Coxeter number
+
+    Atlas correspondence
+    - In the `.at` environment this is defined in `Weylgroup.at` via:
+        `coxeter_number(rd) = sum(for f in rd.simple_factors do coxeter_number_simple(f) od)`
+      where `coxeter_number_simple` is computed from `highest_root` and `rho_check`.
+    - For the SML port we use the standard closed-form Coxeter numbers for
+      irreducible types, computed from `lieType(rd)`.
+  *)
+  fun coxeterNumberSimpleFactor ((ty, r): LieType.simple_factor) : int =
+    (case ty of
+       #"A" => r + 1
+     | #"B" => 2 * r
+     | #"C" => 2 * r
+     | #"D" =>
+         if r >= 2 then 2 * r - 2 else raise Fail "RootDatum.coxeterNumberSimpleFactor: D rank<2"
+     | #"E" =>
+         (case r of
+            6 => 12
+          | 7 => 18
+          | 8 => 30
+          | _ => raise Fail "RootDatum.coxeterNumberSimpleFactor: E rank not in {6,7,8}")
+     | #"F" => if r = 4 then 12 else raise Fail "RootDatum.coxeterNumberSimpleFactor: F rank != 4"
+     | #"G" => if r = 2 then 6 else raise Fail "RootDatum.coxeterNumberSimpleFactor: G rank != 2"
+     | #"T" => 0
+     | _ => raise Fail "RootDatum.coxeterNumberSimpleFactor: unknown type letter")
+
+  fun coxeterNumber (h: t) : int =
+    List.foldl (fn (sf, acc) => acc + coxeterNumberSimpleFactor sf) 0 (lieType h)
+
+  (* `.at`-style alias. *)
+  val coxeter_number = coxeterNumber
+
   fun diagramAutomorphismMatrices (h: t) : IntMatrix.mat list =
     let
       fun parseCartanMatrixTypeText (s: string) : LieType.t * int list =

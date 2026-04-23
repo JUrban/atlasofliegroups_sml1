@@ -1,4 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+use "atlas-scripts-sml/RootDatum.sml";
+use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/AllParameters.sml";
 use "atlas-scripts-sml/Split.sml";
 use "atlas-scripts-sml/ParamPol.sml";
 use "atlas-scripts-sml/iterate_deform.sml";
@@ -50,11 +53,50 @@ structure DeformPlus = struct
   type coef = Split.t
   type poly = ParamPol.t
   type ktypepol = AtlasFFI.ktypepol
+  type ratvec = Lattice.ratvec
 
   val d_verbose = ref false
 
   fun failFFI (where': string) : 'a =
     raise Fail ("DeformPlus." ^ where' ^ ": " ^ AtlasFFI.atlas_last_error ())
+
+  fun parseRatvecText (s: string) : ratvec =
+    let
+      val {den, nums} = AllParameters.parseRatWeightText s
+    in
+      Lattice.ratvecNormalize {den = den, nums = nums}
+    end
+
+  fun ratvecToText (u: ratvec) : string =
+    let
+      val u = Lattice.ratvecNormalize u
+      fun intToCText n =
+        let
+          val s = Int.toString n
+        in
+          if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+            "-" ^ String.extract (s, 1, NONE)
+          else
+            s
+        end
+    in
+      String.concatWith " " (intToCText (#den u) :: List.map intToCText (#nums u))
+    end
+
+  fun ratvecAdd (u: ratvec, v: ratvec) : ratvec =
+    Lattice.ratvecSub (u, Lattice.ratvecScale (v, ~1, 1))
+
+  (* Floor of `v/k` as an integer vector (script: `ratvec v \ k`). *)
+  fun ratvecFloorDiv (v: ratvec, k: int) : int list =
+    let
+      val v = Lattice.ratvecNormalize v
+      val den = #den v
+      val () = if den <= 0 then raise Fail "DeformPlus.ratvecFloorDiv: nonpositive denom" else ()
+      val () = if k > 0 then () else raise Fail "DeformPlus.ratvecFloorDiv: expected k>0"
+      val dk = den * k
+    in
+      List.map (fn n => n div dk) (#nums v)
+    end
 
   fun splitToIntParts (w: coef) : int * int =
     let
@@ -190,6 +232,65 @@ structure DeformPlus = struct
       (ps, pol)
     end
 
-  fun chamber_rep (_: param) : param =
-    raise Fail "DeformPlus.chamber_rep: not implemented (needs coxeter_number access)"
+  (*
+    chamber_rep
+
+    Port of `deform_plus.at`:
+      parameter(p.x, p.lambda, p.nu\1 + p.root_datum.rho/(p.root_datum.coxeter_number+1))
+
+    Notes
+    - `p.nu\1` is the coordinate-wise floor of `p.nu` (a `ratvec`) divided by 1,
+      producing an integral vector which is then coerced to a `ratvec` of
+      denominator 1 when added to `rho/(h+1)`.
+    - We build the new parameter using the group handle already associated to `p`.
+  *)
+  fun chamber_rep (p: param) : param =
+    let
+      val g = AtlasFFI.atlas_param_group_handle p
+      val () = if g = Foreign.Memory.null then failFFI "chamber_rep/group_handle" else ()
+      val x = AtlasFFI.atlas_param_x p
+      val lambda = parseRatvecText (AtlasFFI.atlas_param_lambda_text p)
+      val nu = parseRatvecText (AtlasFFI.atlas_param_nu_text p)
+
+      val rd = AtlasFFI.atlas_group_rootdatum_new g
+      val () = if rd = Foreign.Memory.null then failFFI "chamber_rep/rootdatum_new" else ()
+      val rho = parseRatvecText (RootDatum.rhoText rd)
+      val h = RootDatum.coxeterNumber rd
+      val () = RootDatum.free rd
+
+      val nuFloor = {den = 1, nums = ratvecFloorDiv (nu, 1)}
+      val shift = Lattice.ratvecScale (rho, 1, h + 1)
+      val nu2 = Lattice.ratvecNormalize (ratvecAdd (nuFloor, shift))
+
+      fun intsToCText xs =
+        let
+          fun one n =
+            let
+              val s = Int.toString n
+            in
+              if String.size s > 0 andalso String.sub (s, 0) = #"~" then
+                "-" ^ String.extract (s, 1, NONE)
+              else
+                s
+            end
+        in
+          String.concatWith " " (List.map one xs)
+        end
+
+      val p0 =
+        AtlasFFI.atlas_param_new_from_lambda_nu_text
+          ( g
+          , x
+          , intsToCText (#nums lambda)
+          , #den lambda
+          , intsToCText (#nums nu2)
+          , #den nu2
+          )
+      val () = if p0 = Foreign.Memory.null then failFFI "chamber_rep/param_new" else ()
+      val p1 = AtlasFFI.atlas_param_normalise p0
+      val () = AtlasFFI.atlas_param_free p0
+      val () = if p1 = Foreign.Memory.null then failFFI "chamber_rep/normalise" else ()
+    in
+      p1
+    end
 end
