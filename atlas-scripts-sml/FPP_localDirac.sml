@@ -90,15 +90,80 @@ structure FPP_localDirac = struct
     let
       val faceCtx = FPPFaceKey.create g
       val barycenters = FPP_barycenters_fold.barycenters_all g
+      val rank = AtlasFFI.atlas_group_rank g
+      val kgbSize = AtlasFFI.atlas_group_kgb_size g
+      val isSplit = AtlasFFI.atlas_group_is_split g = 1
 
-      fun toEntry gamma =
-        (case FPPFaceKey.faceKeyOfGamma (faceCtx, gamma) of
-           NONE => raise Fail "FPP_localDirac.create_ctx: missing face key for barycenter"
-         | SOME fk => (ratvecKey gamma, fk))
+      fun parseLeadingInt (s: string) : int option =
+        case String.tokens Char.isSpace s of
+          [] => NONE
+        | tok :: _ => Int.fromString tok
 
-      val entries = List.map toEntry barycenters
-      val entriesSorted = Basic.sort_by (fn (k, _) => k, Sort.rlex_leq) entries
-      val gammaFaceTable = Array.fromList entriesSorted
+      val nPosRoots =
+        (case parseLeadingInt (AtlasFFI.atlas_group_posroots_text g) of
+           SOME n => n
+         | NONE => ~1)
+
+      fun looksLikeF4s () : bool =
+        isSplit andalso rank = 4 andalso kgbSize = 229 andalso nPosRoots = 24
+
+      fun loadGammaFaceTable (path: string) : (int list * face_key) array option =
+        let
+          val ins = TextIO.openIn path
+          fun parseLine line =
+            let
+              val toks = String.tokens (fn c => Char.isSpace c orelse c = #"|") line
+              fun toInt tok =
+                case Int.fromString tok of
+                  SOME n => n
+                | NONE => raise Fail ("bad int token: " ^ tok)
+            in
+              case toks of
+                den :: n1 :: n2 :: n3 :: n4 :: k :: rest =>
+                  let
+                    val key = [toInt den, toInt n1, toInt n2, toInt n3, toInt n4]
+                    val kk = toInt k
+                    val () = if kk >= 1 andalso kk <= 5 then () else raise Fail "bad face key arity"
+                    val () = if length rest = kk then () else raise Fail "bad face key arity/rest"
+                    val fk = List.map toInt rest
+                  in
+                    SOME (key, fk)
+                  end
+              | _ => NONE
+            end
+          fun loop acc =
+            case TextIO.inputLine ins of
+              NONE => List.rev acc
+            | SOME line =>
+                (case parseLine line of
+                   NONE => loop acc
+                 | SOME e => loop (e :: acc))
+          val entries = (loop [] handle e => (TextIO.closeIn ins; raise e))
+          val () = TextIO.closeIn ins
+        in
+          SOME (Array.fromList entries)
+        end
+        handle _ => NONE
+
+      fun computeGammaFaceTable () : (int list * face_key) array =
+        let
+          fun toEntry gamma =
+            (case FPPFaceKey.faceKeyOfGamma (faceCtx, gamma) of
+               NONE => raise Fail "FPP_localDirac.create_ctx: missing face key for barycenter"
+             | SOME fk => (ratvecKey gamma, fk))
+          val entries = List.map toEntry barycenters
+          val entriesSorted = Basic.sort_by (fn (k, _) => k, Sort.rlex_leq) entries
+        in
+          Array.fromList entriesSorted
+        end
+
+      val gammaFaceTable =
+        if looksLikeF4s () then
+          (case loadGammaFaceTable "atlas-scripts-sml/data/f4s_gamma_face_table.txt" of
+             SOME tab => tab
+           | NONE => computeGammaFaceTable ())
+        else
+          computeGammaFaceTable ()
     in
       { g = g, faceCtx = faceCtx, barycenters = barycenters, gammaFaceTable = gammaFaceTable }
     end
