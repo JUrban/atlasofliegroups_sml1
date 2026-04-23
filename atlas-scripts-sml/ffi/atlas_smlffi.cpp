@@ -4556,6 +4556,17 @@ static int atlas_param_is_unitary_impl(atlas::repr::Rep_table& rt, const atlas::
     if (c_form.is_zero())
       return 1; // vacuously pure
 
+    // Early exit: mixed split coefficients in the c-form remain mixed under the
+    // subsequent `convert_cform_hermitian` parity adjustments (multiplication by
+    // `s` only swaps the integer and `s` parts). So if the c-form is already
+    // not typewise pure, the parameter cannot be unitary.
+    for (const auto& t : c_form)
+    {
+      const auto& c = t.second;
+      if (!(c.e() == 0 || c.s() == 0))
+        return 0;
+    }
+
     // convert_cform_hermitian: multiply each term by s^(mu(t)-mu(t0)).
     // Since s^n only depends on parity, we just test odd/even differences.
     const atlas::arithmetic::RatNum mu0 =
