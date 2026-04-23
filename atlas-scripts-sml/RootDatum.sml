@@ -86,6 +86,18 @@ structure RootDatum = struct
         d
     end
 
+  (* Adjoint (coderived) root datum: kills the radical/center so that the
+     weight lattice becomes the root lattice (simple roots form a basis). *)
+  fun adjoint (h: t) : t =
+    let
+      val d = AtlasFFI.atlas_rootdatum_adjoint h
+    in
+      if d = Foreign.Memory.null then
+        raise Fail ("RootDatum.adjoint: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        d
+    end
+
   fun newSimple (typeLetter: char, rank: int, preferCoroots: bool) : t =
     let
       val h = AtlasFFI.atlas_rootdatum_new_simple (typeLetter, rank, if preferCoroots then 1 else 0)

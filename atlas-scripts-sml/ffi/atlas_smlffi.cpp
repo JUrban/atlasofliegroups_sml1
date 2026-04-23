@@ -1699,6 +1699,35 @@ extern "C" void* atlas_rootdatum_dual(void* handle)
   }
 }
 
+extern "C" void* atlas_rootdatum_adjoint(void* handle)
+{
+  try
+  {
+    if (handle == nullptr)
+    {
+      g_last_error = "atlas_rootdatum_adjoint: null handle";
+      return nullptr;
+    }
+    const auto* h = static_cast<const RootDatumHandle*>(handle);
+
+    // Build the coderived (adjoint) pre-root datum. This drops the radical/center
+    // and switches to adjoint coordinates (simple roots form a basis).
+    atlas::int_Matrix injector;
+    atlas::prerootdata::PreRootDatum prd_adj(injector, h->prd, atlas::tags::CoderivedTag{});
+    return static_cast<void*>(new RootDatumHandle(std::move(prd_adj)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" long atlas_rootdatum_rank(void* handle)
 {
   try

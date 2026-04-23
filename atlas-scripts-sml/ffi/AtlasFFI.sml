@@ -111,6 +111,7 @@ structure AtlasFFI = struct
     Foreign.getSymbol lib "atlas_rootdatum_new_from_simple_mats_text"
   val atlas_rootdatum_free_sym = Foreign.getSymbol lib "atlas_rootdatum_free"
   val atlas_rootdatum_dual_sym = Foreign.getSymbol lib "atlas_rootdatum_dual"
+  val atlas_rootdatum_adjoint_sym = Foreign.getSymbol lib "atlas_rootdatum_adjoint"
   val atlas_rootdatum_rank_sym = Foreign.getSymbol lib "atlas_rootdatum_rank"
   val atlas_rootdatum_rho_text_sym = Foreign.getSymbol lib "atlas_rootdatum_rho_text"
   val atlas_rootdatum_make_dominant_ratweight_text_sym =
@@ -467,6 +468,9 @@ structure AtlasFFI = struct
 
   val atlas_rootdatum_dual =
     Foreign.buildCall1 (atlas_rootdatum_dual_sym, Foreign.cPointer, Foreign.cPointer)
+
+  val atlas_rootdatum_adjoint =
+    Foreign.buildCall1 (atlas_rootdatum_adjoint_sym, Foreign.cPointer, Foreign.cPointer)
 
   val atlas_rootdatum_rank =
     Foreign.buildCall1 (atlas_rootdatum_rank_sym, Foreign.cPointer, Foreign.cLong)
