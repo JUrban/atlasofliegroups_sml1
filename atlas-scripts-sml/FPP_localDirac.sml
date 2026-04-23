@@ -950,6 +950,106 @@ structure FPP_localDirac = struct
   fun local_faces_for_x_lambda_by_dim (g: group, x: int, lambda: ratvec) : face_key list array =
     local_faces_for_x_lambda_by_dim_ctx (create_ctx g, x, lambda)
 
+  (* ---------------------------------------------------------------------- *)
+  (* `[[FaceVertsKHash]]` face tables (K-character hash indices).            *)
+  (* ---------------------------------------------------------------------- *)
+
+  (*
+    Build a `[[FaceVertsKHash]]`-style face table from a per-dimension list of
+    *local* face keys, computing:
+    - K-character index via `atlas_param_full_deform` stored in `polHash`
+    - number of Langlands quotients via `ParamFinals.finalsCount`
+
+    This is a pragmatic stepping stone toward porting the `.at` K-graph-based
+    `local_testK_hash*` machinery; it is not yet performance-tuned.
+
+    Parameters
+    - `facesByDim`: local faces by dimension (indices refer to `Lvd`)
+    - `maxPerDim`: if >= 0, truncate each dimension list to this many faces
+
+    Representation
+    - Each entry for a d-face is `[v0,...,vd, kcharIdx, langlandsCount]`.
+  *)
+  fun face_table_khash_from_facesByDim_limit
+    (g: group, x: int, lambda: ratvec, thetaPlusHalf: ratvec, Lvd: VertexData.t,
+     facesByDim: face_key list array, maxPerDim: int, polHash: KTypePolHash.t)
+    : face_verts_khash_table =
+    let
+      fun takeLim xs =
+        if maxPerDim < 0 then xs else List.take (xs, Int.min (maxPerDim, length xs))
+
+      fun faceKcharAndLQ (face: face_key) : int * int =
+        let
+          val gammaLocal = VertexData.face_bary (Lvd, face)
+          val nu = Lattice.ratvecSub (gammaLocal, thetaPlusHalf)
+          val p0 = Representations.parameter (g, x, lambda, nu)
+          val p1 = AtlasFFI.atlas_param_normalise p0
+          val () = AtlasFFI.atlas_param_free p0
+          val () =
+            if p1 = Foreign.Memory.null then
+              raise Fail ("face_table_khash: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+
+          val langCount = ParamFinals.finalsCount p1
+
+          val pol = AtlasFFI.atlas_param_full_deform p1
+          val () =
+            if pol = Foreign.Memory.null then
+              raise Fail ("face_table_khash: full_deform failed: " ^ AtlasFFI.atlas_last_error ())
+            else
+              ()
+          val idx = KTypePolHash.match polHash pol
+          val () = KTypePol.free pol
+          val () = AtlasFFI.atlas_param_free p1
+        in
+          (idx, langCount)
+        end
+
+      fun rowForDim d =
+        let
+          val faces = takeLim (Array.sub (facesByDim, d))
+          fun entry face =
+            let
+              val (idx, lq) = faceKcharAndLQ face
+            in
+              face @ [idx, lq]
+            end
+        in
+          List.map entry faces
+        end
+
+      val dims = Array.length facesByDim
+    in
+      List.tabulate (dims, rowForDim)
+    end
+
+  (*
+    Convenience wrapper: compute local faces for `(x,lambda)` and build a
+    `[[FaceVertsKHash]]`-style table with K-character hash indices.
+  *)
+  fun local_face_table_khash_limit_ctx
+    (c: ctx, x: int, lambda: ratvec, maxPerDim: int, polHash: KTypePolHash.t)
+    : face_verts_khash_table =
+    let
+      val g = #g c
+      val rank = AtlasFFI.atlas_group_rank g
+      val theta =
+        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
+      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
+      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
+      val vd = #vd (#faceCtx c)
+      val {Lvd, ...} = localFD_Lvd_simple (g, x, lambda, vd)
+      val facesByDim = local_faces_for_x_lambda_by_dim_ctx (c, x, lambda)
+    in
+      face_table_khash_from_facesByDim_limit (g, x, lambda, thetaPlusHalf, Lvd, facesByDim, maxPerDim, polHash)
+    end
+
+  fun local_face_table_khash_limit
+    (g: group, x: int, lambda: ratvec, maxPerDim: int, polHash: KTypePolHash.t)
+    : face_verts_khash_table =
+    local_face_table_khash_limit_ctx (create_ctx g, x, lambda, maxPerDim, polHash)
+
   (* Codimension-1 subfaces of a (simplex) face key, obtained by deleting each vertex once. *)
   fun codim1_subfaces (face: face_key) : face_key list =
     let

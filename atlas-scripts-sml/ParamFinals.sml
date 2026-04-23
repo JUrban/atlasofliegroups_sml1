@@ -12,6 +12,22 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
   - `freeTerms` frees the parameter handles in a term list.
 *)
 structure ParamFinals = struct
+  (* Count the number of final terms of `p` without cloning the parameters. *)
+  fun finalsCount (p: AtlasFFI.param) : int =
+    let
+      val h = AtlasFFI.atlas_param_finals p
+      val () =
+        if h = Foreign.Memory.null then
+          raise Fail ("ParamFinals.finalsCount: atlas_param_finals failed: " ^ AtlasFFI.atlas_last_error ())
+        else
+          ()
+      val n = AtlasFFI.atlas_paramlist_size h
+      val () = AtlasFFI.atlas_paramlist_free h
+    in
+      if n < 0 then raise Fail ("ParamFinals.finalsCount: atlas_paramlist_size failed: " ^ AtlasFFI.atlas_last_error ())
+      else n
+    end
+
   (* Compute the list of final parameters (with multiplicities) associated to `p`.
      Returns fresh clones; caller owns them. *)
   fun finals (p: AtlasFFI.param) : (AtlasFFI.param * int) list =
