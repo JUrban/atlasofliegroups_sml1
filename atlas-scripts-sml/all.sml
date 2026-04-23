@@ -76,6 +76,7 @@ val () = tryUse "atlas-scripts-sml/standardize.sml"
 (* FFI-facing representation utilities (partial ports). *)
 val () = tryUse "atlas-scripts-sml/representations.sml"
 val () = tryUse "atlas-scripts-sml/parameters.sml"
+val () = tryUse "atlas-scripts-sml/tits.sml"
 val () = tryUse "atlas-scripts-sml/test_unitarity.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
