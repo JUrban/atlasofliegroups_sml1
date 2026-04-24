@@ -1,0 +1,14 @@
+CAKEMLDIR = /project/hol/cakeml
+
+# We depend on CakeML's translator and the semanticPrimitives theory.
+INCLUDES = \
+  $(CAKEMLDIR)/translator \
+  $(CAKEMLDIR)/developers \
+  $(CAKEMLDIR)/misc \
+  $(CAKEMLDIR)/semantics \
+  $(CAKEMLDIR)/semantics/proofs \
+  $(CAKEMLDIR)/basis/pure
+
+all: $(DEFAULT_TARGETS)
+.PHONY: all
+

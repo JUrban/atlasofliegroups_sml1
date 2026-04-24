@@ -19,3 +19,11 @@ doc/atlasofliegroups-docs/
 # HOL4/CakeML build artifacts (Holmake)
 .hol/
 hol/
+
+# HOL theory build outputs (keep sources tracked, ignore generated artifacts)
+*Theory.sig
+*Theory.sml
+*Theory.dat
+*Theory.ui
+*Theory.uo
+Holmakefile.local
