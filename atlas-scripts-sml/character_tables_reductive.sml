@@ -32,6 +32,139 @@ use "atlas-scripts-sml/character_table_G.sml";
 structure CharacterTablesReductive = struct
   type character_table = CharacterTables.CharacterTable.t
 
+  fun joinWith (sep: string) (xs: string list) : string =
+    (case xs of
+       [] => ""
+     | [x] => x
+     | _ => String.concatWith sep xs)
+
+  fun lcm (a: int, b: int) : int =
+    let
+      fun gcd (x: int, y: int) : int =
+        if y = 0 then Int.abs x else gcd (y, x mod y)
+    in
+      if a = 0 orelse b = 0 then 0 else Int.abs (a div gcd (a, b) * b)
+    end
+
+  fun product (xs: int list) : int = List.foldl (op * ) 1 xs
+
+  (* Mixed radix encoding/decoding with bases `bs = [b0,b1,...]` where digits
+     satisfy `0 <= di < bi`.
+
+     Convention: index = d0 + b0*(d1 + b1*(d2 + ...)).
+  *)
+  fun mixedRadixEncode (bases: int list, digits: int list) : int =
+    let
+      fun loop ([], [], acc, _) = acc
+        | loop (b :: bs, d :: ds, acc, mul) =
+            if d < 0 orelse d >= b then
+              raise Fail "CharacterTablesReductive.mixedRadixEncode: digit out of range"
+            else
+              loop (bs, ds, acc + mul * d, mul * b)
+        | loop _ = raise Fail "CharacterTablesReductive.mixedRadixEncode: length mismatch"
+    in
+      loop (bases, digits, 0, 1)
+    end
+
+  fun mixedRadixDecode (bases: int list, idx0: int) : int list =
+    let
+      val () = if idx0 < 0 then raise Fail "CharacterTablesReductive.mixedRadixDecode: negative idx" else ()
+      fun loop ([], _, acc) = List.rev acc
+        | loop (b :: bs, idx, acc) =
+            let
+              val d = idx mod b
+              val idx' = idx div b
+            in
+              loop (bs, idx', d :: acc)
+            end
+    in
+      loop (bases, idx0, [])
+    end
+
+  fun allWords (bases: int list) : int list list =
+    let
+      val n = product bases
+    in
+      List.tabulate (n, fn i => mixedRadixDecode (bases, i))
+    end
+
+  (* Combine already-constructed factor tables into a product table.
+
+     This is the SML analogue of the `.at` `combine(rd,factors)` logic, but
+     operates directly on tables (and uses a stub class table for the product).
+  *)
+  fun combine_tables (factors: character_table list) : character_table =
+    (case factors of
+       [] => raise Fail "CharacterTablesReductive.combine_tables: empty"
+     | [ct] => ct
+     | _ =>
+         let
+           val ns = List.map CharacterTables.n_irreps factors
+           val words = allWords ns
+           val n = length words
+
+           fun tensorAt (irDigits: int list, clsDigits: int list) : int =
+             List.foldl
+               (op * )
+               1
+               (ListPair.mapEq
+                  (fn (ir, (ct, cls)) => List.nth (CharacterTables.character (ct, ir), cls))
+                  (irDigits, ListPair.zipEq (factors, clsDigits)))
+
+           val class_orders =
+             List.map
+               (fn clsDigits =>
+                  List.foldl (fn ((ct, j), acc) => lcm (acc, List.nth (#class_orders (#class_table ct), j))) 1
+                    (ListPair.zipEq (factors, clsDigits)))
+               words
+
+           val class_sizes =
+             List.map
+               (fn clsDigits =>
+                  List.foldl (fn ((ct, j), acc) => acc * List.nth (#class_sizes (#class_table ct), j)) 1
+                    (ListPair.zipEq (factors, clsDigits)))
+               words
+
+           val wct = ClassTables.class_table_stub_from_orders_sizes (class_orders, class_sizes)
+
+           val class_names =
+             List.map
+               (fn clsDigits =>
+                  joinWith "*" (ListPair.mapEq (fn (ct, j) => CharacterTables.class_label (ct, j)) (factors, clsDigits)))
+               words
+
+           val irreps : (CharacterTables.char_row * string) list =
+             List.map
+               (fn irDigits =>
+                  let
+                    val name =
+                      joinWith "." (ListPair.mapEq (fn (ct, i) => CharacterTables.irreducible_label (ct, i)) (factors, irDigits))
+                    val row =
+                      List.map (fn clsDigits => tensorAt (irDigits, clsDigits)) words
+                  in
+                    (row, name)
+                  end)
+               words
+
+           val degrees =
+             List.map
+               (fn irDigits =>
+                  List.foldl (fn ((ct, i), acc) => acc * CharacterTables.degree (ct, i)) 1
+                    (ListPair.zipEq (factors, irDigits)))
+               words
+
+           fun to_special idx =
+             let
+               val irDigits = mixedRadixDecode (ns, idx)
+               val spDigits =
+                 ListPair.mapEq (fn (ct, i) => CharacterTables.special (ct, i)) (factors, irDigits)
+             in
+               mixedRadixEncode (ns, spDigits)
+             end
+         in
+           CharacterTables.make (wct, class_names, irreps, degrees, to_special)
+         end)
+
   fun simple_character_table (lt: LieType.t) : character_table =
     (case lt of
        [(#"E", 6)] => CharacterTable_E6.character_table_E6_magma ()
@@ -63,9 +196,6 @@ structure CharacterTablesReductive = struct
     let
       val lt = RootDatum.lieType rd
     in
-      case lt of
-        [_] => simple_character_table lt
-      | _ => raise Fail "CharacterTablesReductive.character_table: multi-factor not implemented"
+      combine_tables (List.map (fn sf => simple_character_table [sf]) lt)
     end
 end
-
