@@ -22,7 +22,11 @@ use "atlas-scripts-sml/character_tables.sml";
   - Provides `character_table_B(n)` and `character_table_C(n)` producing a
     `CharacterTables.CharacterTable.t` whose conjugacy classes and irreps are
     both indexed by bipartitions of `n`.
-  - Type D is not implemented yet.
+  - Provides `character_table_D(n)` producing a `CharacterTables.CharacterTable.t`
+    whose conjugacy classes and irreps are indexed by the refined type-D
+    parameter sets from `Combinatorics`:
+      - `Combinatorics.D_class` (unsplit and split classes),
+      - `Combinatorics.D_irrep` (unsplit and split irreps).
 
   Ordering conventions
   - Class ordering: `Partitions.partitions n` (smallest largest-part first).
@@ -34,6 +38,8 @@ structure ClassicalCharacterTables = struct
   type partition = Partitions.partition
   type bipartition = Combinatorics.bipartition
   type signed_cycles = Combinatorics.signed_cycles
+  type D_class = Combinatorics.D_class
+  type D_irrep = Combinatorics.D_irrep
   type character_table = CharacterTables.CharacterTable.t
 
   fun toIntChecked (where', x: IntInf.int) : int =
@@ -124,4 +130,31 @@ structure ClassicalCharacterTables = struct
      character tables coincide; we keep a separate entry point for parity with
      the `.at` library. *)
   fun character_table_C (n: int) : character_table = character_table_B n
+
+  fun character_table_D (n: int) : character_table =
+    if n < 2 then
+      raise Fail "ClassicalCharacterTables.character_table_D: n<2 not supported"
+    else
+      let
+        val class_list : D_class list = Combinatorics.D_classes n
+        val class_names = List.map Combinatorics.D_class_toString class_list
+        val class_sizes = List.map Combinatorics.D_class_size class_list
+        val class_orders = List.map Combinatorics.D_cycle_type_order class_list
+        val wct = ClassTables.class_table_stub_from_orders_sizes (class_orders, class_sizes)
+
+        val irrep_list : D_irrep list = Combinatorics.D_irreps n
+        val () =
+          if length irrep_list = length class_list then
+            ()
+          else
+            raise Fail "ClassicalCharacterTables.character_table_D: expected square table"
+
+        fun rowFor rep = List.map (fn c => Combinatorics.D_character (rep, c)) class_list
+        val irreps = List.map (fn rep => (rowFor rep, Combinatorics.D_irrep_toString rep)) irrep_list
+
+        val idj = find_identity_class (class_orders, class_sizes)
+        val degrees = List.map (fn (row, _) => List.nth (row, idj)) irreps
+      in
+        CharacterTables.make (wct, class_names, irreps, degrees, (fn i => i))
+      end
 end

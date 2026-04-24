@@ -173,6 +173,7 @@ structure CharacterTablesReductive = struct
        [(#"A", r)] => ClassicalCharacterTables.character_table_S (r + 1)
      | [(#"B", r)] => ClassicalCharacterTables.character_table_B r
      | [(#"C", r)] => ClassicalCharacterTables.character_table_C r
+     | [(#"D", r)] => ClassicalCharacterTables.character_table_D r
      | [(#"E", 6)] => CharacterTable_E6.character_table_E6_magma ()
      | [(#"E", 7)] => CharacterTable_E7.character_table_E7_magma ()
      | [(#"E", 8)] => CharacterTable_E8.character_table_E8_gap ()

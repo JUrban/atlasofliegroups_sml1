@@ -25,6 +25,10 @@ fun main () =
     val () = expect ("C2 orthogonal", CharacterTables.check_orthogonality ctC2)
     val () = expect ("C2 order", CharacterTables.order_W ctC2 = 8)
 
+    val ctD3 = CharacterTablesReductive.simple_character_table (LieType.parse "D3")
+    val () = expect ("D3 orthogonal", CharacterTables.check_orthogonality ctD3)
+    val () = expect ("D3 order", CharacterTables.order_W ctD3 = 24)
+
     (* Product case: G2 x G2 *)
     val rdG2G2 = RootDatum.fromLieType (LieType.parse "G2G2")
     val ctG2G2 = CharacterTablesReductive.character_table rdG2G2

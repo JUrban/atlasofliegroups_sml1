@@ -17,6 +17,12 @@ structure Combinatorics = struct
   type bipartition = partition * partition
   type signed_cycle = int * bool
   type signed_cycles = signed_cycle list
+  datatype D_class =
+    D_unsplit_class of signed_cycles
+  | D_split_class of partition * bool
+  datatype D_irrep =
+    D_unsplit_irr of bipartition
+  | D_split_irr of partition * bool
 
   val is_permutation = MatrixAT.is_permutation
 
@@ -368,6 +374,60 @@ structure Combinatorics = struct
     end
 
   val cycle_type_order = lcm_list
+
+  (* Lexicographic comparison restricted to partitions of the same sum, with
+     implicit 0-extension (ported from `rlex_leq_partitions` in `.at`). *)
+  fun rlex_leq_partitions (lambda: partition, mu: partition) : bool =
+    let
+      val m = length mu
+      fun loop ([], i) =
+        if i >= m then true
+        else
+          let
+            val rest = List.drop (mu, i)
+          in
+            if List.all (fn x => x = 0) rest then true else raise Fail "Combinatorics.rlex_leq_partitions: unequal sum"
+          end
+        | loop (l :: ls, i) =
+            if i >= m then
+              if l = 0 then loop (ls, i + 1) else raise Fail "Combinatorics.rlex_leq_partitions: unequal sum"
+            else
+              let
+                val mi = List.nth (mu, i)
+              in
+                if l <> mi then l < mi else loop (ls, i + 1)
+              end
+    in
+      loop (lambda, 0)
+    end
+
+  (* Three-way comparison result in {-1,0,1} for equal-sum partitions, without
+     0-extension (ported from `rlex_cmp_partitions` in `.at`). *)
+  fun rlex_cmp_partitions (lambda: partition, mu: partition) : int =
+    let
+      fun loop ([], []) = 0
+        | loop (l :: ls, m :: ms) = if l <> m then (if l < m then ~1 else 1) else loop (ls, ms)
+        | loop _ = 0
+    in
+      loop (lambda, mu)
+    end
+
+  (* Compare partitions by sum then lexicographically (ported from `slex_*` in `.at`). *)
+  fun slex_leq_partitions (lambda: partition, mu: partition) : bool =
+    let
+      val sl = sumInts lambda
+      val sm = sumInts mu
+    in
+      if sl <> sm then sl < sm else rlex_leq_partitions (lambda, mu)
+    end
+
+  fun slex_cmp_partitions (lambda: partition, mu: partition) : int =
+    let
+      val sl = sumInts lambda
+      val sm = sumInts mu
+    in
+      if sl < sm then ~1 else if sl > sm then 1 else rlex_cmp_partitions (lambda, mu)
+    end
 
   fun cycle_centralizer_order_IntInf (cycles: int list) : IntInf.int =
     let
@@ -752,5 +812,139 @@ structure Combinatorics = struct
           end
     in
       f (length alpha - 1)
+    end
+
+  (* ---------------- type D (even signed permutations) helpers (ported from `combinatorics.at`) ---------------- *)
+
+  fun is_very_even (p: partition) : bool = List.all (fn x => x mod 2 = 0) p
+
+  fun D_rank_class (c: D_class) : int =
+    (case c of
+       D_unsplit_class cycles => rank_signed_cycles cycles
+     | D_split_class (lambda, _) => sumInts lambda)
+
+  fun D_rank_irrep (chi: D_irrep) : int =
+    (case chi of
+       D_unsplit_irr (lambda, mu) => sumInts lambda + sumInts mu
+     | D_split_irr (lambda, _) => 2 * sumInts lambda)
+
+  fun D_cycle_type_order (c: D_class) : int =
+    (case c of
+       D_unsplit_class cycles => signed_cycle_type_order cycles
+     | D_split_class (lambda, _) => cycle_type_order lambda)
+
+  fun D_centralizer_order_IntInf (c: D_class) : IntInf.int =
+    (case c of
+       D_unsplit_class cycles =>
+         let
+           val den = signed_cycle_centralizer_order_IntInf cycles
+           val (q, r) = IntInf.divMod (den, 2)
+           val () = if r = 0 then () else raise Fail "Combinatorics.D_centralizer_order_IntInf: odd centralizer (unexpected)"
+         in
+           q
+         end
+     | D_split_class (alpha, _) =>
+         cycle_centralizer_order_IntInf alpha * IntInf.pow (2, length alpha))
+
+  fun D_class_size (c: D_class) : int =
+    let
+      val n = D_rank_class c
+      val () = if n >= 2 then () else raise Fail "Combinatorics.D_class_size: n<2 not supported"
+      val num = factorialIntInf n * IntInf.pow (2, n - 1)
+      val den = D_centralizer_order_IntInf c
+      val (q, r) = IntInf.divMod (num, den)
+      val () = if r = 0 then () else raise Fail "Combinatorics.D_class_size: inexact"
+    in
+      toIntChecked ("D_class_size", q)
+    end
+
+  fun D_class_toString (c: D_class) : string =
+    (case c of
+       D_unsplit_class cycles => signed_cycles_toString cycles
+     | D_split_class (alpha, eps) => Partitions.toString alpha ^ (if eps then "-" else "+"))
+
+  fun D_irrep_toString (chi: D_irrep) : string =
+    (case chi of
+       D_unsplit_irr (mu, lambda) =>
+         "{ " ^ Partitions.toString mu ^ " | " ^ Partitions.toString lambda ^ " }"
+     | D_split_irr (mu, s) =>
+         "{ " ^ Partitions.toString mu ^ " | " ^ Partitions.toString mu ^ " }" ^ (if s then "-" else "+"))
+
+  fun D_classes (n: int) : D_class list =
+    if n < 2 then
+      raise Fail "Combinatorics.D_classes: n<2 not supported"
+    else
+      List.concat
+        (List.map
+           (fn (lambda, mu) =>
+              if length mu mod 2 = 1 then
+                []
+              else if (null mu) andalso is_very_even lambda then
+                [D_split_class (lambda, false), D_split_class (lambda, true)]
+              else
+                [D_unsplit_class (to_cycles (lambda, mu))])
+           (partition_pairs n))
+
+  fun D_irreps (n: int) : D_irrep list =
+    if n < 2 then
+      raise Fail "Combinatorics.D_irreps: n<2 not supported"
+    else
+      let
+        val pairs = pairs_of_total_sum (n, (fn k => List.rev (Partitions.partitions k)))
+      in
+        List.concat
+          (List.map
+             (fn (lambda, mu) =>
+                (case slex_cmp_partitions (lambda, mu) of
+                   ~1 => []
+                 | 0 => [D_split_irr (lambda, false), D_split_irr (lambda, true)]
+                 | _ => [D_unsplit_irr (lambda, mu)]))
+             pairs)
+      end
+
+  fun D_character (chi: D_irrep, c: D_class) : int =
+    let
+      val () =
+        if D_rank_irrep chi = D_rank_class c then
+          ()
+        else
+          raise Fail "Combinatorics.D_character: size mismatch"
+
+      fun pos_cycles (mu: partition) : signed_cycles = List.map (fn l => (l, false)) mu
+      fun div2_partition (alpha: partition) : partition =
+        if is_very_even alpha then List.map (fn x => x div 2) alpha
+        else raise Fail "Combinatorics.D_character: expected very even partition"
+
+      fun divExact2 (where': string, x: IntInf.int) : IntInf.int =
+        let
+          val (q, r) = IntInf.divMod (x, 2)
+        in
+          if r = 0 then q else raise Fail ("Combinatorics.D_character: " ^ where' ^ " odd")
+        end
+    in
+      case chi of
+        D_unsplit_irr pair =>
+          (case c of
+             D_unsplit_class cycles => hyperoctahedral_character (pair, cycles)
+           | D_split_class (alpha, _) => hyperoctahedral_character (pair, pos_cycles alpha))
+      | D_split_irr (lambda, epsilon) =>
+          (case c of
+             D_unsplit_class cycles =>
+               let
+                 val h = IntInf.fromInt (hyperoctahedral_character ((lambda, lambda), cycles))
+                 val q = divExact2 ("unsplit", h)
+               in
+                 toIntChecked ("D_character", q)
+               end
+           | D_split_class (alpha, delta) =>
+               let
+                 val hn = IntInf.fromInt (hyperoctahedral_character ((lambda, lambda), pos_cycles alpha))
+                 val sn = IntInf.fromInt (Murnaghan_Nakayama (lambda, div2_partition alpha))
+                 val sgn = if epsilon <> delta then ~1 else 1
+                 val term = IntInf.fromInt sgn * IntInf.pow (2, length alpha) * sn
+                 val q = divExact2 ("split", hn + term)
+               in
+                 toIntChecked ("D_character", q)
+               end)
     end
 end
