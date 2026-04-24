@@ -154,11 +154,14 @@ Theorem ph_contains_state_iff_MEM_elems:
       (ph_contains_state p s <=> MEM p s.elems)
 Proof
   (*
-    Intended proof (later, without `cheat`):
-    - use `ph_ok` + `ph_covered` + `ph_bucketed` to relate `ph_lookup_state`
-      to membership in `elems`,
-    - use `atlas_eq_is_hol_eq` to avoid quotient/equivalence complications,
-    - use `atlas_hash_range` to justify bucket indexing into `buckets`.
+    Proof sketch (TODO, replace `cheat`):
+    - `ph_invariant` gives `ph_ok`, `ph_bucketed`, `ph_covered`.
+    - (⇒) from `ph_lookup_state p s = SOME idx`, get a bucket entry `(q,idx)`
+      with `atlas_eq p q`, use `ph_ok` to conclude `EL idx elems = q`, then
+      use `atlas_eq_is_hol_eq` and `EL_MEM` to get `MEM p elems`.
+    - (⇐) from `MEM p elems`, choose `j` with `EL j elems = p`, use `ph_covered`
+      to find `(p,j)` in some bucket, use `ph_bucketed` to identify the right
+      bucket for `ph_lookup_state`, then use `find_in_bucket_MEM_imp_SOME`.
   *)
   cheat
 QED
