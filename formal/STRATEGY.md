@@ -253,6 +253,22 @@ into a list-level goal on `fast_list g`. For non-compact groups it shows:
 - `bottom_layer_total_ok g dirac (U_fast g)` is equivalent to
   `bottom_layer_ok_list g dirac (fast_list g)`.
 
+#### `F4FPPBottomLayerParamSetGoalsTheory` (bottom-layer: param_set interface)
+
+File: `formal/hol4/F4FPPBottomLayerParamSetGoalsScript.sml`
+
+Models the `param_set` interface used by `FPP_globalDirac.sml` as a pair
+`(ps, contains)` and isolates the extra data-structure obligation needed for
+the unitary-dual check:
+
+- `param_set_rep_ok (ps,contains) U`: `U = set ps` and `contains p ⇔ p ∈ U`.
+
+It then defines a `contains`-based dual-closure check (matching the SML code)
+and proves that, under `param_set_rep_ok`, it is equivalent to the set-level
+predicate `dual_closed U`. This is the intended hook for connecting the
+hash-table membership test (`ParamHash.contains`) to the abstract goal
+`bottom_layer_ok`.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
