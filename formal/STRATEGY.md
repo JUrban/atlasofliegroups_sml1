@@ -147,6 +147,21 @@ Refines `dom_list_correct` into correctness of three component enumerations:
 This is meant to be discharged by routine list reasoning once we decide what
 the concrete enumeration functions are (SML, Atlas FFI, fixtures, etc.).
 
+#### `F4FPPVerifySlowRefineGoalsTheory` (refined slow completeness obligations)
+
+File: `formal/hol4/F4FPPVerifySlowRefineGoalsScript.sml`
+
+Defines a concrete (component-based) slow-success predicate:
+
+- `slow_ok_components g`:
+  `check_domain_fun g (U_fast g) (dom_list_from_components g) = 0`.
+
+Proves an “OK” lemma composing the algorithmic and domain-refinement results:
+
+- `slow_ok_components_imp_complete_rel`:
+  if the component enumerators are correct and `slow_ok_components g` holds,
+  then `complete_rel g (D_slow g) (U_fast g)`.
+
 #### `F4FPPBottomLayerGoalsTheory` (bottom-layer checks spec)
 
 File: `formal/hol4/F4FPPBottomLayerGoalsScript.sml`
