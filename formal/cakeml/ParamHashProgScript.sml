@@ -29,6 +29,7 @@ Datatype:
   ph_state = <|
     bucket_count : num;
     count : num;
+    elems : num list;
     buckets : ((num # num) list) list
   |>
 End
@@ -42,7 +43,8 @@ val config =
   with_state ``:ph_state`` |>
   with_exception ``:state_exn`` |>
   with_refs [("bucket_count", ``0n:num``),
-             ("count", ``0n:num``)] |>
+             ("count", ``0n:num``),
+             ("elems", ``[]:num list``)] |>
   with_resizeable_arrays
     [("buckets", ``[] : ((num # num) list) list``,
       ``Subscript``, ``Subscript``)];
@@ -65,6 +67,13 @@ Definition find_in_bucket_def:
 End
 val find_in_bucket_v_thm = translate find_in_bucket_def;
 
+Definition nth_def:
+  (nth 0n (x::xs) = x) ∧
+  (nth (SUC n) (x::xs) = nth n xs) ∧
+  (nth _ [] = 0n)
+End
+val nth_v_thm = translate nth_def;
+
 (* --- Monadic operations --- *)
 
 Definition ph_create_def:
@@ -73,10 +82,29 @@ Definition ph_create_def:
     do
       () <- set_bucket_count m;
       () <- set_count 0n;
+      () <- set_elems ([]:num list);
       alloc_buckets m ([]:(num # num) list)
     od
 End
 val ph_create_v_thm = m_translate ph_create_def;
+
+Definition ph_list_def:
+  ph_list u =
+  do
+    ps <- get_elems;
+    return ps
+  od
+End
+val ph_list_v_thm = m_translate ph_list_def;
+
+Definition ph_index_def:
+  ph_index (j:num) =
+  do
+    ps <- get_elems;
+    return (nth j ps)
+  od
+End
+val ph_index_v_thm = m_translate ph_index_def;
 
 Definition ph_lookup_def:
   ph_lookup (p:num) =
@@ -112,9 +140,11 @@ Definition ph_match_def:
           if m = 0n then failwith "ParamHash.match: uninitialised" else
           do
             j <- get_count;
+            ps <- get_elems;
             b <- buckets_sub (bucket_index p m);
             () <- update_buckets (bucket_index p m) ((p,j)::b);
             () <- set_count (j + 1n);
+            () <- set_elems (ps ++ [p]);
             return j
           od
         od
@@ -142,9 +172,121 @@ Definition ph_all_present_def:
 End
 val ph_all_present_v_thm = m_translate ph_all_present_def;
 
+(* ------------------------------------------------------------------------- *)
+(* Pure state model + invariants (used for staged proofs in VERIFY_ESTIMATE). *)
+(* ------------------------------------------------------------------------- *)
+
+Definition ph_set_def:
+  ph_set (s:ph_state) = set (s.elems)
+End
+
+Definition ph_ok_def:
+  ph_ok (s:ph_state) =
+    (s.bucket_count ≠ 0n) ∧
+    (LENGTH (s.buckets) = s.bucket_count) ∧
+    (s.count = LENGTH (s.elems)) ∧
+    (∀p idx.
+       MEM (p,idx) (FLAT (s.buckets)) ⇒
+         (idx < LENGTH (s.elems)) ∧
+         (nth idx (s.elems) = p))
+End
+
+Definition ph_lookup_state_def:
+  ph_lookup_state (p:num) (s:ph_state) =
+    if s.bucket_count = 0n then (NONE:num option)
+    else
+      let i = bucket_index p (s.bucket_count) in
+        find_in_bucket p (EL i (s.buckets))
+End
+
+Definition ph_match_state_def:
+  ph_match_state (p:num) (s:ph_state) =
+    case ph_lookup_state p s of
+      SOME idx => (idx,s)
+    | NONE =>
+        let m = s.bucket_count in
+        let i = bucket_index p m in
+        let j = s.count in
+        let b = EL i (s.buckets) in
+        let bs' = LUPDATE ((p,j)::b) i (s.buckets) in
+        let ps' = (s.elems) ++ [p] in
+          (j, s with <| count := j + 1n; elems := ps'; buckets := bs' |>)
+End
+
+Theorem bucket_index_lt:
+  ∀p m. m ≠ 0n ⇒ bucket_index p m < m
+Proof
+  rw[bucket_index_def] \\ fs[MOD_LESS]
+QED
+
+Theorem find_in_bucket_NONE_iff:
+  ∀p b. (find_in_bucket p b = NONE) ⇔ ¬(∃idx. MEM (p,idx) b)
+Proof
+  Induct_on `b`
+  \\ rw[find_in_bucket_def]
+  \\ Cases_on `h`
+  \\ rw[find_in_bucket_def]
+  \\ Cases_on `p = q`
+  >- (fs[] \\ qexists_tac `r` \\ simp[])
+  \\ fs[]
+QED
+
+Theorem find_in_bucket_SOME_MEM:
+  ∀p b idx. (find_in_bucket p b = SOME idx) ⇒ MEM (p,idx) b
+Proof
+  Induct_on `b`
+  \\ simp[find_in_bucket_def]
+  \\ Cases_on `h`
+  \\ simp[find_in_bucket_def]
+  \\ Cases_on `p = q`
+  \\ simp[]
+QED
+
+Theorem ph_lookup_state_SOME_imp_mem_flat:
+  ∀p s idx.
+    ph_ok s ∧ (ph_lookup_state p s = SOME idx) ⇒
+      MEM (p,idx) (FLAT (s.buckets))
+Proof
+  rw[ph_ok_def,ph_lookup_state_def]
+  \\ qabbrev_tac `i = bucket_index p (s.bucket_count)`
+  \\ `i < LENGTH (s.buckets)` by
+    (fs[Abbr`i`] \\ metis_tac[bucket_index_lt])
+  \\ `MEM (p,idx) (EL i (s.buckets))` by
+    (fs[Abbr`i`] \\ metis_tac[find_in_bucket_SOME_MEM])
+  \\ fs[MEM_FLAT]
+  \\ qexists_tac `EL i (s.buckets)`
+  \\ conj_tac
+  >- (match_mp_tac EL_MEM \\ fs[])
+  \\ fs[]
+QED
+
+Theorem nth_lt_imp_MEM:
+  ∀xs n. n < LENGTH xs ⇒ MEM (nth n xs) xs
+Proof
+  Induct \\ Cases_on `n` \\ rw[nth_def]
+QED
+
+Theorem ph_lookup_state_SOME_imp_in_set:
+  ∀p s idx.
+    ph_ok s ∧ (ph_lookup_state p s = SOME idx) ⇒ p ∈ ph_set s
+Proof
+  rw[ph_set_def] \\
+  `MEM (p,idx) (FLAT (s.buckets))` by
+    metis_tac[ph_lookup_state_SOME_imp_mem_flat]
+  \\ fs[ph_ok_def]
+  \\ qpat_x_assum `MEM (p,idx) (FLAT (s.buckets))`
+      (fn memth =>
+        qpat_x_assum `∀p idx. MEM (p,idx) (FLAT (s.buckets)) ⇒ _`
+          (fn impth => mp_tac (MP (SPECL [``p:num``, ``idx:num``] impth) memth)))
+  \\ strip_tac
+  \\ `MEM (nth idx (s.elems)) (s.elems)` by metis_tac[nth_lt_imp_MEM]
+  \\ metis_tac[]
+QED
+
 Definition init_ph_state_def:
   init_ph_state =
     <| bucket_count := ref_init_bucket_count
      ; count := ref_init_count
+     ; elems := ref_init_elems
      ; buckets := rarray_init_buckets |>
 End
