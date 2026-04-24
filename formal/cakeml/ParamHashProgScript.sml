@@ -337,23 +337,6 @@ Proof
   \\ qexists_tac `SUC n` \\ simp[nthn_def]
 QED
 
-Theorem ph_lookup_state_MEM_elems_imp_SOME:
-  ∀p s. ph_invariant s ∧ MEM p s.elems ⇒ ∃idx. ph_lookup_state p s = SOME idx
-Proof
-  (* TODO (Stage B in VERIFY_ESTIMATE): complete this proof.
-
-     Intended argument:
-       - from `MEM p s.elems`, use `MEM_imp_exists_nth` to pick `j` with
-         `j < LENGTH s.elems` and `nthn j s.elems = p`;
-       - from `ph_covered s`, derive `MEM (p,j) (FLAT s.buckets)`;
-       - pick the bucket index `k` with `(p,j) ∈ EL k s.buckets`;
-       - from `ph_bucketed s`, conclude `bucket_index p s.bucket_count = k`;
-       - use `find_in_bucket_MEM_imp_SOME` to get some `idx` with
-         `find_in_bucket p (EL k s.buckets) = SOME idx`;
-       - unfold `ph_lookup_state` and rewrite by the bucket-index equality. *)
-  cheat
-QED
-
 Definition init_ph_state_def:
   init_ph_state =
     <| bucket_count := ref_init_bucket_count
