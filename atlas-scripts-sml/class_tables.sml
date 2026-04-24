@@ -48,6 +48,37 @@ structure ClassTables = struct
   type rootdatum = RootDatum.t
   type mat = IntMatrix.mat
 
+  (* Build a “data-only” WeylClassTable from known class orders/sizes.
+
+     This is useful for character tables whose underlying class ordering comes
+     from an external source (e.g. GAP/Magma) and where we do not yet have the
+     full `class_tables.at` machinery ported.
+
+     The resulting table supports inner products (needs `class_sizes`) and
+     can be used with `CharacterTables` functionality, but `class_of` and
+     `class_power` will raise if called.
+  *)
+  fun class_table_stub_from_orders_sizes (orders: int list, sizes: int list) : WeylClassTable.t =
+    let
+      val n = length orders
+      val () =
+        if n = length sizes then
+          ()
+        else
+          raise Fail "ClassTables.class_table_stub_from_orders_sizes: length mismatch"
+      fun bomb where' = raise Fail ("ClassTables.class_table_stub_from_orders_sizes: " ^ where')
+      fun class_of (_: weyl_word) : int = bomb "class_of not implemented for stub tables"
+      fun class_power (_: int * int) : int = bomb "class_power not implemented for stub tables"
+    in
+      { n_classes = n
+      , class_representatives = List.tabulate (n, fn _ => [])
+      , class_sizes = sizes
+      , class_orders = orders
+      , class_of = class_of
+      , class_power = class_power
+      }
+    end
+
   (* -------------------- G2 -------------------- *)
 
   val G2_class_words : weyl_word list =

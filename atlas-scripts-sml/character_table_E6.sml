@@ -1,4 +1,6 @@
 use "atlas-scripts-sml/IntListData.sml";
+use "atlas-scripts-sml/character_tables.sml";
+use "atlas-scripts-sml/class_tables.sml";
 
 (*
   File: atlas-scripts-sml/character_table_E6.sml
@@ -80,5 +82,15 @@ structure CharacterTable_E6 = struct
       raise Fail "CharacterTable_E6.to_special_E6: index out of range"
     else
       List.nth (to_special_E6_table, i)
-end
 
+  (* Build a usable `CharacterTables.CharacterTable.t` in Magma class order. *)
+  fun character_table_E6_magma () : CharacterTables.CharacterTable.t =
+    let
+      val wct = ClassTables.class_table_stub_from_orders_sizes (e6_orders_magma, e6_sizes_magma)
+      val class_names = List.tabulate (25, fn i => "E6_class_" ^ Int.toString i)
+      val irreps = List.map (fn row => (row, "irrep_" ^ Int.toString (List.nth (row, 0)))) e6_table
+      val degrees = List.map (fn row => List.nth (row, 0)) e6_table
+    in
+      CharacterTables.make (wct, class_names, irreps, degrees, to_special_E6)
+    end
+end

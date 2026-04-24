@@ -1,4 +1,6 @@
 use "atlas-scripts-sml/e8_gap.sml";
+use "atlas-scripts-sml/character_tables.sml";
+use "atlas-scripts-sml/class_tables.sml";
 
 (*
   File: atlas-scripts-sml/character_table_E8.sml
@@ -72,5 +74,18 @@ structure CharacterTable_E8 = struct
       raise Fail "CharacterTable_E8.to_special_E8: index out of range"
     else
       List.nth (to_special_E8_table, i)
-end
 
+  (* Build a usable `CharacterTables.CharacterTable.t` in GAP class order. *)
+  fun character_table_E8_gap () : CharacterTables.CharacterTable.t =
+    let
+      val wct = ClassTables.class_table_stub_from_orders_sizes (e8_orders, e8_class_sizes)
+      val class_names =
+        List.tabulate
+          (112, fn i =>
+             "E8_" ^ List.nth (e8_class_labels, i) ^ "_class_" ^ Int.toString i)
+      val irreps = List.map (fn row => (row, "irrep_" ^ Int.toString (List.nth (row, 0)))) e8_table
+      val degrees = List.map (fn row => List.nth (row, 0)) e8_table
+    in
+      CharacterTables.make (wct, class_names, irreps, degrees, to_special_E8)
+    end
+end
