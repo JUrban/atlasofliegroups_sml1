@@ -82,8 +82,15 @@ Status:
 - Two follow-on generalisations are present but currently placeholders:
   - `find_in_bucket_mem_atlas_eq_imp_SOME` (pure list reasoning about
     `find_in_bucket` when membership is modulo `atlas_eq`).
-  - `ph_contains_state_iff_mem_atlas_eq_elems` (removes `atlas_eq_is_hol_eq` by
-    expressing membership via `mem_atlas_eq`).
+  - `mem_atlas_eq_elems_imp_ph_contains_state` (the hard direction for the
+    modulo-`atlas_eq` representation lemma; uses bucketing + hash-respects-eq).
+
+Progress notes:
+- The forward direction `ph_contains_state_imp_mem_atlas_eq_elems` is proved
+  (no `cheat`).
+- The combined statement `ph_contains_state_iff_mem_atlas_eq_elems` is derived
+  from these two directions, but still `cheat`-tainted via the missing reverse
+  lemma above.
 
 Rationale:
 - this is “pure data-structure reasoning” and should eventually be eliminated

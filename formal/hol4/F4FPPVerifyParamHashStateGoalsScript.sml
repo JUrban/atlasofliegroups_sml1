@@ -39,6 +39,7 @@ open optionTheory;
 
 open F4FPPVerifySpecTheory;
 open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPVerifyAtlasEqListGoalsTheory;
 open F4FPPVerifyParamHashBridgeGoalsTheory;
 open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
 
@@ -81,15 +82,6 @@ End
 
 Definition ph_set_def:
   ph_set (s:ph_state) = set s.elems
-End
-
-(* Membership in a list modulo Atlas's semantic equality.
-
-   This is the representation notion that should be used when `atlas_eq` is a
-   non-trivial equivalence relation on parameters (the realistic situation for
-   an FFI-provided equality). *)
-Definition mem_atlas_eq_def:
-  mem_atlas_eq (p:param) (xs:param list) <=> ?q. MEM q xs /\ atlas_eq p q
 End
 
 (* A structural “hash-table invariant” analogous to the one used on the CakeML
@@ -166,13 +158,29 @@ Proof
   \\ metis_tac[]
 QED
 
+Theorem find_in_bucket_NONE_imp_all_not_eq:
+  !p b.
+    find_in_bucket p b = NONE ==>
+    !q idx. MEM (q,idx) b ==> ~atlas_eq p q
+Proof
+  Induct_on `b`
+  >- simp[find_in_bucket_def]
+  \\ Cases_on `h`
+  \\ simp[find_in_bucket_def]
+  \\ rpt strip_tac
+  \\ Cases_on `atlas_eq p q`
+  >- fs[]
+  \\ fs[]
+  \\ fs[]
+  \\ metis_tac[]
+QED
+
 Theorem find_in_bucket_mem_atlas_eq_imp_SOME:
   !p b.
     (?q idx. MEM (q,idx) b /\ atlas_eq p q) ==> ?idx'. find_in_bucket p b = SOME idx'
 Proof
-  (* This is a small pure-list lemma, but the proof is currently left as a
-     placeholder: we only need it for the “membership modulo `atlas_eq`” path,
-     which is not yet on the critical path for the overall project. *)
+  (* TODO (pure): can be proved from `find_in_bucket_NONE_imp_all_not_eq` by a
+     simple case split on `find_in_bucket p b`. *)
   cheat
 QED
 
@@ -278,6 +286,55 @@ Proof
   \\ metis_tac[ph_contains_state_iff_MEM_elems]
 QED
 
+(* ------------------------------------------------------------------------- *)
+(*  Modulo-`atlas_eq` generalisation (more realistic equality)                 *)
+(* ------------------------------------------------------------------------- *)
+
+Theorem ph_contains_state_imp_mem_atlas_eq_elems:
+  !p s.
+    atlas_hash_range /\ ph_invariant s /\ ph_contains_state p s ==>
+      mem_atlas_eq p s.elems
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ qpat_x_assum `ph_contains_state p s` mp_tac
+  \\ simp[ph_contains_state_def]
+  \\ disch_then (qx_choose_then `idx` assume_tac)
+  \\ fs[ph_invariant_def]
+  \\ `s.bucket_count <> 0` by fs[ph_ok_def]
+  \\ `bucket_index p s.bucket_count < LENGTH s.buckets` by
+       metis_tac[bucket_index_lt_len_buckets]
+  \\ fs[ph_lookup_state_def, LET_THM]
+  \\ drule find_in_bucket_SOME_MEM
+  \\ disch_then (qx_choose_then `q` strip_assume_tac)
+  \\ `MEM (EL (bucket_index p s.bucket_count) s.buckets) s.buckets` by
+       (irule EL_MEM \\ simp[])
+  \\ `MEM (q,idx) (FLAT s.buckets)` by
+       (simp[MEM_FLAT]
+        \\ qexists_tac `EL (bucket_index p s.bucket_count) s.buckets`
+        \\ simp[])
+  \\ `idx < LENGTH s.elems /\ EL idx s.elems = q` by metis_tac[ph_ok_def]
+  \\ simp[mem_atlas_eq_def]
+  \\ qexists_tac `q`
+  \\ simp[MEM_EL]
+  \\ metis_tac[]
+QED
+
+Theorem mem_atlas_eq_elems_imp_ph_contains_state:
+  !p s.
+    atlas_hash_eq_ok /\ ph_invariant s /\ mem_atlas_eq p s.elems ==>
+      ph_contains_state p s
+Proof
+  (* Intended proof:
+     - pick `q` such that `MEM q s.elems` and `atlas_eq p q`,
+     - use `ph_covered` to locate `(q,j)` in `FLAT s.buckets`,
+     - use `ph_bucketed` + `atlas_hash_respects_eq` to show `p` hashes to the
+       same bucket index as `q`,
+     - use a pure `find_in_bucket` lemma (currently `find_in_bucket_mem_atlas_eq_imp_SOME`)
+       to show lookup in that bucket succeeds for `p`. *)
+  cheat
+QED
+
 (* A representation theorem that does not require the simplifying assumption
    `atlas_eq_is_hol_eq`: membership is expressed modulo `atlas_eq`. *)
 Theorem ph_contains_state_iff_mem_atlas_eq_elems:
@@ -285,19 +342,19 @@ Theorem ph_contains_state_iff_mem_atlas_eq_elems:
     atlas_hash_eq_ok /\ ph_invariant s ==>
       (ph_contains_state p s <=> mem_atlas_eq p s.elems)
 Proof
-  (* This lemma is the next major generalisation step: it removes the
-     simplifying assumption `atlas_eq_is_hol_eq` by stating membership modulo
-     `atlas_eq`.  Completing it cleanly requires additional pure reasoning
-     about `find_in_bucket` and “hash respects eq” facts; for now we keep the
-     statement and treat the proof as a placeholder. *)
-  cheat
-QED
-
-Theorem atlas_eq_is_hol_eq_imp_mem_atlas_eq_eq_MEM:
-  atlas_eq_is_hol_eq ==> !p xs. mem_atlas_eq p xs <=> MEM p xs
-Proof
-  rw[mem_atlas_eq_def, atlas_eq_is_hol_eq_def]
-  \\ metis_tac[]
+  rpt gen_tac
+  \\ strip_tac
+  \\ EQ_TAC
+  >- (
+    strip_tac
+    \\ match_mp_tac ph_contains_state_imp_mem_atlas_eq_elems
+    \\ fs[atlas_hash_eq_ok_def]
+    )
+  \\ (
+    strip_tac
+    \\ match_mp_tac mem_atlas_eq_elems_imp_ph_contains_state
+    \\ simp[]
+    )
 QED
 
 val _ = export_theory ();

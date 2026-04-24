@@ -36,6 +36,7 @@ open pred_setTheory pred_setLib;
 
 open F4FPPVerifyGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
+open F4FPPVerifyAtlasEqListGoalsTheory;
 open F4FPPVerifyParamHashBridgeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeDecomposeGoals";
@@ -45,6 +46,19 @@ Definition paramhash_rep_ok_def:
   paramhash_rep_ok g <=>
     !p. paramhash_contains g p <=> MEM p (paramhash_list g)
 End
+
+(* More realistic variant: membership is modulo Atlas's semantic equality. *)
+Definition paramhash_rep_ok_atlas_eq_def:
+  paramhash_rep_ok_atlas_eq g <=>
+    !p. paramhash_contains g p <=> mem_atlas_eq p (paramhash_list g)
+End
+
+Theorem atlas_eq_is_hol_eq_and_paramhash_rep_ok_atlas_eq_imp_paramhash_rep_ok:
+  !g. atlas_eq_is_hol_eq /\ paramhash_rep_ok_atlas_eq g ==> paramhash_rep_ok g
+Proof
+  rw[paramhash_rep_ok_def, paramhash_rep_ok_atlas_eq_def]
+  \\ metis_tac[atlas_eq_is_hol_eq_imp_mem_atlas_eq_eq_MEM]
+QED
 
 (* (B) Semantic agreement: the stored contents are exactly the fast set. *)
 Definition paramhash_stores_U_fast_def:
