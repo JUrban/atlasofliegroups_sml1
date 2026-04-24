@@ -607,6 +607,23 @@ premises that match the program’s phase structure:
 This gives a single place to see the full list of obligations that still need
 to be discharged to obtain end-to-end equivalence.
 
+#### `F4FPPVerifyEndToEndProgramSuccessStackGoalsTheory` (explicit end-to-end from program success)
+
+File: `formal/hol4/F4FPPVerifyEndToEndProgramSuccessStackGoalsScript.sml`
+
+Records a single theorem
+`program_success_implies_equivalence_via_obligation_stack` that composes:
+
+- `fast_program_succeeds ⇒ (compute succeeds ∧ bottom-layer succeeds)` (phase split)
+- `compute succeeds ⇒ fast_compute_domain_ok` (cheat)
+- `compute succeeds ⇒ paramhash_obligations_state_factored` (cheat)
+- `bottom-layer succeeds ⇒ bottom_layer_ok_param_set` (via per-check decomposition)
+- `slow succeeds ⇒ (slow_refinement_ok ∧ slow_ok_components)` (cheat-tainted)
+- `obligations_stack_imply_equivalence` (OK)
+
+This is the most explicit “roadmap theorem” for the full argument: it shows
+exactly which bridge lemmas remain to be proved/justified.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
