@@ -350,6 +350,21 @@ hash. It packages the intended compute obligations:
 
 and proves (OK) that these imply `fast_semantic_ok g`.
 
+#### `F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory` (fast compute bridge, factored)
+
+File: `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeGoalsScript.sml`
+
+Factors the compute-phase bridge into two explicit bundles:
+
+- `fast_compute_domain_ok g`: `fast_domain_is_pruned g ∧ fast_witnessed_pruned g`
+- `fast_compute_paramhash_ok g`: `paramhash_ok g` (the ParamHash list/contains bundle)
+
+and proves (OK) that these together imply `fast_compute_obligations g`.
+
+It then records cheated lemmas stating that `fast_compute_program_succeeds g`
+implies each bundle, and derives a factored “success ⇒ obligations” theorem
+from those.
+
 #### `F4FPPVerifyParamHashBridgeGoalsTheory` (ParamHash list/contains obligations)
 
 File: `formal/hol4/F4FPPVerifyParamHashBridgeGoalsScript.sml`
