@@ -100,6 +100,20 @@ Proves an “OK” lemma:
 - `fast_witnessed_and_subset_imp_fast_sound`:
   `fast_witnessed g ∧ fast_domain_subset g ⇒ fast_sound g`.
 
+#### `F4FPPVerifyFastPruneGoalsTheory` (make fast pruning explicit)
+
+File: `formal/hol4/F4FPPVerifyFastPruneGoalsScript.sml`
+
+Introduces an explicit (still abstract) fast-side pruning predicate
+`fast_considers g t` and defines the “obvious” pruned domain:
+
+- `D_fast_pruned g = { t ∈ D_slow g | fast_considers g t }`
+
+Then it provides glue lemmas showing that if the fast program’s abstract
+`D_fast g` agrees with `D_fast_pruned g`, and every stored `pi ∈ U_fast g` is
+witnessed by some `t` satisfying `fast_considers`, then the original obligations
+`fast_domain_subset g` and `fast_witnessed g` hold.
+
 #### `F4FPPVerifyGoalsTheory` (top-level goal layer)
 
 File: `formal/hol4/F4FPPVerifyGoalsScript.sml`
