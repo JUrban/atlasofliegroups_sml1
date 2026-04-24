@@ -1,183 +1,282 @@
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
+use "atlas-scripts-sml/tabulate.sml";
 
 (*
   File: atlas-scripts-sml/poset.sml
 
   Purpose
-  - Partial SML translation of `atlas-scripts/poset.at`.
-  - Provides a simple partially ordered set type `Poset.t` encoded by adjacency
-    lists, plus transitive/reflexive closure and a few query helpers.
+  - SML translation of `atlas-scripts/poset.at`.
+  - Provides a small, generic partially-ordered-set utility module used by
+    various higher-level scripts (e.g. Weyl-group and cell utilities).
 
   Representation
-  - A poset is a list `P : int list list` of length `n`.
-  - The underlying set is `{0,1,...,n-1}`.
-  - `P[i]` lists the elements *strictly above* `i` (i.e. edges `i -> j`).
-    (As in the `.at` file, `i` itself need not be included in `P[i]`.)
+  - A poset is represented as an adjacency list `P : int list list` where
+    `P[i]` contains the (possibly non-transitively-closed) set of `j` such that
+    `i < j`.
+  - The underlying carrier set is `{0,1,...,n-1}` where `n = length P`.
 
-  Closure conventions
-  - `closure P` returns a poset `Q` where:
-      - `i` is included in `Q[i]` (reflexive closure)
-      - `Q` is transitively closed
-    This matches the behavior of `poset.at`’s `closure`.
+  Differences from the `.at` implementation
+  - The `.at` version uses interpreter bitset primitives for an efficient
+    transitive closure. This SML version computes closure via per-node DFS/BFS
+    over adjacency lists.
+  - `closure(P)` returns the reflexive+transitive closure (each row includes
+    its own node `i`), matching the behavior of `trans_close` in `poset.at`.
 
-  Performance notes
-  - The `.at` implementation uses bitsets for speed.
-  - This SML port uses BFS/DFS from each vertex; it is suitable for moderate
-    sizes and can be improved later if needed.
+  Intended usage
+  - These utilities are designed primarily for “library script” scale posets
+    (tens/hundreds of nodes). For very large posets, additional bitset-based
+    optimization may be needed.
 *)
 
 structure Poset = struct
   type t = int list list
 
-  fun size (p: t) : int = length p
-
-  fun checkIndex (n: int) (i: int) : unit =
-    if 0 <= i andalso i < n then () else raise Fail "Poset: index out of bounds"
-
-  fun closure (p: t) : t =
+  fun appi f xs =
     let
-      val n = size p
-      val () = List.app (fn row => List.app (checkIndex n) row) p
+      fun loop ([], _, _) = ()
+        | loop (x :: rest, i, f) = (f (i, x); loop (rest, i + 1, f))
+    in
+      loop (xs, 0, f)
+    end
 
-      fun reachableFrom (start: int) : int list =
+  fun mapi f xs =
+    let
+      fun loop ([], _, acc) = List.rev acc
+        | loop (x :: rest, i, acc) = loop (rest, i + 1, f (i, x) :: acc)
+    in
+      loop (xs, 0, [])
+    end
+
+  fun mapPartial f xs =
+    let
+      fun loop ([], acc) = List.rev acc
+        | loop (x :: rest, acc) =
+            (case f x of
+               NONE => loop (rest, acc)
+             | SOME y => loop (rest, y :: acc))
+    in
+      loop (xs, [])
+    end
+
+  fun size (P: t) : int = length P
+
+  fun checkIndex (n: int) (j: int) : bool = j >= 0 andalso j < n
+
+  fun normalizeRow (n: int, i: int) (row: int list) : int list =
+    Basic.sort_u Int.<= (List.filter (checkIndex n) (i :: row))
+
+  (* Reflexive+transitive closure. Row `i` contains `i` and all nodes reachable
+     from `i` by following edges in `P`. *)
+  fun closure (P: t) : t =
+    let
+      val n = size P
+      val parr = Array.fromList P
+
+      (* Normalize adjacency rows but do not add reflexivity here; we add it
+         when exploring each start node. *)
+      val adj =
+        Array.tabulate
+          (n, fn i => Basic.sort_u Int.<= (List.filter (checkIndex n) (Array.sub (parr, i))))
+
+      fun reachFrom (start: int) : int list =
         let
           val seen = Array.array (n, false)
-          fun push i = if Array.sub (seen, i) then () else Array.update (seen, i, true)
-          val () = push start
+          fun pushAll ([], stack) = stack
+            | pushAll (x :: xs, stack) = pushAll (xs, x :: stack)
 
-          fun bfs [] = ()
-            | bfs (x :: xs) =
-                let
-                  val nbrs = List.nth (p, x)
-                  val new =
-                    List.filter
-                      (fn y =>
-                        if Array.sub (seen, y) then false else (Array.update (seen, y, true); true))
-                      nbrs
-                in
-                  bfs (xs @ new)
-                end
+          fun loop stack =
+            (case stack of
+               [] => ()
+             | v :: rest =>
+                 if Array.sub (seen, v) then
+                   loop rest
+                 else
+                   let
+                     val () = Array.update (seen, v, true)
+                     val rest' = pushAll (Array.sub (adj, v), rest)
+                   in
+                     loop rest'
+                   end)
+
+          val () = loop [start]
+
+          fun collect j acc =
+            if j = n then
+              List.rev acc
+            else if Array.sub (seen, j) then
+              collect (j + 1) (j :: acc)
+            else
+              collect (j + 1) acc
         in
-          bfs [start];
-          let
-            val all = List.tabulate (n, fn i => i)
-            val kept = List.filter (fn i => Array.sub (seen, i)) all
-          in
-            Sort.sort_u (op <=) kept
-          end
+          collect 0 []
         end
-
-      fun row i = reachableFrom i
     in
-      List.tabulate (n, row)
+      List.tabulate (n, reachFrom)
     end
 
-  fun posets_equal (p: t, q: t) : bool =
-    let
-      val pc = closure p
-      val qc = closure q
-    in
-      pc = qc
-    end
+  fun equal (A: t, B: t) : bool = A = B
 
-  fun poset_inverse (p: t) : t =
+  fun posets_equal (P: t, Q: t) : bool = closure P = closure Q
+
+  fun poset_inverse (P: t) : t =
     let
-      val pc = closure p
-      val n = size pc
+      val P = closure P
+      val n = size P
       val inv = Array.array (n, ([]: int list))
-      fun add (i, j) = Array.update (inv, j, i :: Array.sub (inv, j))
-      fun appi f xs =
-        let
-          fun loop ([], _) = ()
-            | loop (x :: rest, i) = (f (i, x); loop (rest, i + 1))
-        in
-          loop (xs, 0)
-        end
+
+      fun addEdge (i: int, j: int) : unit = Array.update (inv, j, i :: Array.sub (inv, j))
+
       val () =
-        appi (fn (i, row) => List.app (fn j => add (i, j)) row) pc
+        appi (fn (i, row) => List.app (fn j => addEdge (i, j)) row) P
     in
-      List.tabulate (n, fn j => Sort.sort_u (op <=) (Array.sub (inv, j)))
+      List.tabulate (n, fn j => Basic.sort_u Int.<= (Array.sub (inv, j)))
     end
 
-  (* `less(P,i,j)` in `poset.at`: whether `i <= j` in the reflexive/transitive closure. *)
-  fun less (p: t, i: int, j: int) : bool =
+  fun less (P: t, i: int, j: int) : bool =
     let
-      val pc = closure p
-      val n = size pc
-      val () = (checkIndex n i; checkIndex n j)
+      val Q = closure P
+      val n = size Q
+      val () =
+        if checkIndex n i andalso checkIndex n j then () else raise Fail "Poset.less: index out of range"
     in
-      List.exists (fn x => x = j) (List.nth (pc, i))
+      List.exists (fn k => k = j) (List.nth (Q, i))
     end
 
-  fun greater (p: t, i: int, j: int) : bool = less (p, j, i)
+  fun greater (P: t, i: int, j: int) : bool = less (P, j, i)
 
-  (* Nodes which point to nothing beyond themselves. *)
-  fun minimal_nodes (p: t) : int list =
+  (* Nodes `i` such that nothing is strictly above `i` (i.e. closure row is `[i]`). *)
+  fun minimal_nodes (P: t) : int list =
     let
-      val pc = closure p
-      val n = size pc
+      val Q = closure P
+      val n = size Q
+      fun isMin i = (List.nth (Q, i) = [i])
     in
-      List.filter (fn i => List.nth (pc, i) = [i]) (List.tabulate (n, fn i => i))
+      List.filter isMin (List.tabulate (n, fn i => i))
     end
 
-  (* “Basic nodes” as described in the `.at` comments:
-     - closed orbit (minimal node)
-     - contained in the closure of a strictly bigger orbit
-     Equivalently: minimal nodes whose inverse-closure set has size > 1. *)
-  fun basic_nodes (p: t) : int list =
+  (* Nodes that are minimal and lie strictly below some other node. *)
+  fun basic_nodes (P: t) : int list =
     let
-      val mins = minimal_nodes p
-      val inv = poset_inverse p
+      val mins = minimal_nodes P
+      val inv = poset_inverse P
+      fun hasStrictPred i = List.exists (fn j => j <> i) (List.nth (inv, i))
     in
-      List.filter (fn j => length (List.nth (inv, j)) > 1) mins
+      List.filter hasStrictPred mins
     end
 
-  fun delete_node (i: int, p: t) : t =
+  (* Remove all edges pointing to node `i`, keeping the node itself. *)
+  fun delete_node (i: int, P: t) : t =
     let
-      val n = size p
-      val () = checkIndex n i
-      fun del row = List.filter (fn x => x <> i) row
+      val n = size P
+      val () = if checkIndex n i then () else raise Fail "Poset.delete_node: index out of range"
     in
-      List.map del p
+      List.map (fn row => List.filter (fn j => j <> i) row) P
     end
 
-  fun delete_nodes (is: int list, p: t) : t =
-    List.foldl (fn (i, acc) => delete_node (i, acc)) p is
+  fun delete_nodes (S: int list, P: t) : t = List.foldl (fn (i, acc) => delete_node (i, acc)) P S
 
-  (* DOT graph output, similar to `graph(Poset)` in `poset.at`.
-
-     Note: This emits all edges in `p` (not the transitive reduction).
-  *)
-  fun graph (p: t, labelOf: int -> string, colorOf: int -> string) : string =
+  (* Check whether `f` is monotone with respect to the poset relation.
+     `f[i] = f(i)` for `i=0..n-1`. *)
+  fun is_monotone (P: t, f: int list) : bool =
     let
-      val n = size p
+      val n = size P
+      val () = if length f = n then () else raise Fail "Poset.is_monotone: length mismatch"
+      val Q = closure P
+
+      fun leqIdx (a: int, b: int) : bool = List.exists (fn k => k = b) (List.nth (Q, a))
+      fun fAt i = List.nth (f, i)
+      fun checkRow (i: int, row: int list) : bool =
+        List.all (fn j => leqIdx (fAt i, fAt j)) row
+    in
+      List.all (fn (i, row) => checkRow (i, row)) (ListPair.zip (List.tabulate (n, fn i => i), Q))
+    end
+
+  fun subPoset (P: t, S: int list) : t =
+    let
+      val Q = closure P
+      val n = size Q
+      val index = Array.array (n, ~1)
+      val () =
+        appi
+          (fn (idx, node) =>
+             if checkIndex n node then
+               Array.update (index, node, idx)
+             else
+               raise Fail "Poset.subPoset: index out of range")
+          S
+
+      fun projectRow (row: int list) : int list =
+        let
+          val mapped =
+            mapPartial
+              (fn k =>
+                 let
+                   val idx = Array.sub (index, k)
+                 in
+                   if idx >= 0 then SOME idx else NONE
+                 end)
+              row
+        in
+          Basic.sort_u Int.<= mapped
+        end
+    in
+      List.map (fn node => projectRow (List.nth (Q, node))) S
+    end
+
+  fun graph (P: t) : string =
+    let
+      fun labels i = Int.toString i
+      fun colors (_: int) = "black"
+    in
+      graphWith (P, labels, colors)
+    end
+
+  and graphWith (P: t, labels: int -> string, colors: int -> string) : string =
+    let
+      val n = size P
       val header =
-        "strict digraph  { \n" ^
-        "size=\"30.0,30.0!\";\n" ^
-        "center=true;\n" ^
-        "node [color=black,fontcolor=black]\n" ^
-        "edge [arrowhead=none,color=black];"
+        String.concat
+          ["strict digraph  { \n",
+           "size=\"30.0,30.0!\"; \n",
+           "center=true;  \n",
+           "node [color=black,fontcolor=black] \n",
+           " edge [arrowhead=none,color=black]; "]
 
       fun nodeLine i =
-        "\n" ^ Int.toString i ^ "[label=\"" ^ labelOf i ^ "\",color=" ^ colorOf i ^ "];"
+        "\n"
+        ^ Int.toString i
+        ^ "[label=\""
+        ^ labels i
+        ^ "\",color="
+        ^ colors i
+        ^ "];"
 
-      fun edgeLines i =
-        String.concat (List.map (fn j => Int.toString i ^ "->" ^ Int.toString j ^ ";") (List.nth (p, i)))
+      fun edgeLines i row =
+        String.concat (List.map (fn j => Int.toString i ^ "->" ^ Int.toString j ^ ";") row)
 
-      val body =
-        String.concat
-          (List.tabulate
-             ( n
-             , fn i => nodeLine i ^ edgeLines i
-             ))
+      fun one i =
+        let
+          val row = List.nth (P, i)
+        in
+          nodeLine i ^ edgeLines i row
+        end
     in
-      header ^ body ^ "\n}"
+      header ^ String.concat (List.tabulate (n, one)) ^ "\n}"
     end
 
-  fun graph_default (p: t) : string =
-    graph (p, Int.toString, fn _ => "black")
+  fun graphLabels (P: t, labels: int -> string) : string =
+    graphWith (P, labels, fn _ => "black")
 
-  fun graph_labels (p: t, labels: int -> string) : string =
-    graph (p, labels, fn _ => "black")
+  fun graphLabelArray (P: t, labels: string list) : string =
+    graphLabels (P, fn i => List.nth (labels, i))
+
+  fun show (P: t) : unit =
+    let
+      fun intsToString xs =
+        "[" ^ String.concatWith "," (List.map Int.toString xs) ^ "]"
+      val table = mapi (fn (i, row) => [Int.toString i, intsToString row]) P
+    in
+      Tabulate.tabulateDefault table
+    end
 end
