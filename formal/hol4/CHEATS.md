@@ -71,12 +71,9 @@ Role:
 
 - File: `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`
 
-What is proved:
-- `ph_lookup_state_SOME_imp_MEM_elems` (lookup success implies membership)
-
-What is still `cheat`ed:
-- `MEM_elems_imp_ph_contains_state` (membership implies lookup success)
-- therefore, `ph_contains_state_iff_MEM_elems` is still `CHEAT`-tainted.
+Status:
+- The core representation lemma `ph_contains_state_iff_MEM_elems` is now proved
+  (no `cheat`) under the invariant and `atlas_eq_is_hol_eq`.
 
 Rationale:
 - this is “pure data-structure reasoning” and should eventually be eliminated
@@ -126,4 +123,3 @@ Most of the “end-to-end” files are **OK composition** and do not introduce n
 
 These files are valuable even while `cheat`-tainted because they pin down
 exactly what must be shown at each interface boundary.
-

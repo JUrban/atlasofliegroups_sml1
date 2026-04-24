@@ -25,10 +25,10 @@
   - This model is intentionally minimal: it does not yet model resizing, clone
     ownership, or insertion correctness.  It is the attachment point for those
     later refinements.
-  - The main representation theorem `ph_contains_state_iff_MEM_elems` is still
-    `CHEAT`-tainted (one direction remains to be proved), but we have proved a
-    useful forward lemma `ph_lookup_state_SOME_imp_MEM_elems` that already
-    captures the “lookup success implies stored element” direction.
+  - The main representation theorem `ph_contains_state_iff_MEM_elems` is proved
+    (no `cheat`): under the invariant and the simplifying equality contract
+    `atlas_eq_is_hol_eq`, the lookup-based membership predicate agrees with
+    membership in the enumerated list `elems`.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -200,17 +200,25 @@ Theorem MEM_elems_imp_ph_contains_state:
     atlas_eq_is_hol_eq /\ ph_invariant s /\ MEM p s.elems ==>
       ph_contains_state p s
 Proof
-  (*
-    Intended proof (routine list reasoning):
-    - From `MEM p s.elems`, pick an index `j` with `EL j s.elems = p`.
-    - Use `ph_covered` to get a bucket entry `(p,j)` in `FLAT s.buckets`.
-    - Use `MEM_FLAT` + `MEM_EL` to locate a bucket index `i` with
-      `MEM (p,j) (EL i s.buckets)`.
-    - Apply `ph_bucketed` to conclude `bucket_index p s.bucket_count = i`.
-    - Apply `find_in_bucket_MEM_imp_SOME` to conclude lookup succeeds, hence
-      `ph_contains_state p s`.
-  *)
-  cheat
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[ph_invariant_def]
+  \\ fs[ph_contains_state_def]
+  \\ `s.bucket_count <> 0` by fs[ph_ok_def]
+  \\ qpat_x_assum `MEM p s.elems` (mp_tac o MATCH_MP (iffLR MEM_EL))
+  \\ disch_then (qx_choose_then `j` strip_assume_tac)
+  \\ `MEM (EL j s.elems, j) (FLAT s.buckets)` by fs[ph_covered_def]
+  \\ `MEM (p,j) (FLAT s.buckets)` by simp[]
+  \\ qpat_x_assum `MEM (p,j) (FLAT s.buckets)` (mp_tac o MATCH_MP (iffLR MEM_FLAT))
+  \\ disch_then (qx_choose_then `b` strip_assume_tac)
+  \\ qpat_x_assum `MEM b s.buckets` (mp_tac o MATCH_MP (iffLR MEM_EL))
+  \\ disch_then (qx_choose_then `i` strip_assume_tac)
+  \\ `MEM (p,j) (EL i s.buckets)` by metis_tac[]
+  \\ `bucket_index p s.bucket_count = i` by
+       (fs[ph_bucketed_def] \\ metis_tac[])
+  \\ `?idx'. find_in_bucket p (EL i s.buckets) = SOME idx'` by
+       metis_tac[find_in_bucket_MEM_imp_SOME]
+  \\ metis_tac[ph_lookup_state_def, LET_THM]
 QED
 
 Theorem ph_contains_state_iff_MEM_elems:

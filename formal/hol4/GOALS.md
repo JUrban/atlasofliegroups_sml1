@@ -109,11 +109,8 @@ In HOL4 this lemma is currently recorded (but still `cheat`ed) in:
 
 Progress note:
 
-- The forward direction (“lookup succeeds ⇒ membership”) is now proved as
-  `ph_lookup_state_SOME_imp_MEM_elems` in
-  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`.
-- The reverse direction (“membership ⇒ lookup succeeds”) is still a goal and
-  remains `CHEAT`-tainted via `MEM_elems_imp_ph_contains_state`.
+- The full representation lemma `ph_contains_state_iff_MEM_elems` is now proved
+  in `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` (no `cheat`).
 
 On the CakeML side, the analogous lemma is *proved* for the pure-state model:
 
