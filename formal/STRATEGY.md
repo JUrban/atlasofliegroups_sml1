@@ -483,6 +483,10 @@ More realistic equality:
 - The corresponding state lemma is therefore stated in the same file as
   `ph_contains_state_iff_mem_atlas_eq_elems`, using `mem_atlas_eq` (membership
   modulo `atlas_eq`), but it is currently left as a `cheat`ed placeholder.
+- The supporting vocabulary lives in:
+  - `formal/hol4/F4FPPVerifyAtlasEqListGoalsScript.sml` (`mem_atlas_eq`), and
+  - `formal/hol4/F4FPPVerifyAtlasEqSetGoalsScript.sml` (`set_atlas_eq`,
+    `atlas_eq_closure`) for stating end-to-end correctness modulo `atlas_eq`.
 
 It then defines a wiring predicate `paramhash_observes_state` and derives:
 
