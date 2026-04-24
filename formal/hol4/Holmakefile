@@ -1,4 +1,3 @@
 INCLUDES =
 
-SMLFILES = F4FPPVerifySpecScript.sml
-
+SMLFILES = F4FPPVerifySpecScript.sml F4FPPVerifyAlgScript.sml
