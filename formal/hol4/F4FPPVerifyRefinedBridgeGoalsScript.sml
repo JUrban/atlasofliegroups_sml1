@@ -39,6 +39,7 @@ open F4FPPVerifyRefinedMainAtlasEqGoalsTheory;
 open F4FPPVerifyAtlasFFIContractsGoalsTheory;
 open F4FPPVerifyAtlasEqSetGoalsTheory;
 open F4FPPVerifySMLBridgeGoalsTheory;
+open F4FPPVerifySlowBridgeDetailedGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyRefinedBridgeGoals";
 
@@ -85,14 +86,7 @@ Theorem slow_program_succeeds_imp_refined_slow_obligations_atlas_eq:
       slow_refinement_ok g /\
       slow_ok_components_atlas_eq g
 Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - same domain-enumeration/refinement story as the non-modulo version,
-    - plus: the slow script’s membership test is modulo the Atlas semantic
-      equality `atlas_eq` (via ParamHash), so the “0 misses” predicate matches
-      `check_domain_fun_atlas_eq` rather than `check_domain_fun`.
-  *)
-  cheat
+  metis_tac[slow_program_succeeds_imp_refined_slow_obligations_detailed_atlas_eq]
 QED
 
 (* --- Derived end-user theorem (tainted by the cheated bridge obligations) --- *)

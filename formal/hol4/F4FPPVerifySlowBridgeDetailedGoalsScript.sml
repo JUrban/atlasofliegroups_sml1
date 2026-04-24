@@ -36,6 +36,7 @@ open pred_setTheory pred_setLib;
 open F4FPPVerifySMLBridgeGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifySlowRefineGoalsTheory;
+open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
 open F4FPPVerifySlowProgramDecomposeBridgeGoalsTheory;
 open F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory;
 
@@ -74,6 +75,12 @@ Proof
   metis_tac[slow_program_succeeds_imp_slow_ok_components_decomposed]
 QED
 
+Theorem slow_program_succeeds_imp_slow_ok_components_atlas_eq:
+  !g. slow_program_succeeds g ==> slow_ok_components_atlas_eq g
+Proof
+  metis_tac[slow_program_succeeds_imp_slow_ok_components_atlas_eq_decomposed]
+QED
+
 (* Convenience: the refined slow obligations used by
    `F4FPPVerifyRefinedBridgeGoalsTheory`. *)
 Theorem slow_program_succeeds_imp_refined_slow_obligations_detailed:
@@ -82,6 +89,15 @@ Proof
   metis_tac
     [ slow_program_succeeds_imp_slow_refinement_ok
     , slow_program_succeeds_imp_slow_ok_components
+    ]
+QED
+
+Theorem slow_program_succeeds_imp_refined_slow_obligations_detailed_atlas_eq:
+  !g. slow_program_succeeds g ==> slow_refinement_ok g /\ slow_ok_components_atlas_eq g
+Proof
+  metis_tac
+    [ slow_program_succeeds_imp_slow_refinement_ok
+    , slow_program_succeeds_imp_slow_ok_components_atlas_eq
     ]
 QED
 

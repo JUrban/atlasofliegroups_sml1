@@ -609,6 +609,9 @@ Introduces abstract constants for the slow program’s internal structure:
 
 - `slow_domain_list g`: the triple enumeration order (if materialized),
 - `slow_missing g t`: the per-triple “missing witness?” predicate,
+  and (more realistic)
+  - `slow_missing_atlas_eq g t`: missing predicate where membership in the fast
+    set is interpreted modulo `atlas_eq`,
 
 and defines three small bridge obligations:
 
@@ -618,6 +621,13 @@ and defines three small bridge obligations:
 
 From these it proves (OK) that `slow_ok_components g` holds, and then records
 cheated lemmas stating that `slow_program_succeeds g` implies each obligation.
+
+Modulo-`atlas_eq` variant:
+
+- `slow_missing_ok_atlas_eq g`: `slow_missing_atlas_eq g t ⇔ missing_witness_atlas_eq g (U_fast g) t`
+- `slow_ok_sml_atlas_eq g`: `LENGTH (FILTER (slow_missing_atlas_eq g) (slow_domain_list g)) = 0`
+
+From these it similarly derives (OK) that `slow_ok_components_atlas_eq g` holds.
 
 #### `F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory` (slow refinement: dom_list vs slow loop)
 

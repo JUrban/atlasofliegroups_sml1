@@ -145,6 +145,12 @@ Role:
 Status:
 - currently placeholders (`cheat`).
 
+Modulo-`atlas_eq` detail:
+- `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeGoalsScript.sml` also adds a
+  second missing predicate `slow_missing_atlas_eq` and corresponding bridge
+  obligations (`slow_missing_ok_atlas_eq`, `slow_ok_sml_atlas_eq`) to derive the
+  more realistic “0 misses” goal `slow_ok_components_atlas_eq`.
+
 ## I. Composition layers
 
 Most of the “end-to-end” files are **OK composition** and do not introduce new
