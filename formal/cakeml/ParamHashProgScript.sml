@@ -199,6 +199,14 @@ Definition ph_lookup_state_def:
         find_in_bucket p (EL i (s.buckets))
 End
 
+Definition ph_all_present_state_def:
+  (ph_all_present_state ([]:num list) (s:ph_state) = T) ∧
+  (ph_all_present_state (p::ps) s =
+     case ph_lookup_state p s of
+       NONE => F
+     | SOME _ => ph_all_present_state ps s)
+End
+
 Definition ph_match_state_def:
   ph_match_state (p:num) (s:ph_state) =
     case ph_lookup_state p s of
@@ -290,6 +298,18 @@ Proof
   \\ strip_tac
   \\ `MEM (nthn idx (s.elems)) (s.elems)` by metis_tac[nth_lt_imp_MEM]
   \\ metis_tac[]
+QED
+
+Theorem ph_all_present_state_sound:
+  ∀ps s.
+    ph_ok s ∧ ph_all_present_state ps s ⇒
+      ∀p. MEM p ps ⇒ p ∈ ph_set s
+Proof
+  Induct
+  \\ rw[ph_all_present_state_def]
+  \\ Cases_on `ph_lookup_state h s`
+  \\ fs[ph_all_present_state_def]
+  \\ metis_tac[ph_lookup_state_SOME_imp_in_set]
 QED
 
 Definition ph_bucketed_def:
