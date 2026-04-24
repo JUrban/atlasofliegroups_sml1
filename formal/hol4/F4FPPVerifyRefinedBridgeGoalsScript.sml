@@ -33,6 +33,7 @@ open F4FPPVerifyGoalsTheory;
 open F4FPPVerifySlowRefineGoalsTheory;
 open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
 open F4FPPVerifyFastRefineGoalsTheory;
+open F4FPPVerifyFastRefineAtlasEqGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyRefinedMainAtlasEqGoalsTheory;
@@ -58,6 +59,21 @@ Proof
       `fast_domain_subset g` (hence `fast_semantic_ok g`),
     - a proof/spec that `FPP_globalDirac.FPP_unitary_hash_bottom_layer_param_hash`
       enforces `bottom_layer_total_ok g dirac (U_fast g)` for the resulting set.
+  *)
+  cheat
+QED
+
+Theorem fast_program_succeeds_imp_refined_fast_obligations_atlas_eq:
+  !g dirac.
+    fast_program_succeeds g dirac ==>
+      fast_semantic_ok_atlas_eq g /\
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  (*
+    Intended proof ingredients (later, without `cheat`):
+    - as for `fast_program_succeeds_imp_refined_fast_obligations`, but with the
+      weaker witness property `fast_witnessed_atlas_eq`, allowing the fast set
+      to contain different representatives of the same semantic Atlas param.
   *)
   cheat
 QED
@@ -115,6 +131,20 @@ Proof
   \\ mp_tac (SPEC_ALL slow_program_succeeds_imp_refined_slow_obligations_atlas_eq)
   \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
   \\ metis_tac[refined_obligations_imply_set_atlas_eq]
+QED
+
+Theorem fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq_fast_atlas_eq:
+  !g dirac.
+    atlas_hash_eq_ok /\
+    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
+      set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ mp_tac (SPEC_ALL fast_program_succeeds_imp_refined_fast_obligations_atlas_eq)
+  \\ mp_tac (SPEC_ALL slow_program_succeeds_imp_refined_slow_obligations_atlas_eq)
+  \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
+  \\ metis_tac[refined_obligations_imply_set_atlas_eq_fast_atlas_eq]
 QED
 
 val _ = export_theory ();

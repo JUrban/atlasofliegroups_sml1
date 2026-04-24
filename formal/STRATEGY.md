@@ -774,6 +774,13 @@ Modulo-`atlas_eq` slow variant:
   This theorem additionally assumes `atlas_hash_eq_ok` (to obtain
   `atlas_eq_equiv`).
 
+Modulo-`atlas_eq` fast variant:
+
+- a more realistic fast-side bridge obligation is also recorded:
+  `fast_program_succeeds g dirac ⇒ fast_semantic_ok_atlas_eq g`,
+  where `fast_witnessed_atlas_eq` only requires semantic equality of witnesses
+  (via `atlas_eq`), not HOL equality of representatives.
+
 Then it derives:
 
 - `fast_and_slow_programs_succeed_gives_refined_equivalence`

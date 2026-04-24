@@ -40,6 +40,7 @@ More realistic variant (modulo Atlas equality):
   - concrete specialization for the target group:
     - file: `formal/hol4/F4FPPVerifyEndToEndF4sGoalsScript.sml`
       (`fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s`)
+      (also `fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s_fast_atlas_eq`)
   - compatibility lemma (shows modulo statement follows from HOL equality under
     `atlas_eq_is_hol_eq`):
     - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`

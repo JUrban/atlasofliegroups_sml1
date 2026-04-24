@@ -67,6 +67,16 @@ Proof
   metis_tac[fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq]
 QED
 
+Theorem fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s_fast_atlas_eq:
+  !dirac.
+    atlas_hash_eq_ok /\
+    fast_program_succeeds F4s dirac /\ slow_program_succeeds F4s ==>
+      set_atlas_eq (U_fast F4s) (U_slow F4s (D_slow F4s)) /\
+      bottom_layer_total_ok F4s dirac (U_fast F4s)
+Proof
+  metis_tac[fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq_fast_atlas_eq]
+QED
+
 Theorem fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s_dirac:
   atlas_hash_eq_ok /\ fast_program_succeeds F4s T /\ slow_program_succeeds F4s ==>
     set_atlas_eq (U_fast F4s) (U_slow F4s (D_slow F4s)) /\

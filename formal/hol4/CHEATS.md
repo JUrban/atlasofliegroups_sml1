@@ -45,6 +45,7 @@ Planned discharge:
 - File: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
 - Placeholders:
   - `fast_program_succeeds_imp_refined_fast_obligations`
+  - `fast_program_succeeds_imp_refined_fast_obligations_atlas_eq`
   - `slow_program_succeeds_imp_refined_slow_obligations`
   - `slow_program_succeeds_imp_refined_slow_obligations_atlas_eq`
 

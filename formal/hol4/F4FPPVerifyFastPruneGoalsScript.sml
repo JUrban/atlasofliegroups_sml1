@@ -37,7 +37,9 @@ open pred_setTheory pred_setLib;
 
 open F4FPPVerifySpecTheory;
 open F4FPPVerifyGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
 open F4FPPVerifyFastRefineGoalsTheory;
+open F4FPPVerifyFastRefineAtlasEqGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastPruneGoals";
 
@@ -67,6 +69,18 @@ Definition fast_witnessed_pruned_def:
           is_unitary pi
 End
 
+Definition fast_witnessed_pruned_atlas_eq_def:
+  fast_witnessed_pruned_atlas_eq g <=>
+    !pi.
+      pi IN U_fast g ==>
+        ?t pi'.
+          t IN D_slow g /\
+          fast_considers g t /\
+          first_final_term (mk_param g t) = SOME pi' /\
+          is_unitary pi' /\
+          atlas_eq pi pi'
+End
+
 Theorem fast_domain_is_pruned_imp_fast_domain_subset:
   !g. fast_domain_is_pruned g ==> fast_domain_subset g
 Proof
@@ -83,6 +97,16 @@ Proof
   \\ metis_tac[]
 QED
 
+Theorem fast_domain_is_pruned_and_pruned_witness_atlas_eq_imp_fast_witnessed_atlas_eq:
+  !g.
+    fast_domain_is_pruned g /\ fast_witnessed_pruned_atlas_eq g ==>
+      fast_witnessed_atlas_eq g
+Proof
+  rw[fast_domain_is_pruned_def, fast_witnessed_pruned_atlas_eq_def,
+     fast_witnessed_atlas_eq_def, D_fast_pruned_def]
+  \\ metis_tac[]
+QED
+
 Theorem fast_pruned_obligations_imp_fast_semantic_obligations:
   !g.
     fast_domain_is_pruned g /\ fast_witnessed_pruned g ==>
@@ -92,6 +116,18 @@ Proof
   \\ rpt disch_tac
   \\ conj_tac
   >- metis_tac[fast_domain_is_pruned_and_pruned_witness_imp_fast_witnessed]
+  \\ metis_tac[fast_domain_is_pruned_imp_fast_domain_subset]
+QED
+
+Theorem fast_pruned_obligations_imp_fast_semantic_obligations_atlas_eq:
+  !g.
+    fast_domain_is_pruned g /\ fast_witnessed_pruned_atlas_eq g ==>
+      fast_witnessed_atlas_eq g /\ fast_domain_subset g
+Proof
+  rpt gen_tac
+  \\ rpt disch_tac
+  \\ conj_tac
+  >- metis_tac[fast_domain_is_pruned_and_pruned_witness_atlas_eq_imp_fast_witnessed_atlas_eq]
   \\ metis_tac[fast_domain_is_pruned_imp_fast_domain_subset]
 QED
 
