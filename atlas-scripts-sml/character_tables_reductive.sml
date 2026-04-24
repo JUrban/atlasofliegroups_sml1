@@ -7,6 +7,7 @@ use "atlas-scripts-sml/character_table_E7.sml";
 use "atlas-scripts-sml/character_table_E8.sml";
 use "atlas-scripts-sml/character_table_F.sml";
 use "atlas-scripts-sml/character_table_G.sml";
+use "atlas-scripts-sml/classical_character_tables.sml";
 
 (*
   File: atlas-scripts-sml/character_tables_reductive.sml
@@ -167,7 +168,8 @@ structure CharacterTablesReductive = struct
 
   fun simple_character_table (lt: LieType.t) : character_table =
     (case lt of
-       [(#"E", 6)] => CharacterTable_E6.character_table_E6_magma ()
+       [(#"A", r)] => ClassicalCharacterTables.character_table_S (r + 1)
+     | [(#"E", 6)] => CharacterTable_E6.character_table_E6_magma ()
      | [(#"E", 7)] => CharacterTable_E7.character_table_E7_magma ()
      | [(#"E", 8)] => CharacterTable_E8.character_table_E8_gap ()
      | [(#"F", 4)] =>

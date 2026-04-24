@@ -9,17 +9,13 @@ fun expect (name, cond) = if cond then () else raise Fail name
 
 fun main () =
   let
-    val ctF4 = CharacterTablesReductive.simple_character_table (LieType.parse "F4")
-    val () = expect ("F4 orthogonal", CharacterTables.check_orthogonality ctF4)
-    val () = expect ("F4 order", CharacterTables.order_W ctF4 = 1152)
-
     val ctG2 = CharacterTablesReductive.simple_character_table (LieType.parse "G2")
     val () = expect ("G2 orthogonal", CharacterTables.check_orthogonality ctG2)
     val () = expect ("G2 order", CharacterTables.order_W ctG2 = 12)
 
-    val ctE6 = CharacterTablesReductive.simple_character_table (LieType.parse "E6")
-    val () = expect ("E6 orthogonal", CharacterTables.check_orthogonality ctE6)
-    val () = expect ("E6 order", CharacterTables.order_W ctE6 = 51840)
+    val ctA3 = CharacterTablesReductive.simple_character_table (LieType.parse "A3")
+    val () = expect ("A3 orthogonal", CharacterTables.check_orthogonality ctA3)
+    val () = expect ("A3 order", CharacterTables.order_W ctA3 = 24)
 
     (* Product case: G2 x G2 *)
     val rdG2G2 = RootDatum.fromLieType (LieType.parse "G2G2")

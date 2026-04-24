@@ -1,6 +1,7 @@
 use "atlas-scripts-sml/MatrixAT.sml";
 use "atlas-scripts-sml/IntMatrix.sml";
 use "atlas-scripts-sml/basic.sml";
+use "atlas-scripts-sml/partitions.sml";
 
 (*
   File: atlas-scripts-sml/combinatorics.sml
@@ -12,6 +13,7 @@ use "atlas-scripts-sml/basic.sml";
 structure Combinatorics = struct
   type permutation = int list
   type mat = IntMatrix.mat
+  type partition = Partitions.partition
 
   val is_permutation = MatrixAT.is_permutation
 
@@ -311,4 +313,206 @@ structure Combinatorics = struct
       in
         List.tabulate (n, fn i => Array.sub (out, i))
       end
+
+  (* ---------------- symmetric group helpers (ported from `combinatorics.at`) ---------------- *)
+
+  fun sumInts (xs: int list) : int = List.foldl (op +) 0 xs
+
+  fun productIntInf (xs: int list) : IntInf.int =
+    List.foldl (fn (x, acc) => acc * IntInf.fromInt x) 1 xs
+
+  fun factorialIntInf (n: int) : IntInf.int =
+    if n < 0 then raise Fail "Combinatorics.factorialIntInf: negative"
+    else
+      let
+        fun loop (k, acc) = if k <= 1 then acc else loop (k - 1, acc * IntInf.fromInt k)
+      in
+        loop (n, 1)
+      end
+
+  fun toIntChecked (where', x: IntInf.int) : int =
+    let
+      val maxI = IntInf.fromInt (Option.valOf Int.maxInt)
+      val minI = IntInf.fromInt (Option.valOf Int.minInt)
+    in
+      if x > maxI orelse x < minI then
+        raise Fail ("Combinatorics." ^ where' ^ ": overflow")
+      else
+        IntInf.toInt x
+    end
+
+  fun gcd (a: int, b: int) : int =
+    if b = 0 then Int.abs a else gcd (b, a mod b)
+
+  fun lcm_list (xs: int list) : int =
+    let
+      fun lcm2 (a, b) =
+        if a = 0 orelse b = 0 then 0 else Int.abs (a div gcd (a, b) * b)
+    in
+      List.foldl lcm2 1 xs
+    end
+
+  fun frequencies (xs: int list) : int list =
+    let
+      fun loop ([], NONE, c, acc) = List.rev acc
+        | loop ([], SOME _, c, acc) = List.rev (c :: acc)
+        | loop (x :: rest, NONE, _, acc) = loop (rest, SOME x, 1, acc)
+        | loop (x :: rest, SOME y, c, acc) =
+            if x = y then loop (rest, SOME y, c + 1, acc)
+            else loop (rest, SOME x, 1, c :: acc)
+    in
+      loop (xs, NONE, 0, [])
+    end
+
+  val cycle_type_order = lcm_list
+
+  fun cycle_centralizer_order_IntInf (cycles: int list) : IntInf.int =
+    let
+      val freqs = frequencies cycles
+      val multPart = List.foldl (fn (m, acc) => acc * factorialIntInf m) 1 freqs
+    in
+      productIntInf cycles * multPart
+    end
+
+  fun cycle_class_size (cycles: int list) : int =
+    let
+      val n = sumInts cycles
+      val denom = cycle_centralizer_order_IntInf cycles
+      val num = factorialIntInf n
+      val (q, r) = IntInf.divMod (num, denom)
+      val () = if r = 0 then () else raise Fail "Combinatorics.cycle_class_size: inexact"
+    in
+      toIntChecked ("cycle_class_size", q)
+    end
+
+  fun cycle_power (cycles: int list, k: int) : int list =
+    let
+      fun expand l =
+        let
+          val d = gcd (l, k)
+          val q = l div d
+        in
+          List.tabulate (d, fn _ => q)
+        end
+      val out = List.concat (List.map expand cycles)
+    in
+      Basic.sort (fn (a, b) => a >= b) out
+    end
+
+  fun hook_lengths_edges (edges: bool array) : int list =
+    let
+      val last = Array.length edges - 1
+      fun scan i acc =
+        if i > last then
+          acc
+        else if Array.sub (edges, i) then
+          scan (i + 1) acc
+        else
+          let
+            fun scanJ j accJ =
+              if j > last then accJ
+              else if Array.sub (edges, j) then scanJ (j + 1) ((j - i) :: accJ) else scanJ (j + 1) accJ
+          in
+            scan (i + 1) (scanJ (i + 1) acc)
+          end
+    in
+      scan 0 []
+    end
+
+  fun edge_sequence (lambda: partition) : bool list * int =
+    if null lambda orelse List.nth (lambda, 0) = 0 then
+      ([], 0)
+    else
+      let
+        val d = List.nth (Partitions.transpose lambda, 0)
+        fun mapi f xs =
+          let
+            fun loop ([], _, acc) = List.rev acc
+              | loop (x :: rest, i, acc) = loop (rest, i + 1, f (x, i) :: acc)
+          in
+            loop (xs, 0, [])
+          end
+        val vals0 = mapi (fn (part, i) => part - i - 1) lambda
+        val vals = Basic.sort (op <=) vals0
+
+        fun mem x =
+          (case Basic.binary_search_in (vals, (op <=)) x of
+             NONE => false
+           | SOME _ => true)
+
+        val w = List.nth (lambda, 0)
+        val edges = List.tabulate (w + d, fn t => mem (t - d))
+      in
+        (edges, d)
+      end
+
+  fun countTrueSlice (edges: bool array, lo: int, hi: int) : int =
+    let
+      fun loop i acc =
+        if i >= hi then acc else loop (i + 1) (acc + (if Array.sub (edges, i) then 1 else 0))
+    in
+      loop lo 0
+    end
+
+  fun Sn_representation_dimension_from_edges (edges: bool array) : int =
+    let
+      val hl = hook_lengths_edges edges
+      val n = length hl
+      val num = factorialIntInf n
+      val denom = List.foldl (fn (h, acc) => acc * IntInf.fromInt h) 1 hl
+      val (q, r) = IntInf.divMod (num, denom)
+      val () = if r = 0 then () else raise Fail "Combinatorics.Sn_representation_dimension_from_edges: inexact"
+    in
+      toIntChecked ("Sn_representation_dimension_from_edges", q)
+    end
+
+  fun Murnaghan_Nakayama (lambda: partition, cycle_type: int list) : int =
+    let
+      val () =
+        if sumInts lambda = sumInts cycle_type then
+          ()
+        else
+          raise Fail "Combinatorics.Murnaghan_Nakayama: size mismatch"
+
+      val (edgesList, _) = edge_sequence lambda
+      val edge = Array.fromList edgesList
+      val alpha = Basic.sort (op <=) cycle_type
+      val j0 = length alpha - 1
+      val lenEdge = Array.length edge
+
+      fun mn j =
+        if j < 0 then
+          1
+        else
+          let
+            val k = List.nth (alpha, j)
+          in
+            if k = 1 then
+              Sn_representation_dimension_from_edges edge
+            else
+              let
+                val limit = lenEdge - k
+                fun loopI i acc =
+                  if i >= limit then
+                    acc
+                  else if (not (Array.sub (edge, i))) andalso Array.sub (edge, i + k) then
+                    let
+                      val () = Array.update (edge, i + k, false)
+                      val () = Array.update (edge, i, true)
+                      val sign = if countTrueSlice (edge, i + 1, i + k) mod 2 = 0 then 1 else ~1
+                      val term = sign * mn (j - 1)
+                      val () = Array.update (edge, i, false)
+                      val () = Array.update (edge, i + k, true)
+                    in
+                      loopI (i + 1) (acc + term)
+                    end
+                  else
+                    loopI (i + 1) acc
+              in
+                loopI 0 0
+              end
+          end
+    in
+      mn j0
+    end
 end

@@ -25,6 +25,9 @@ structure Partitions = struct
 
   fun size (p: partition) : int = List.foldl (op +) 0 p
 
+  fun toString (p: partition) : string =
+    "{" ^ String.concatWith "," (List.map Int.toString p) ^ "}"
+
   (* Transpose of a partition (Ferrers diagram transpose). *)
   fun transpose (p: partition) : partition =
     let
@@ -99,5 +102,37 @@ structure Partitions = struct
       in
         loop 0
       end
-end
 
+  (* Generate all partitions of `n`, in an order compatible with the `.at`
+     implementation: partitions with smaller largest part appear earlier, so
+     reversing the list goes from trivial (`[n]`) to sign (`[1,1,...,1]`). *)
+  fun partitions (n: int) : partition list =
+    if n < 0 then
+      []
+    else
+      let
+        fun parts (m: int, maxPart: int) : partition list =
+          if m = 0 then
+            [[]]
+          else if maxPart <= 0 then
+            []
+          else
+            let
+              val kMax = Int.min (m, maxPart)
+              fun loop k acc =
+                if k > kMax then
+                  acc
+                else
+                  let
+                    val rest = parts (m - k, Int.min (k, m - k))
+                    val withK = List.map (fn p => k :: p) rest
+                  in
+                    loop (k + 1) (acc @ withK)
+                  end
+            in
+              loop 1 []
+            end
+      in
+        parts (n, n)
+      end
+end
