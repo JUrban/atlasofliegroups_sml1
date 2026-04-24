@@ -1,16 +1,3 @@
-use "atlas-scripts-sml/ffi/AtlasFFI.sml";
-use "atlas-scripts-sml/FPPFlags.sml";
-use "atlas-scripts-sml/ParamHash.sml";
-use "atlas-scripts-sml/AllParameters.sml";
-use "atlas-scripts-sml/Lattice.sml";
-use "atlas-scripts-sml/FPP_barycenters_fold.sml";
-use "atlas-scripts-sml/FPP_lambdas_fold.sml";
-use "atlas-scripts-sml/F4_FPP_barycenters.sml";
-use "atlas-scripts-sml/F4_FPP_lambdas.sml";
-use "atlas-scripts-sml/F4_FPP_points_compute.sml";
-use "atlas-scripts-sml/representations.sml";
-use "atlas-scripts-sml/ParamFinals.sml";
-
 (*
   File: atlas-scripts-sml/SimplerVerifyF4FPP.sml
 
@@ -39,6 +26,19 @@ use "atlas-scripts-sml/ParamFinals.sml";
         nu = gamma - (I + theta(x)) * lambda / 2
       and then call `Representations.parameter(g,x,lambda,nu)`.
 *)
+
+use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+use "atlas-scripts-sml/FPPFlags.sml";
+use "atlas-scripts-sml/ParamHash.sml";
+use "atlas-scripts-sml/AllParameters.sml";
+use "atlas-scripts-sml/Lattice.sml";
+use "atlas-scripts-sml/FPP_barycenters_fold.sml";
+use "atlas-scripts-sml/FPP_lambdas_fold.sml";
+use "atlas-scripts-sml/F4_FPP_barycenters.sml";
+use "atlas-scripts-sml/F4_FPP_lambdas.sml";
+use "atlas-scripts-sml/F4_FPP_points_compute.sml";
+use "atlas-scripts-sml/representations.sml";
+use "atlas-scripts-sml/ParamFinals.sml";
 
 structure SimplerVerifyF4FPP = struct
   type group = AtlasFFI.group
@@ -223,4 +223,3 @@ structure SimplerVerifyF4FPP = struct
       AtlasFFI.atlas_group_free g
     end
 end
-
