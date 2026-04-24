@@ -320,6 +320,26 @@ Splits the slow bridge into two explicit (currently `cheat`ed) obligations:
 
 and provides an “OK” convenience lemma bundling them together.
 
+#### `F4FPPVerifyTargetGroupGoalsTheory` (fix the concrete `F4_s` instance)
+
+File: `formal/hol4/F4FPPVerifyTargetGroupGoalsScript.sml`
+
+Introduces a constant `F4s : group` intended to denote the split real form
+`F4_s` used by the SML scripts, and records key group facts (currently as
+axioms) such as `~group_is_compact F4s` and `needs_lambda_table_check F4s`.
+
+#### `F4FPPVerifyFastProgramSplitBridgeGoalsTheory` (fast program = two phases)
+
+File: `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml`
+
+Records the split of `fast_program_succeeds` into:
+
+- `fast_compute_program_succeeds` (compute/hash construction), and
+- `bottom_layer_program_succeeds` (GlobalDirac bottom-layer checks),
+
+and composes the phase-level bridge theorems to derive refined fast obligations
+for the concrete target group `F4s`.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
