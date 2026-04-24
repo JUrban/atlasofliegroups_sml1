@@ -588,6 +588,25 @@ to obtain the concrete end-user theorem:
 - if `fast_program_succeeds F4s dirac` and `slow_program_succeeds F4s` then
   `U_slow F4s (D_slow F4s) = U_fast F4s` and `bottom_layer_total_ok` holds.
 
+#### `F4FPPVerifyEndToEndObligationStackGoalsTheory` (explicit obligation stack)
+
+File: `formal/hol4/F4FPPVerifyEndToEndObligationStackGoalsScript.sml`
+
+Provides a “maximally explicit” end-to-end theorem
+`obligations_stack_imply_equivalence` that derives the refined main result from
+premises that match the program’s phase structure:
+
+- Atlas/FFI hash/equality contracts (`atlas_eq_is_hol_eq`, `atlas_hash_range`)
+- compute-phase semantic obligations (`fast_compute_domain_ok g`)
+- compute-phase ParamHash state bundle (`paramhash_obligations_state_factored g`)
+- bottom-layer checker predicate at the param_set interface
+  (`bottom_layer_ok_param_set g dirac (fast_param_set g)`)
+- non-compactness (`~group_is_compact g`)
+- slow-side refined obligations (`slow_refinement_ok g`, `slow_ok_components g`)
+
+This gives a single place to see the full list of obligations that still need
+to be discharged to obtain end-to-end equivalence.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
