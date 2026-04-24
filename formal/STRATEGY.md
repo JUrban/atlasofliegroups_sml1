@@ -84,6 +84,22 @@ Packages the *shape* of the final argument:
 This separates “what we want to show about the fast program” from *how* the
 fast program constructs `U_fast`.
 
+#### `F4FPPVerifyFastRefineGoalsTheory` (refined fast-soundness obligations)
+
+File: `formal/hol4/F4FPPVerifyFastRefineGoalsScript.sml`
+
+Splits the single obligation `fast_sound g` into two compositional obligations
+that match the fast program structure:
+
+- `D_fast g` — the subset of triples actually enumerated/considered by the fast program.
+- `fast_witnessed g` — every `pi ∈ U_fast g` is witnessed by some `t ∈ D_fast g`.
+- `fast_domain_subset g` — the fast domain is included in the intended domain: `D_fast g ⊆ D_slow g`.
+
+Proves an “OK” lemma:
+
+- `fast_witnessed_and_subset_imp_fast_sound`:
+  `fast_witnessed g ∧ fast_domain_subset g ⇒ fast_sound g`.
+
 #### `F4FPPVerifyGoalsTheory` (top-level goal layer)
 
 File: `formal/hol4/F4FPPVerifyGoalsScript.sml`
