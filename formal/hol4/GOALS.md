@@ -27,7 +27,13 @@ From these, the end goal is:
 More realistic variant (modulo Atlas equality):
 
 - `set_atlas_eq (U_slow g (D_slow g)) (U_fast g)`
-  - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`
+  - spec-level shape + supporting lemmas:
+    - file: `formal/hol4/F4FPPVerifySpecAtlasEqGoalsScript.sml`
+      (`complete_rel_atlas_eq`, `sound_wrt_domain_atlas_eq`,
+      `sound_and_complete_atlas_eq_gives_set_atlas_eq`)
+  - compatibility lemma (shows modulo statement follows from HOL equality under
+    `atlas_eq_is_hol_eq`):
+    - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`
 
 There are two main “end-to-end” routes in HOL4:
 

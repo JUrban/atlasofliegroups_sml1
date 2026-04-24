@@ -499,6 +499,12 @@ More realistic equality:
   - `formal/hol4/F4FPPVerifyAtlasEqSetGoalsScript.sml` (`set_atlas_eq`,
     `atlas_eq_closure`) for stating end-to-end correctness modulo `atlas_eq`.
 
+At the spec level (independent of ParamHash), the intended end-to-end equality
+modulo `atlas_eq` is spelled out via two directional obligations in:
+
+- `formal/hol4/F4FPPVerifySpecAtlasEqGoalsScript.sml`
+  (`complete_rel_atlas_eq`, `sound_wrt_domain_atlas_eq`).
+
 It then defines a wiring predicate `paramhash_observes_state` and derives:
 
 - `paramhash_observes_state_and_invariant_imp_paramhash_rep_ok`
