@@ -40,7 +40,19 @@ Planned discharge:
 - then prove (in CakeML or a shallow HOL model) that successful evaluation
   implies the stated obligations.
 
-## C. Fast program phase split
+## C. Refined-main route bridges (program success ⇒ refined obligations)
+
+- File: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
+- Placeholders:
+  - `fast_program_succeeds_imp_refined_fast_obligations`
+  - `slow_program_succeeds_imp_refined_slow_obligations`
+  - `slow_program_succeeds_imp_refined_slow_obligations_atlas_eq`
+
+Role:
+- connects concrete success predicates to the obligation bundles used by the
+  refined-main theorems, including the modulo-`atlas_eq` variant.
+
+## D. Fast program phase split
 
 - File: `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml`
 - Placeholder:
@@ -50,7 +62,7 @@ Role:
 - makes the fast program’s control-flow (“compute phase; then bottom-layer
   checks”) explicit in the formal decomposition.
 
-## D. Fast compute phase ⇒ obligations
+## E. Fast compute phase ⇒ obligations
 
 - Files:
   - `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`
@@ -76,7 +88,7 @@ Modulo-`atlas_eq` bridge (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
 
-## E. ParamHash state model
+## F. ParamHash state model
 
 - File: `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`
 
@@ -101,7 +113,7 @@ Rationale:
   (either directly in HOL4, or by importing the analogous CakeML proof and
   relating the models).
 
-## F. Bottom-layer check bridges (per-check decomposition)
+## G. Bottom-layer check bridges (per-check decomposition)
 
 - Files:
   - `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
@@ -120,7 +132,7 @@ Planned discharge:
 - shallow proofs that the SML code traverses the right set and calls the right
   predicates, plus FFI contracts for those predicates.
 
-## G. Slow checker bridge
+## H. Slow checker bridge
 
 - Files:
   - `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
@@ -133,7 +145,7 @@ Role:
 Status:
 - currently placeholders (`cheat`).
 
-## H. Composition layers
+## I. Composition layers
 
 Most of the “end-to-end” files are **OK composition** and do not introduce new
 `cheat`s; they just chain bridge lemmas and the pure logical theorems:

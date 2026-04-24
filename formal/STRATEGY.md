@@ -755,6 +755,15 @@ Refines the bridge interface further: instead of “program success implies
 - `slow_program_succeeds g` implies
   `slow_refinement_ok g` and `slow_ok_components g`.
 
+Modulo-`atlas_eq` slow variant:
+
+- the slow-side “0 misses” claim is also stated in a more realistic form:
+  `slow_program_succeeds g ⇒ slow_ok_components_atlas_eq g`,
+  leading to an end-user theorem phrased with `set_atlas_eq`:
+  `fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq`.
+  This theorem additionally assumes `atlas_hash_eq_ok` (to obtain
+  `atlas_eq_equiv`).
+
 Then it derives:
 
 - `fast_and_slow_programs_succeed_gives_refined_equivalence`

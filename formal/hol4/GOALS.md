@@ -34,6 +34,9 @@ More realistic variant (modulo Atlas equality):
   - refined-main composition (shows how refined obligations imply the modulo goal):
     - file: `formal/hol4/F4FPPVerifyRefinedMainAtlasEqGoalsScript.sml`
       (`refined_obligations_imply_set_atlas_eq`)
+  - refined bridge from program-success predicates (cheat-tainted, but clean structure):
+    - file: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
+      (`fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq`)
   - compatibility lemma (shows modulo statement follows from HOL equality under
     `atlas_eq_is_hol_eq`):
     - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`

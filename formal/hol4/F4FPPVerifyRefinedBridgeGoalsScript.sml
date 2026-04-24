@@ -31,9 +31,13 @@ open pred_setTheory pred_setLib;
 open F4FPPVerifySpecTheory;
 open F4FPPVerifyGoalsTheory;
 open F4FPPVerifySlowRefineGoalsTheory;
+open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
 open F4FPPVerifyFastRefineGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
+open F4FPPVerifyRefinedMainAtlasEqGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPVerifyAtlasEqSetGoalsTheory;
 open F4FPPVerifySMLBridgeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyRefinedBridgeGoals";
@@ -75,6 +79,22 @@ Proof
   cheat
 QED
 
+Theorem slow_program_succeeds_imp_refined_slow_obligations_atlas_eq:
+  !g.
+    slow_program_succeeds g ==>
+      slow_refinement_ok g /\
+      slow_ok_components_atlas_eq g
+Proof
+  (*
+    Intended proof ingredients (later, without `cheat`):
+    - same domain-enumeration/refinement story as the non-modulo version,
+    - plus: the slow script’s membership test is modulo the Atlas semantic
+      equality `atlas_eq` (via ParamHash), so the “0 misses” predicate matches
+      `check_domain_fun_atlas_eq` rather than `check_domain_fun`.
+  *)
+  cheat
+QED
+
 (* --- Derived end-user theorem (tainted by the cheated bridge obligations) --- *)
 
 Theorem fast_and_slow_programs_succeed_gives_refined_equivalence:
@@ -89,5 +109,18 @@ Proof
   \\ metis_tac[refined_obligations_imply_equivalence]
 QED
 
-val _ = export_theory ();
+Theorem fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq:
+  !g dirac.
+    atlas_hash_eq_ok /\
+    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
+      set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ mp_tac (SPEC_ALL fast_program_succeeds_imp_refined_fast_obligations)
+  \\ mp_tac (SPEC_ALL slow_program_succeeds_imp_refined_slow_obligations_atlas_eq)
+  \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
+  \\ metis_tac[refined_obligations_imply_set_atlas_eq]
+QED
 
+val _ = export_theory ();
