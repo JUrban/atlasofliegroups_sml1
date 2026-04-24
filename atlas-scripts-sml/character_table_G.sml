@@ -1,3 +1,7 @@
+use "atlas-scripts-sml/character_tables.sml";
+use "atlas-scripts-sml/class_tables.sml";
+use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+
 (*
   File: atlas-scripts-sml/character_table_G.sml
 
@@ -40,5 +44,18 @@ structure CharacterTable_G = struct
       raise Fail "CharacterTable_G.to_special_G2: index out of range"
     else
       List.nth (to_special_G2_table, i)
-end
 
+  (* Construct a usable `CharacterTables.CharacterTable.t` for W(G2).
+
+     The class ordering matches `ClassTables.class_table_G` (which uses the
+     fixed `G2_class_words` ordering from the `.at` scripts), so no reordering
+     is required.
+  *)
+  fun character_table_G2 (g: AtlasFFI.group) : CharacterTables.CharacterTable.t =
+    let
+      val wct = ClassTables.class_table_G g
+      val degrees = List.map (fn (chi, _) => List.nth (chi, 0)) irreps
+    in
+      CharacterTables.make (wct, class_names, irreps, degrees, to_special_G2)
+    end
+end

@@ -1,4 +1,7 @@
 use "atlas-scripts-sml/IntListData.sml";
+use "atlas-scripts-sml/character_tables.sml";
+use "atlas-scripts-sml/class_tables.sml";
+use "atlas-scripts-sml/RootDatum.sml";
 
 (*
   File: atlas-scripts-sml/character_table_F.sml
@@ -102,5 +105,21 @@ structure CharacterTable_F = struct
       raise Fail "CharacterTable_F.to_special_F4: index out of range"
     else
       List.nth (to_special_F4_table, i)
-end
 
+  (* Construct a usable `CharacterTables.CharacterTable.t` for W(F4), in the
+     Kondo class ordering used by `character_table_F4_data`.
+
+     This is a partial analogue of `character_table_F` from the `.at` code:
+     we do not yet compute `class_signature_F4` labels, so we use stable
+     placeholder class names `F4_class_<i>`.
+  *)
+  fun character_table_F4 (rd: RootDatum.t) : CharacterTables.CharacterTable.t =
+    let
+      val wct = ClassTables.class_table_F4_kondo rd
+      val class_names = List.tabulate (#n_classes wct, fn i => "F4_class_" ^ Int.toString i)
+      val irreps = irreps_kondo
+      val degrees = List.map (fn (_, deg, _) => deg) character_table_F4_data
+    in
+      CharacterTables.make (wct, class_names, irreps, degrees, to_special_F4)
+    end
+end
