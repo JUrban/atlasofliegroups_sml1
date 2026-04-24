@@ -300,6 +300,17 @@ and provides the “OK” composition lemma:
 This isolates exactly what we will eventually need to prove about the concrete
 `ParamHash.list` and `ParamHash.contains` operations.
 
+#### `F4FPPVerifyFastParamSetContainsRefineGoalsTheory` (split `contains_ok`)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetContainsRefineGoalsScript.sml`
+
+Splits `fast_param_set_contains_ok g` into the two one-way obligations:
+
+- `fast_param_set_contains_sound g`: `contains p ⇒ p ∈ U_fast g`
+- `fast_param_set_contains_complete g`: `p ∈ U_fast g ⇒ contains p`
+
+and provides the “OK” recombination lemma back to the original biconditional.
+
 #### `F4FPPVerifyGlobalDiracBridgeGoalsTheory` (bottom-layer bridge)
 
 File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
