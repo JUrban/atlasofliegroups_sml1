@@ -423,6 +423,28 @@ It then proves (OK) that these imply `paramhash_ok g`, and records cheated
 - discharge `paramhash_rep_ok` via a CakeML hash-table proof, and
 - discharge `paramhash_stores_U_fast` via a fast-compute semantic argument.
 
+#### `F4FPPVerifyParamHashStateGoalsTheory` (ParamHash abstract state invariant)
+
+File: `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`
+
+Introduces an explicit abstract hash-table state `ph_state` (buckets + an
+insertion-order list of stored parameters) and a minimal invariant
+`ph_invariant`. Under the simplifying contract `atlas_eq_is_hol_eq` (and
+`atlas_hash_range` for the bucket index), it proves:
+
+- `ph_contains_state_iff_MEM_elems`: the lookup-derived membership predicate is
+  equivalent to list membership in `elems`.
+
+(Currently this key lemma is `cheat`ed; the surrounding definitions are meant
+to make it straightforward to replace the `cheat` by a real invariant proof.)
+
+It then defines a wiring predicate `paramhash_observes_state` and derives:
+
+- `paramhash_observes_state_and_invariant_imp_paramhash_rep_ok`
+
+This is the intended attachment point for a future CakeML/translator proof
+that the concrete imperative ParamHash state satisfies `ph_invariant`.
+
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
