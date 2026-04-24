@@ -17,6 +17,9 @@ structure Combinatorics = struct
   type bipartition = partition * partition
   type signed_cycle = int * bool
   type signed_cycles = signed_cycle list
+  (* A Symbol is the 2-row combinatorial gadget used in Springer theory for
+     types B/C/D; it is a transformed bipartition representation. *)
+  type symbol = int list * int list
   datatype D_class =
     D_unsplit_class of signed_cycles
   | D_split_class of partition * bool
@@ -374,6 +377,9 @@ structure Combinatorics = struct
     end
 
   val cycle_type_order = lcm_list
+
+  fun strip_to_partition (parts: int list) : partition =
+    Basic.sort (fn (a, b) => a >= b) (List.filter (fn x => x > 0) parts)
 
   (* Lexicographic comparison restricted to partitions of the same sum, with
      implicit 0-extension (ported from `rlex_leq_partitions` in `.at`). *)
@@ -814,6 +820,140 @@ structure Combinatorics = struct
       f (length alpha - 1)
     end
 
+  (* ---------------- Symbol / make_special machinery (ported from `combinatorics.at`) ---------------- *)
+
+  (* Normalize a symbol so that |f| = |g| + 1 and at most one initial 0 occurs. *)
+  fun normalize_symbol ((f0, g0): symbol) : symbol =
+    let
+      fun normalize_row (v: int list) : int list =
+        let
+          val nv = length v
+          fun findI i =
+            if i >= nv then nv
+            else if List.nth (v, i) <= i then findI (i + 1) else i
+          val i0 = findI 0
+          fun dropI i xs = List.drop (xs, i)
+        in
+          List.map (fn e => e - i0) (dropI i0 v)
+        end
+
+      fun expand (v: int list, r: int) : int list =
+        if r <= 0 then v else List.tabulate (r, fn i => i) @ List.map (fn c => c + r) v
+
+      val f = normalize_row f0
+      val g = normalize_row g0
+      val d = length f - (length g + 1)
+    in
+      if d = 0 then (f, g)
+      else if d < 0 then (expand (f, ~d), g)
+      else (f, expand (g, d))
+    end
+
+  (* Convert a bipartition to a normalized symbol. *)
+  fun symbol_of_bipartition ((lambda0, mu0): bipartition) : symbol =
+    let
+      val lambda = strip_to_partition lambda0
+      val mu = strip_to_partition mu0
+      val d = length lambda - (length mu + 1)
+      val lambda' = if d < 0 then lambda @ List.tabulate (~d, fn _ => 0) else lambda
+      val mu' = if d > 0 then mu @ List.tabulate (d, fn _ => 0) else mu
+
+      fun revIndex xs i = List.nth (xs, length xs - 1 - i)
+      fun rowFrom (p: int list) : int list =
+        let
+          val l = length p
+        in
+          List.tabulate (l, fn i => revIndex p i + i)
+        end
+    in
+      normalize_symbol (rowFrom lambda', rowFrom mu')
+    end
+
+  (* Convert a normalized symbol back to a bipartition. *)
+  fun symbol_to_bipartition ((f, g): symbol) : bipartition =
+    let
+      fun rowToPartition (row: int list) : partition =
+        let
+          val l = length row
+          val revParts = List.tabulate (l, fn i => List.nth (row, i) - i)
+        in
+          strip_to_partition (List.rev revParts)
+        end
+    in
+      (rowToPartition f, rowToPartition g)
+    end
+
+  fun is_special_symbol ((s0, s1): symbol) : bool =
+    let
+      val l = length s1
+      fun ok i =
+        List.nth (s0, i) <= List.nth (s1, i) andalso List.nth (s1, i) <= List.nth (s0, i + 1)
+    in
+      List.all ok (List.tabulate (l, fn i => i))
+    end
+
+  (* Mutating insertion-sort style algorithm from the `.at` `make_special(Symbol)`. *)
+  fun make_special_symbol (sym0: symbol) : symbol =
+    let
+      val (s0List, s1List) = sym0
+      val l = length s1List
+      val () = if length s0List = l + 1 then () else raise Fail "Combinatorics.make_special_symbol: bad symbol lengths"
+      val s0 = Array.fromList s0List
+      val s1 = Array.fromList s1List
+
+      fun loopI i =
+        if i >= l then
+          ()
+        else
+          let
+            val e0 = Array.sub (s0, i)
+            fun advance1 j = if j >= l then j else if e0 > Array.sub (s1, j) then advance1 (j + 1) else j
+            val j1 = advance1 i
+            val () =
+              if j1 > i andalso j1 <= l then
+                let
+                  val tmp = Array.sub (s1, i)
+                  val () = Array.update (s0, i, tmp)
+                  fun shift k =
+                    if k >= j1 - 1 then ()
+                    else (Array.update (s1, k, Array.sub (s1, k + 1)); shift (k + 1))
+                  val () = shift i
+                  val () = Array.update (s1, j1 - 1, e0)
+                in
+                  ()
+                end
+              else
+                ()
+
+            val e1 = Array.sub (s1, i)
+            fun advance0 j = if j >= l + 1 then j else if e1 > Array.sub (s0, j) then advance0 (j + 1) else j
+            val j0 = advance0 (i + 1)
+            val () =
+              if j0 > i + 1 andalso j0 <= l + 1 then
+                let
+                  val tmp = Array.sub (s0, i + 1)
+                  val () = Array.update (s1, i, tmp)
+                  fun shift k =
+                    if k >= j0 - 1 then ()
+                    else (Array.update (s0, k, Array.sub (s0, k + 1)); shift (k + 1))
+                  val () = shift (i + 1)
+                  val () = Array.update (s0, j0 - 1, e1)
+                in
+                  ()
+                end
+              else
+                ()
+          in
+            loopI (i + 1)
+          end
+    in
+      loopI 0;
+      (Array.foldr (op ::) [] s0, Array.foldr (op ::) [] s1)
+    end
+
+  fun make_special_bipartition (bip: bipartition) : bipartition =
+    symbol_to_bipartition (make_special_symbol (symbol_of_bipartition bip))
+
   (* ---------------- type D (even signed permutations) helpers (ported from `combinatorics.at`) ---------------- *)
 
   fun is_very_even (p: partition) : bool = List.all (fn x => x mod 2 = 0) p
@@ -947,4 +1087,52 @@ structure Combinatorics = struct
                  toIntChecked ("D_character", q)
                end)
     end
+
+  fun make_special_D_irrep (chi: D_irrep) : D_irrep =
+    (case chi of
+       D_split_irr _ => chi
+     | D_unsplit_irr (lambda0, mu0) =>
+         let
+           val lambda = strip_to_partition lambda0
+           val mu = strip_to_partition mu0
+           val d = length lambda - length mu - 1
+           val lambda' = if d < 0 then lambda @ List.tabulate (~d, fn _ => 0) else lambda
+           val mu' = if d > 0 then mu @ List.tabulate (d, fn _ => 0) else mu
+
+           fun mapi f xs =
+             let
+               fun loop ([], _, acc) = List.rev acc
+                 | loop (x :: rest, i, acc) = loop (rest, i + 1, f (x, i) :: acc)
+             in
+               loop (xs, 0, [])
+             end
+
+           (* Port of `for e@i in lambda do e-i ~od`: compute `e-i` over the
+              partition in forward order, then reverse the resulting list. *)
+           fun rowD (p: int list) : int list = List.rev (mapi (fn (e, i) => e - i) p)
+
+           val sym = (rowD lambda', rowD mu')
+           val (s0, s1) = make_special_symbol sym
+
+           fun revIndex xs i = List.nth (xs, length xs - 1 - i)
+           fun fromSpec (row: int list) : partition =
+             let
+               val l = length row
+               val parts = List.tabulate (l, fn i => revIndex row i + i)
+             in
+               strip_to_partition parts
+             end
+
+           val q0 = fromSpec s0
+           val q1 = fromSpec s1
+           val (p0, p1) =
+             if q0 = q1 then
+               (q0, q1)
+             else
+               (case slex_cmp_partitions (q0, q1) of
+                  ~1 => (q1, q0)
+                | _ => (q0, q1))
+         in
+           if p0 = p1 then D_split_irr (p0, false) else D_unsplit_irr (p0, p1)
+         end)
 end

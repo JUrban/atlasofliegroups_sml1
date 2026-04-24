@@ -120,10 +120,21 @@ structure ClassicalCharacterTables = struct
         fun rowFor rep = List.map (fn cyc => Combinatorics.hyperoctahedral_character (rep, cyc)) class_cycles
         val irreps = List.map (fn rep => (rowFor rep, bipartition_as_irrep_label rep)) irreps_list
 
+        fun findIndexByEq (xs: bipartition list, x: bipartition) : int =
+          let
+            fun loop ([], _) = raise Fail "ClassicalCharacterTables.character_table_B: special rep not found"
+              | loop (y :: ys, i) = if y = x then i else loop (ys, i + 1)
+          in
+            loop (xs, 0)
+          end
+
+        val special_map =
+          List.map (fn rep => findIndexByEq (irreps_list, Combinatorics.make_special_bipartition rep)) irreps_list
+
         val idj = find_identity_class (class_orders, class_sizes)
         val degrees = List.map (fn (row, _) => List.nth (row, idj)) irreps
       in
-        CharacterTables.make (wct, class_names, irreps, degrees, (fn i => i))
+        CharacterTables.make (wct, class_names, irreps, degrees, (fn i => List.nth (special_map, i)))
       end
 
   (* The Weyl groups of type B_n and C_n are isomorphic (both are H_n), so the
@@ -152,9 +163,19 @@ structure ClassicalCharacterTables = struct
         fun rowFor rep = List.map (fn c => Combinatorics.D_character (rep, c)) class_list
         val irreps = List.map (fn rep => (rowFor rep, Combinatorics.D_irrep_toString rep)) irrep_list
 
+        fun findIndexByEq (xs: D_irrep list, x: D_irrep) : int =
+          let
+            fun loop ([], _) = raise Fail "ClassicalCharacterTables.character_table_D: special rep not found"
+              | loop (y :: ys, i) = if y = x then i else loop (ys, i + 1)
+          in
+            loop (xs, 0)
+          end
+
+        val special_map = List.map (fn rep => findIndexByEq (irrep_list, Combinatorics.make_special_D_irrep rep)) irrep_list
+
         val idj = find_identity_class (class_orders, class_sizes)
         val degrees = List.map (fn (row, _) => List.nth (row, idj)) irreps
       in
-        CharacterTables.make (wct, class_names, irreps, degrees, (fn i => i))
+        CharacterTables.make (wct, class_names, irreps, degrees, (fn i => List.nth (special_map, i)))
       end
 end
