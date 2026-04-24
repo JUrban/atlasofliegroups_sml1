@@ -2,6 +2,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/KType.sml";
 use "atlas-scripts-sml/KTypePol.sml";
 use "atlas-scripts-sml/Hermitian.sml";
+use "atlas-scripts-sml/to_ht.sml";
 
 (*
   File: atlas-scripts-sml/K_types.sml
@@ -149,12 +150,44 @@ structure K_types = struct
       (P, Q)
     end
 
+  (* `.at`: `K_signature_irrB(p,bound)` uses a truncated hermitian form (to-ht)
+     before branching; this is often much faster in the interpreter.
+
+     The SML port uses the minimal `ToHT.hermitian_form_irreducible_to_ht`
+     implementation (it truncates by height after computing the full form). *)
+  fun K_signature_irrB (p: param, bound: int) : ktypepol * ktypepol =
+    let
+      val HI = ToHT.hermitian_form_irreducible_to_ht (p, bound)
+      val ans =
+        (branch_std_ktypepol (HI, bound)
+         handle e => (KTypePol.free HI; raise e))
+      val () = KTypePol.free HI
+      val P = KTypePol.intPart ans
+      val Q = KTypePol.sPart ans
+      val () = KTypePol.free ans
+    in
+      (P, Q)
+    end
+
   (* `.at`: `signed_mult(p_K,p)` (equal-rank hermitian-form path). *)
   fun signed_mult (p_K: ktype, p: param) : int * int =
     let
       val bound = KType.height p_K
       val rank = rankOfKType p_K
       val (P, Q) = K_signature_irr (p, bound)
+      val (mP, _) = lookupCoefOrZero (P, rank, p_K)
+      val (mQ, _) = lookupCoefOrZero (Q, rank, p_K)
+      val () = KTypePol.free Q
+      val () = KTypePol.free P
+    in
+      (mP, mQ)
+    end
+
+  fun signed_multB (p_K: ktype, p: param) : int * int =
+    let
+      val bound = KType.height p_K
+      val rank = rankOfKType p_K
+      val (P, Q) = K_signature_irrB (p, bound)
       val (mP, _) = lookupCoefOrZero (P, rank, p_K)
       val (mQ, _) = lookupCoefOrZero (Q, rank, p_K)
       val () = KTypePol.free Q

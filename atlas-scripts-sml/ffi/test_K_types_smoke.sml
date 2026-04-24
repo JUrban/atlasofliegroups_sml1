@@ -41,6 +41,13 @@ val (sigP, sigQ) = K_types.K_signature_irr (p, 6);
 val () = assert "K_signature_irr P non-null" (sigP <> Foreign.Memory.null);
 val () = assert "K_signature_irr Q non-null" (sigQ <> Foreign.Memory.null);
 
+val (sigPB, sigQB) = K_types.K_signature_irrB (p, 6);
+val () = assert "K_signature_irrB P non-null" (sigPB <> Foreign.Memory.null);
+val () = assert "K_signature_irrB Q non-null" (sigQB <> Foreign.Memory.null);
+
+val _ = KTypePol.free sigQB;
+val _ = KTypePol.free sigPB;
+
 val _ = KTypePol.free sigQ;
 val _ = KTypePol.free sigP;
 val _ = KTypePol.free bran;
@@ -52,4 +59,3 @@ val _ = AtlasFFI.atlas_param_free p;
 val _ = AtlasFFI.atlas_group_free g;
 
 val _ = print "test_K_types_smoke: ok\n";
-
