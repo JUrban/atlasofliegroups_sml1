@@ -30,3 +30,5 @@ $HOLDIR/bin/Holmake
 - `ParamHashSetGoalsScript.sml`: a set-interface view of the pure-state model
   (derives `contains`-style predicates from `ph_lookup_state` and proves
   `ph_contains_state p s <=> p IN ph_set s` under `ph_invariant`).
+- `ParamHashInvariantGoalsScript.sml`: invariant-preservation goals for the
+  build process (define `ph_build_state` and record “match preserves invariant”).
