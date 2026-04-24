@@ -38,6 +38,47 @@ structure CharacterTables = struct
   fun n_classes (ct: CharacterTable.t) : int = #n_classes (#class_table ct)
   fun n_irreps (ct: CharacterTable.t) : int = length (#table ct)
 
+  (* Basic “free” operations on class functions, mirroring the `.at` file. *)
+  fun sum_rows (v: char_row, w: char_row) : char_row =
+    (ListPair.mapEq (op +) (v, w) handle _ => raise Fail "CharacterTables.sum_rows: length mismatch")
+
+  fun tensor_product_rows (v: char_row, w: char_row) : char_row =
+    (ListPair.mapEq (op * ) (v, w) handle _ => raise Fail "CharacterTables.tensor_product_rows: length mismatch")
+
+  val tensor_rows = tensor_product_rows
+
+  fun cartesian_power_row (x: char_row, n: int) : char_row =
+    if n < 0 then raise Fail "CharacterTables.cartesian_power_row: negative n"
+    else List.map (fn v => n * v) x
+
+  fun tensor_power_row (x: char_row, power: int) : char_row =
+    if power < 0 then
+      raise Fail "CharacterTables.tensor_power_row: negative power"
+    else
+      let
+        fun ipow (a: int, k: int) : int =
+          if k = 0 then 1 else a * ipow (a, k - 1)
+      in
+        List.map (fn v => ipow (v, power)) x
+      end
+
+  fun id_class (ct: CharacterTable.t) : int =
+    let
+      val wct = #class_table ct
+      val orders = #class_orders wct
+      val sizes = #class_sizes wct
+      val n = #n_classes wct
+      fun loop i =
+        if i = n then
+          raise Fail "CharacterTables.id_class: no identity class found"
+        else if List.nth (orders, i) = 1 andalso List.nth (sizes, i) = 1 then
+          i
+        else
+          loop (i + 1)
+    in
+      loop 0
+    end
+
   fun class_size (ct: CharacterTable.t, j: int) : int =
     List.nth (#class_sizes (#class_table ct), j)
 
@@ -58,6 +99,12 @@ structure CharacterTables = struct
 
   fun special (ct: CharacterTable.t, i: int) : int =
     #2 (List.nth (#deg_spec ct, i))
+
+  fun dimension_row (ct: CharacterTable.t, chi: char_row) : int =
+    List.nth (chi, id_class ct)
+
+  fun dimension (ct: CharacterTable.t, i: int) : int =
+    dimension_row (ct, character (ct, i))
 
   fun inner (ct: CharacterTable.t, x: char_row, y: char_row) : int =
     let
@@ -81,6 +128,30 @@ structure CharacterTables = struct
 
   fun scalar_product (ct: CharacterTable.t, i: int, k: int) : int =
     inner (ct, character (ct, i), character (ct, k))
+
+  fun norm2 (ct: CharacterTable.t, x: char_row) : int = inner (ct, x, x)
+
+  fun characters (ct: CharacterTable.t) : char_row list = #table ct
+
+  fun character_index (ct: CharacterTable.t, chi: char_row) : int =
+    let
+      fun loop ([], _) = raise Fail "CharacterTables.character_index: not found"
+        | loop (row :: rows, i) = if row = chi then i else loop (rows, i + 1)
+    in
+      loop (characters ct, 0)
+    end
+
+  (* Decompose a class function into the irreducible basis using the inner
+     product: multiplicity of chi_i is <v, chi_i>. *)
+  fun decompose (ct: CharacterTable.t, v: char_row) : int list =
+    let
+      val n = n_irreps ct
+    in
+      List.tabulate (n, fn i => inner (ct, v, character (ct, i)))
+    end
+
+  fun tensor (ct: CharacterTable.t, i: int, k: int) : char_row =
+    tensor_rows (character (ct, i), character (ct, k))
 
   fun check_orthogonality (ct: CharacterTable.t) : bool =
     let
@@ -128,4 +199,3 @@ structure CharacterTables = struct
       }
     end
 end
-
