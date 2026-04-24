@@ -20,6 +20,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
       three forms `a`, `s*b`, and `a+s*b` with `a,b != 0`.
 *)
 structure KTypePol = struct
+  type group = AtlasFFI.group
   type ktypepol = AtlasFFI.ktypepol
 
   type term = {e: int, s: int, x: int, height: int, lambdaRho: int list}
@@ -81,6 +82,18 @@ structure KTypePol = struct
     in
       if q = Foreign.Memory.null then
         raise Fail ("KTypePol.add: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
+  (* Construct the null (zero) polynomial for a given group.
+     Returns a new owned handle (caller must free). *)
+  fun null (g: group) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_null g
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.null: failed: " ^ AtlasFFI.atlas_last_error ())
       else
         q
     end

@@ -5503,6 +5503,31 @@ extern "C" void* atlas_ktypepol_s_part(void* kt_handle)
   }
 }
 
+extern "C" void* atlas_ktypepol_null(void* group_handle)
+{
+  try
+  {
+    if (group_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_null: null group handle";
+      return nullptr;
+    }
+    auto* g = static_cast<GroupHandle*>(group_handle);
+    atlas::K_repr::K_type_pol z;
+    return static_cast<void*>(new KTypePolHandle(g, std::move(z)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 extern "C" void* atlas_ktypepol_branch(void* kt_handle, int cutoff)
 {
   try
@@ -5984,6 +6009,41 @@ static atlas::arithmetic::RatNum mu_ktype_simple(const atlas::repr::Rep_table& r
   dot /= 2;
   dot.normalize();
   return dot;
+}
+
+extern "C" const char* atlas_ktype_mu_simple_text(void* t_handle)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktype_mu_simple_text: null KType handle";
+      return nullptr;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr || t->group->rt == nullptr)
+    {
+      g_last_error = "atlas_ktype_mu_simple_text: null group/Rep_table";
+      return nullptr;
+    }
+
+    atlas::arithmetic::RatNum mu = mu_ktype_simple(*t->group->rt, t->t);
+    mu.normalize();
+
+    std::ostringstream out;
+    out << static_cast<long long>(mu.numerator()) << ' ' << static_cast<long long>(mu.denominator());
+    return store_result(out.str());
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
 }
 
 static atlas::RatCoweight half_sum_poscoroots(const atlas::RootDatum& rd,

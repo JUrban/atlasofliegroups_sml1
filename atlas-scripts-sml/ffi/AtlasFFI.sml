@@ -207,6 +207,7 @@ structure AtlasFFI = struct
   val atlas_ktypepol_singleton_sym = Foreign.getSymbol lib "atlas_ktypepol_singleton"
   val atlas_ktypepol_int_part_sym = Foreign.getSymbol lib "atlas_ktypepol_int_part"
   val atlas_ktypepol_s_part_sym = Foreign.getSymbol lib "atlas_ktypepol_s_part"
+  val atlas_ktypepol_null_sym = Foreign.getSymbol lib "atlas_ktypepol_null"
   val atlas_ktypepol_branch_sym = Foreign.getSymbol lib "atlas_ktypepol_branch"
   val atlas_ktypepol_equal_sym = Foreign.getSymbol lib "atlas_ktypepol_equal"
   val atlas_ktypepol_hash_code_sym = Foreign.getSymbol lib "atlas_ktypepol_hash_code"
@@ -237,6 +238,7 @@ structure AtlasFFI = struct
   val atlas_ktype_new_from_x_lambda_rho_text_sym =
     Foreign.getSymbol lib "atlas_ktype_new_from_x_lambda_rho_text"
   val atlas_ktype_K_type_formula_sym = Foreign.getSymbol lib "atlas_ktype_K_type_formula"
+  val atlas_ktype_mu_simple_text_sym = Foreign.getSymbol lib "atlas_ktype_mu_simple_text"
 
   val atlas_intmat_find_solution_text =
     Foreign.buildCall2
@@ -832,6 +834,9 @@ structure AtlasFFI = struct
   val atlas_ktypepol_s_part =
     Foreign.buildCall1 (atlas_ktypepol_s_part_sym, Foreign.cPointer, Foreign.cPointer)
 
+  val atlas_ktypepol_null =
+    Foreign.buildCall1 (atlas_ktypepol_null_sym, Foreign.cPointer, Foreign.cPointer)
+
   val atlas_ktypepol_branch =
     Foreign.buildCall2
       ( atlas_ktypepol_branch_sym
@@ -921,4 +926,7 @@ structure AtlasFFI = struct
 
   val atlas_ktype_K_type_formula =
     Foreign.buildCall2 (atlas_ktype_K_type_formula_sym, (Foreign.cPointer, Foreign.cInt), Foreign.cPointer)
+
+  val atlas_ktype_mu_simple_text =
+    Foreign.buildCall1 (atlas_ktype_mu_simple_text_sym, Foreign.cPointer, Foreign.cString)
 end
