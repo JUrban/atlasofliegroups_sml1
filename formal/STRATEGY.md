@@ -168,6 +168,31 @@ And derives convenient “end-user” theorems such as:
 - `full_ok_implies_set_equality`:
   if both programs meet their obligations, then `U_slow = U_fast`.
 
+#### `F4FPPVerifySMLBridgeGoalsTheory` (connection to concrete SML runs)
+
+File: `formal/hol4/F4FPPVerifySMLBridgeGoalsScript.sml`
+
+Introduces abstract “program success” predicates:
+
+- `fast_program_succeeds g dirac`
+- `slow_program_succeeds g`
+
+and records the key bridge theorems we ultimately want:
+
+- `fast_program_succeeds_imp_fast_ok` (**currently `cheat`ed**)
+- `slow_program_succeeds_imp_dom_and_slow_ok` (**currently `cheat`ed**)
+- `slow_program_succeeds_imp_dom_list_correct` (**currently `cheat`ed**)
+- `slow_program_succeeds_imp_slow_ok` (**currently `cheat`ed**)
+- `fast_and_slow_programs_succeed_imp_full_ok` (**CHEAT-tainted**, depends on cheated bridge lemmas)
+- `fast_and_slow_programs_succeed_gives_equivalence` (**currently `cheat`ed**)
+
+From these, we get a clean end-user theorem statement (intended to be derivable
+once the bridge lemmas are proved without `cheat`):
+
+- `fast_and_slow_programs_succeed_gives_equivalence`:
+  if both programs succeed, then `U_slow = U_fast` and the bottom-layer
+  invariants hold for `U_fast`.
+
 ### CakeML/HOL: translator-facing model(s)
 
 These live in `formal/cakeml/`.
