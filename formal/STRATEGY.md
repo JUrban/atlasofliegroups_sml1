@@ -311,6 +311,18 @@ Splits `fast_param_set_contains_ok g` into the two one-way obligations:
 
 and provides the “OK” recombination lemma back to the original biconditional.
 
+#### `F4FPPVerifyFastParamSetListRefineGoalsTheory` (split list enumeration)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetListRefineGoalsScript.sml`
+
+Splits the list-enumeration correctness needed from `ParamHash.list` into:
+
+- `fast_param_set_list_sound g`: every enumerated element is in `U_fast g`
+- `fast_param_set_list_complete g`: every element of `U_fast g` is enumerated
+
+From these it derives `set (ps_list (fast_param_set g)) = U_fast g`, and shows
+how the list and contains obligations combine to yield `fast_param_set_ok g`.
+
 #### `F4FPPVerifyGlobalDiracBridgeGoalsTheory` (bottom-layer bridge)
 
 File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
