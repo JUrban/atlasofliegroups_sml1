@@ -110,6 +110,18 @@ Definition ph_invariant_def:
     ph_ok s /\ ph_bucketed s /\ ph_covered s
 End
 
+Theorem bucket_index_lt_len_buckets:
+  !p s.
+    atlas_hash_range /\ ph_ok s ==> bucket_index p s.bucket_count < LENGTH s.buckets
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[ph_ok_def, bucket_index_def, atlas_hash_range_def]
+  \\ qpat_x_assum `!m p. m <> 0 ==> atlas_hash_mod p m < m`
+       (qspecl_then [`s.bucket_count`,`p`] mp_tac)
+  \\ simp[]
+QED
+
 (* ------------------------------------------------------------------------- *)
 (*  Helper lemmas about `find_in_bucket`                                      *)
 (* ------------------------------------------------------------------------- *)
@@ -154,15 +166,14 @@ Theorem ph_contains_state_iff_MEM_elems:
       (ph_contains_state p s <=> MEM p s.elems)
 Proof
   (*
-    Intended proof (later, without `cheat`):
-    - expand `ph_invariant` into `ph_ok`, `ph_bucketed`, `ph_covered`,
-    - (⇒) from `ph_lookup_state p s = SOME idx`, use `find_in_bucket_SOME_MEM`
-      to get a bucket entry `(q,idx)` with `atlas_eq p q`; then use `ph_ok` and
-      `atlas_eq_is_hol_eq` to conclude `EL idx elems = p`, hence `MEM p elems`,
-    - (⇐) from `MEM p elems`, pick `j` with `EL j elems = p`; use `ph_covered`
-      to find `(p,j)` in some bucket; use `ph_bucketed` to identify the right
-      bucket index for lookup, and `find_in_bucket_MEM_imp_SOME` to conclude
-      `ph_lookup_state p s = SOME idx'` for some `idx'`.
+    Intended proof:
+    - Expand `ph_invariant` into `ph_ok`, `ph_bucketed`, `ph_covered`.
+    - (⇒) From `ph_contains_state`, unfold lookup and use
+      `find_in_bucket_SOME_MEM` + `ph_ok` + `atlas_eq_is_hol_eq`.
+    - (⇐) From `MEM p elems`, use `ph_covered` to find a bucket entry, then
+      `ph_bucketed` and `find_in_bucket_MEM_imp_SOME` to show lookup succeeds.
+
+    The proof is routine list reasoning, but tactic engineering is pending.
   *)
   cheat
 QED

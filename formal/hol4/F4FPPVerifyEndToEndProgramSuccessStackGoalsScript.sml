@@ -28,6 +28,7 @@ open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory;
 open F4FPPVerifySlowBridgeDetailedGoalsTheory;
 open F4FPPVerifyEndToEndObligationStackGoalsTheory;
+open F4FPPVerifyTargetGroupGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyEndToEndProgramSuccessStackGoals";
 
@@ -59,5 +60,20 @@ Proof
   \\ metis_tac[obligations_stack_imply_equivalence]
 QED
 
-val _ = export_theory ();
+(* A convenient specialization for the concrete target group `F4s`. *)
+Theorem program_success_implies_equivalence_via_obligation_stack_F4s:
+  !dirac.
+    atlas_eq_is_hol_eq /\ atlas_hash_range /\
+    fast_program_succeeds F4s dirac /\ slow_program_succeeds F4s ==>
+      U_slow F4s (D_slow F4s) = U_fast F4s /\
+      bottom_layer_total_ok F4s dirac (U_fast F4s)
+Proof
+  rpt gen_tac
+  \\ rpt strip_tac
+  \\ metis_tac
+      [ program_success_implies_equivalence_via_obligation_stack
+      , F4s_not_compact
+      ]
+QED
 
+val _ = export_theory ();
