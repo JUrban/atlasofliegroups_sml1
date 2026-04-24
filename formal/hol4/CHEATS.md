@@ -16,6 +16,9 @@ The goal is not to eliminate all `cheat`s immediately, but to:
 - File: `formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml`
 - Role: records the (currently axiomatic) laws expected of Atlas equality/hash
   and related primitives.
+- Note: the bottom-layer congruence contract `atlas_eq_congruent_bottom_layer`
+  now also covers `lambda_table_ok` and congruence of `param_equiv` in both
+  arguments (needed for modulo-`atlas_eq` bottom-layer reasoning).
 - Main placeholder:
   - `atlas_ffi_contracts_hold` : assumes `atlas_ffi_contracts`.
 

@@ -263,6 +263,24 @@ This theory is intentionally *interface-first*: it introduces the abstract
 primitives (`twist`, `param_equiv`, `contragredient`, etc.) that will later be
 linked to Atlas FFI calls.
 
+#### `F4FPPBottomLayerGoalsAtlasEqTheory` (bottom-layer checks modulo `atlas_eq`)
+
+File: `formal/hol4/F4FPPBottomLayerGoalsAtlasEqScript.sml`
+
+Adds modulo-`atlas_eq` variants of the bottom-layer predicates, replacing
+representative membership `p IN U` by membership in the `atlas_eq`-closure
+`mem_set_atlas_eq p U`:
+
+- `standard_final_ok_atlas_eq`, `lambda_table_set_ok_atlas_eq`,
+  `twist_equiv_ok_atlas_eq`, `hermitian_ok_atlas_eq`, `unitary_if_atlas_eq`,
+  `dual_closed_atlas_eq`,
+- `bottom_layer_ok_atlas_eq` and `bottom_layer_total_ok_atlas_eq`.
+
+It also proves “lifting” lemmas showing that the original representative-level
+predicates imply their modulo variants under the explicit congruence contracts
+from `F4FPPVerifyAtlasFFIContractsGoalsTheory` (notably
+`atlas_eq_congruent_bottom_layer`).
+
 #### `F4FPPVerifyAtlasFFIContractsGoalsTheory` (explicit Atlas/FFI contract inventory)
 
 File: `formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml`
@@ -273,7 +291,8 @@ and their Poly/ML FFI wrappers, especially:
 - `atlas_eq` / `atlas_hash_mod` / `atlas_clone` and the bundled predicate
   `atlas_hash_eq_ok` (equivalence + hash coherence + range + cloning),
 - congruence/stability of semantic predicates (`is_unitary`, `is_final`, …)
-  under `atlas_eq`,
+  under `atlas_eq` (including `lambda_table_ok` and congruence of `param_equiv`
+  in both arguments),
 - a minimal algebraic law used by the bottom-layer (`contragredient` is an
   involution),
 - a placeholder bundle `atlas_ffi_contracts`.

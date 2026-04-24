@@ -100,6 +100,8 @@ Definition atlas_eq_congruent_bottom_layer_def:
     (!p q. atlas_eq p q ==> (is_final p <=> is_final q)) /\
     (!p q. atlas_eq p q ==> (is_hermitian p <=> is_hermitian q)) /\
     (!p q. atlas_eq p q ==> (is_unitary p <=> is_unitary q)) /\
+    (!g p q. atlas_eq p q ==> (lambda_table_ok g p <=> lambda_table_ok g q)) /\
+    (!p p' q q'. atlas_eq p p' /\ atlas_eq q q' ==> (param_equiv p q <=> param_equiv p' q')) /\
     (!p q. atlas_eq p q ==> atlas_eq (twist p) (twist q)) /\
     (!p q. atlas_eq p q ==> atlas_eq (contragredient p) (contragredient q))
 End
@@ -151,4 +153,3 @@ Proof
 QED
 
 val _ = export_theory ();
-
