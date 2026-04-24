@@ -32,6 +32,7 @@ open pred_setTheory pred_setLib;
 open F4FPPVerifyFastPruneGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyParamHashBridgeGoalsTheory;
+open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
 open F4FPPVerifyFastParamSetListRefineGoalsTheory;
 open F4FPPVerifyFastParamSetContainsRefineGoalsTheory;
 
@@ -47,7 +48,7 @@ End
 (* Bundle (B): data-structure interface correctness, via ParamHash. *)
 Definition fast_compute_paramhash_ok_def:
   fast_compute_paramhash_ok g <=>
-    paramhash_ok g
+    paramhash_obligations_factored g
 End
 
 Theorem fast_compute_domain_and_paramhash_ok_imp_fast_compute_obligations:
@@ -56,20 +57,17 @@ Theorem fast_compute_domain_and_paramhash_ok_imp_fast_compute_obligations:
       fast_compute_obligations g
 Proof
   rpt strip_tac
+  \\ `paramhash_ok g` by
+       (fs[fast_compute_paramhash_ok_def]
+        \\ metis_tac[paramhash_obligations_factored_imp_paramhash_ok])
+  \\ fs[paramhash_ok_def]
   \\ rw[fast_compute_obligations_def]
   >- fs[fast_compute_domain_ok_def]
   >- fs[fast_compute_domain_ok_def]
-  >- (
-    fs[fast_param_set_list_sound_def, fast_compute_paramhash_ok_def, fast_compute_domain_ok_def,
-       paramhash_ok_def, fast_param_set_is_paramhash_def, paramhash_list_sound_def] )
-  >- (
-    fs[fast_param_set_list_complete_def, fast_compute_paramhash_ok_def, fast_compute_domain_ok_def,
-       paramhash_ok_def, fast_param_set_is_paramhash_def, paramhash_list_complete_def] )
-  >- (
-    fs[fast_param_set_contains_sound_def, fast_compute_paramhash_ok_def, fast_compute_domain_ok_def,
-       paramhash_ok_def, fast_param_set_is_paramhash_def, paramhash_contains_sound_def] )
-  \\ fs[fast_param_set_contains_complete_def, fast_compute_paramhash_ok_def, fast_compute_domain_ok_def,
-        paramhash_ok_def, fast_param_set_is_paramhash_def, paramhash_contains_complete_def]
+  >- metis_tac[fast_param_set_is_paramhash_and_paramhash_list_sound_imp_list_sound]
+  >- metis_tac[fast_param_set_is_paramhash_and_paramhash_list_complete_imp_list_complete]
+  >- metis_tac[fast_param_set_is_paramhash_and_paramhash_contains_sound_imp_contains_sound]
+  \\ metis_tac[fast_param_set_is_paramhash_and_paramhash_contains_complete_imp_contains_complete]
 QED
 
 (* --- Bridge obligations from compute-phase success (currently CHEATED) --- *)
@@ -91,7 +89,7 @@ Theorem fast_compute_program_succeeds_imp_fast_compute_paramhash_ok:
   !g. fast_compute_program_succeeds g ==> fast_compute_paramhash_ok g
 Proof
   rw[fast_compute_paramhash_ok_def]
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_ok]
+  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_factored]
 QED
 
 (* Derived (cheat-tainted) bridge: the compute phase implies the original

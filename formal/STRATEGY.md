@@ -376,7 +376,7 @@ File: `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeGoalsScript.sml`
 Factors the compute-phase bridge into two explicit bundles:
 
 - `fast_compute_domain_ok g`: `fast_domain_is_pruned g ∧ fast_witnessed_pruned g`
-- `fast_compute_paramhash_ok g`: `paramhash_ok g` (the ParamHash list/contains bundle)
+- `fast_compute_paramhash_ok g`: `paramhash_obligations_factored g` (the ParamHash bundle in factored form)
 
 and proves (OK) that these together imply `fast_compute_obligations g`.
 
