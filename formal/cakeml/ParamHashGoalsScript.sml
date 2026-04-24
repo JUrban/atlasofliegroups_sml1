@@ -36,7 +36,27 @@ val _ = new_theory "ParamHashGoals";
 Theorem ph_lookup_state_complete:
   !p s. ph_invariant s /\ MEM (p:num) s.elems ==> ?idx. ph_lookup_state p s = SOME idx
 Proof
-  cheat
+  rpt strip_tac
+  \\ fs[ph_invariant_def]
+  \\ `?n. n < LENGTH s.elems /\ (nthn n s.elems = p)` by
+       metis_tac[MEM_imp_exists_nth]
+  \\ `MEM (p,n) (FLAT s.buckets)` by
+       (fs[ph_covered_def] \\ metis_tac[])
+  \\ fs[MEM_FLAT]
+  \\ rename1 `MEM (p,n) b`
+  \\ rename1 `MEM b s.buckets`
+  \\ `?i. i < LENGTH s.buckets /\ (EL i s.buckets = b)` by
+       metis_tac[MEM_EL]
+  \\ `bucket_index p s.bucket_count = i` by
+       (fs[ph_bucketed_def] \\ metis_tac[])
+  \\ `EL (bucket_index p s.bucket_count) s.buckets = b` by metis_tac[]
+  \\ `?idx. find_in_bucket p b = SOME idx` by
+       metis_tac[find_in_bucket_MEM_imp_SOME]
+  \\ pop_assum strip_assume_tac
+  \\ qexists_tac `idx`
+  \\ fs[ph_ok_def]
+  \\ simp[ph_lookup_state_def]
+  \\ simp[]
 QED
 
 (* A convenient “subset” view of `ph_all_present_state`: it is true exactly when
@@ -47,7 +67,26 @@ Theorem ph_all_present_state_iff_subset:
       (ph_all_present_state ps s <=>
         !p. MEM p ps ==> p IN ph_set s)
 Proof
-  cheat
+  Induct_on `ps`
+  \\ rpt strip_tac
+  >- simp[ph_all_present_state_def]
+  \\ eq_tac
+  >- (
+    rpt strip_tac
+    \\ fs[ph_invariant_def]
+    \\ `!q. MEM q (h::ps) ==> q IN ph_set s` by
+         (match_mp_tac ph_all_present_state_sound \\ simp[])
+    \\ first_x_assum (qspec_then `p` mp_tac)
+    \\ simp[] )
+  \\ rpt strip_tac
+  \\ `h IN ph_set s` by (first_x_assum match_mp_tac \\ simp[])
+  \\ `MEM h s.elems` by fs[ph_set_def]
+  \\ `?idx. ph_lookup_state h s = SOME idx` by metis_tac[ph_lookup_state_complete]
+  \\ simp[ph_all_present_state_def]
+  \\ first_x_assum match_mp_tac
+  \\ rpt strip_tac
+  \\ first_x_assum match_mp_tac
+  \\ simp[]
 QED
 
 (* A stronger “pointwise” completeness statement that is often easier to use in
@@ -55,7 +94,8 @@ QED
 Theorem ph_lookup_state_complete_wrt_set:
   !p s. ph_invariant s /\ p IN ph_set s ==> ?idx. ph_lookup_state p s = SOME idx
 Proof
-  cheat
+  rw[ph_set_def]
+  \\ metis_tac[ph_lookup_state_complete]
 QED
 
 (* ------------------------------------------------------------------------- *)
@@ -71,4 +111,3 @@ QED
    just the existence of some relation `R` that makes the operations correspond. *)
 
 val _ = export_theory ();
-
