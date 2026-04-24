@@ -355,6 +355,24 @@ the `FPP_globalDirac` pipeline. It records the intended bridge theorem:
 and then derives (without further cheating) the set-level consequences under
 `fast_param_set_ok`, including `bottom_layer_total_ok` for non-compact groups.
 
+#### `F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory` (bottom-layer bridge, per-check)
+
+File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml`
+
+Decomposes the bottom-layer bridge into per-check obligations that mirror the
+structure of `atlas-scripts-sml/FPP_globalDirac.sml`:
+
+- `bl_standard_final_ok g`
+- `bl_lambda_table_ok g`
+- `bl_twist_equiv_ok g`
+- `bl_hermitian_ok g`
+- `bl_unitary_if_ok g dirac`
+- `bl_dual_closed_ok g`
+
+It records cheated lemmas “`bottom_layer_program_succeeds ⇒ bl_*_ok`” for each
+check, and then recombines them (OK) into a single lemma
+`bottom_layer_program_succeeds ⇒ bottom_layer_ok_param_set`.
+
 #### `F4FPPVerifyFastComputeBridgeGoalsTheory` (fast compute-phase bridge)
 
 File: `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`
