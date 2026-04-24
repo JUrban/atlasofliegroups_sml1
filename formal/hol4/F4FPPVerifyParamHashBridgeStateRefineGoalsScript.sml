@@ -23,9 +23,9 @@
     by a CakeML/translator proof.
 
   Status
-  - The refinement lemma `paramhash_state_ok ⇒ paramhash_rep_ok` is OK modulo
-    the key state lemma `ph_contains_state_iff_MEM_elems` (currently `cheat`ed
-    in `F4FPPVerifyParamHashStateGoalsTheory`).
+  - The refinement lemma `paramhash_state_ok ⇒ paramhash_rep_ok` is OK and now
+    depends on a fully proved state lemma `ph_contains_state_iff_MEM_elems`
+    from `F4FPPVerifyParamHashStateGoalsTheory` (no `cheat`).
   - The bridge from program success to `paramhash_state_ok` is recorded and
     `cheat`ed.
 *)

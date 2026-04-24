@@ -472,8 +472,9 @@ insertion-order list of stored parameters) and a minimal invariant
 - `ph_contains_state_iff_MEM_elems`: the lookup-derived membership predicate is
   equivalent to list membership in `elems`.
 
-(Currently this key lemma is `cheat`ed; the surrounding definitions are meant
-to make it straightforward to replace the `cheat` by a real invariant proof.)
+(This key lemma is now proved in HOL4. There is also an analogous proved lemma
+for the CakeML pure-state model: `ph_rep_ok_iff_MEM_elems` in
+`formal/cakeml/ParamHashSetGoalsScript.sml`.)
 
 It then defines a wiring predicate `paramhash_observes_state` and derives:
 
