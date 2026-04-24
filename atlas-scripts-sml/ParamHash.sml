@@ -1,4 +1,5 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
+use "atlas-scripts-sml/AtlasParam.sml";
 
 (*
   File: atlas-scripts-sml/ParamHash.sml
@@ -20,7 +21,7 @@ use "atlas-scripts-sml/ffi/AtlasFFI.sml";
     does not consume its input handle.
 *)
 structure ParamHash = struct
-  type param = AtlasFFI.param
+  type param = AtlasParam.t
 
   type entry = {p: param, idx: int}
 
@@ -96,16 +97,11 @@ structure ParamHash = struct
     case xs of
       [] => NONE
     | {p = q, idx} :: rest =>
-        if AtlasFFI.atlas_param_equal (p, q) = 1 then SOME idx else findInBucket p rest
+        if AtlasParam.eq (p, q) then SOME idx else findInBucket p rest
 
   (* Compute the bucket index for `p` using Atlas' hash function. *)
   fun bucketIndex (bs: entry list array) (p: param) : int =
-    let
-      val m = Array.length bs
-      val h = AtlasFFI.atlas_param_hash (p, m)
-    in
-      if h < 0 then raise Fail ("ParamHash: hash failed: " ^ AtlasFFI.atlas_last_error ()) else h
-    end
+    AtlasParam.hash_mod (p, Array.length bs)
 
   (* Lookup the index of `p`, or `~1` if absent. *)
   fun lookup ({buckets, ...}: t) (p: param) : int =
