@@ -25,3 +25,8 @@ $HOLDIR/bin/Holmake
   (non-monadic) CakeML translator.
 - `ParamHashProgScript.sml`: an initial monadic (stateful) model of a
   ParamHash-like bucketed set, translated with the monadic translator.
+- `ParamHashGoalsScript.sml`: “top-down” correctness goals for the pure-state
+  model (`ph_lookup_state_complete`, `ph_all_present_state_iff_subset`, ...).
+- `ParamHashSetGoalsScript.sml`: a set-interface view of the pure-state model
+  (derives `contains`-style predicates from `ph_lookup_state` and proves
+  `ph_contains_state p s <=> p IN ph_set s` under `ph_invariant`).

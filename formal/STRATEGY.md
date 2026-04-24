@@ -230,6 +230,25 @@ This theory is intentionally *interface-first*: it introduces the abstract
 primitives (`twist`, `param_equiv`, `contragredient`, etc.) that will later be
 linked to Atlas FFI calls.
 
+#### `F4FPPVerifyAtlasFFIContractsGoalsTheory` (explicit Atlas/FFI contract inventory)
+
+File: `formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml`
+
+Collects the *named* assumptions/obligations we will need about Atlas C++ calls
+and their Poly/ML FFI wrappers, especially:
+
+- `atlas_eq` / `atlas_hash_mod` / `atlas_clone` and the bundled predicate
+  `atlas_hash_eq_ok` (equivalence + hash coherence + range + cloning),
+- congruence/stability of semantic predicates (`is_unitary`, `is_final`, …)
+  under `atlas_eq`,
+- a minimal algebraic law used by the bottom-layer (`contragredient` is an
+  involution),
+- a placeholder bundle `atlas_ffi_contracts`.
+
+This theory is meant to keep the “trusted base” explicit: future bridge lemmas
+should assume (or derive) `atlas_ffi_contracts` instead of implicitly relying
+on FFI coherence.
+
 #### `F4FPPBottomLayerAlgGoalsTheory` (bottom-layer list algorithm skeleton)
 
 File: `formal/hol4/F4FPPBottomLayerAlgGoalsScript.sml`
@@ -386,6 +405,23 @@ It then states the precise ParamHash obligations we ultimately need:
 and proves (OK) that these imply `fast_param_set_ok g`. A final bridge lemma
 `fast_compute_program_succeeds_imp_paramhash_ok` is recorded (currently
 `cheat`ed) to connect concrete execution to these obligations.
+
+#### `F4FPPVerifyParamHashBridgeDecomposeGoalsTheory` (ParamHash obligations, factored)
+
+File: `formal/hol4/F4FPPVerifyParamHashBridgeDecomposeGoalsScript.sml`
+
+Factors `paramhash_ok g` into two more re-usable obligations:
+
+- `paramhash_rep_ok g`: `paramhash_contains g p ⇔ MEM p (paramhash_list g)`
+  (pure data-structure correctness), and
+- `paramhash_stores_U_fast g`: `∀p. p ∈ U_fast g ⇔ MEM p (paramhash_list g)`
+  (algorithmic agreement with the goal-layer fast set).
+
+It then proves (OK) that these imply `paramhash_ok g`, and records cheated
+“compute success ⇒ obligations” lemmas in the split form. The intent is:
+
+- discharge `paramhash_rep_ok` via a CakeML hash-table proof, and
+- discharge `paramhash_stores_U_fast` via a fast-compute semantic argument.
 
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
@@ -614,8 +650,11 @@ in `atlas-scripts-sml/ParamHash.sml`:
 - Prove that `ParamHash.match` implements insertion into that set view, and
   `ParamHash.contains` implements membership (no false negatives/positives).
 
-The CakeML side models this as `ParamHashProgTheory` + goal lemmas in
-`ParamHashGoalsTheory`.
+The CakeML side models this as:
+
+- `ParamHashProgTheory` (monadic translator model),
+- `ParamHashGoalsTheory` (lookup/all-present completeness goals), and
+- `ParamHashSetGoalsTheory` (set-interface view: `contains` ↔ membership).
 
 ### Stage 3: attach Atlas/C++ FFI semantics
 
@@ -633,6 +672,8 @@ Examples of external specs we will need (in some form):
 
 Initially, these are assumptions connecting the “abstract HOL4 world” to the
 concrete SML+FFI world. Later stages can validate or partially prove them.
+The current inventory of such assumptions is centralized in
+`formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml`.
 
 ## Current “what to prove next” checklist (spec-first)
 

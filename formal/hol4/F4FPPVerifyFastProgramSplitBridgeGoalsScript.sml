@@ -28,6 +28,7 @@ open pred_setTheory pred_setLib;
 
 open F4FPPVerifySMLBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
+open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyTargetGroupGoalsTheory;
@@ -60,7 +61,7 @@ Proof
   \\ disch_tac
   \\ drule fast_program_succeeds_imp_phase_success
   \\ disch_then strip_assume_tac
-  \\ drule fast_compute_program_succeeds_imp_obligations
+  \\ drule fast_compute_program_succeeds_imp_fast_compute_obligations_factored
   \\ disch_then assume_tac
   \\ `fast_semantic_ok F4s` by metis_tac[fast_compute_obligations_imp_fast_semantic_ok]
   \\ `fast_param_set_ok F4s` by metis_tac[fast_compute_obligations_imp_fast_param_set_ok]
