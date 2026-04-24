@@ -269,6 +269,20 @@ predicate `dual_closed U`. This is the intended hook for connecting the
 hash-table membership test (`ParamHash.contains`) to the abstract goal
 `bottom_layer_ok`.
 
+#### `F4FPPVerifyFastParamSetGoalsTheory` (fast output as a param_set)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetGoalsScript.sml`
+
+Introduces an abstract `fast_param_set g` representing the `ParamHash` (or
+similar) value produced by the fast program, viewed through the `param_set`
+interface. It defines:
+
+- `fast_param_set_ok g`: `fast_param_set g` represents exactly `U_fast g`.
+
+and provides a simple glue lemma showing that, once `fast_param_set_ok` holds,
+proving the SML-style predicate `bottom_layer_ok_param_set g dirac (fast_param_set g)`
+is sufficient to conclude `bottom_layer_ok g dirac (U_fast g)`.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
