@@ -178,6 +178,22 @@ And proves “OK” glue lemmas:
 - `dom_list_is_components_imp_slow_ok_iff`:
   `slow_ok g` is equivalent to the component-based predicate `slow_ok_components g`.
 
+#### `F4FPPVerifyRefinedMainGoalsTheory` (refined main theorem, obligation-level)
+
+File: `formal/hol4/F4FPPVerifyRefinedMainGoalsScript.sml`
+
+Defines small “bundle” predicates and proves a refined top-level theorem that
+derives the key equality using *only* the refined obligations:
+
+- `slow_refinement_ok g`:
+  `dom_list_is_components g` plus component-list correctness.
+- `fast_semantic_ok g`:
+  `fast_witnessed g ∧ fast_domain_subset g` (from `F4FPPVerifyFastRefineGoalsTheory`).
+- `refined_obligations_imply_equivalence` (proved, OK):
+  if `slow_refinement_ok`, `slow_ok_components`, `fast_semantic_ok`, and the
+  bottom-layer predicate `bottom_layer_total_ok` hold, then `U_slow = U_fast`
+  (and the bottom-layer predicate holds as well).
+
 #### `F4FPPBottomLayerGoalsTheory` (bottom-layer checks spec)
 
 File: `formal/hol4/F4FPPBottomLayerGoalsScript.sml`
@@ -240,6 +256,24 @@ once the bridge lemmas are proved without `cheat`):
   if both programs succeed, then `U_slow = U_fast` and the bottom-layer
   invariants hold for `U_fast`.
 
+#### `F4FPPVerifyRefinedBridgeGoalsTheory` (bridge at refined-obligation level)
+
+File: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
+
+Refines the bridge interface further: instead of “program success implies
+`full_ok`”, it states (currently `cheat`ed) that:
+
+- `fast_program_succeeds g dirac` implies
+  `fast_semantic_ok g` and `bottom_layer_total_ok g dirac (U_fast g)`.
+- `slow_program_succeeds g` implies
+  `slow_refinement_ok g` and `slow_ok_components g`.
+
+Then it derives:
+
+- `fast_and_slow_programs_succeed_gives_refined_equivalence`
+  (logically OK, but depends on the cheated bridge obligations),
+  by composing these with `refined_obligations_imply_equivalence`.
+
 ### CakeML/HOL: translator-facing model(s)
 
 These live in `formal/cakeml/`.
@@ -273,6 +307,40 @@ interfaces/claims before investing in proofs.
 
 This matches the intent of `VERIFY_ESTIMATE.md`, but with the current theory
 stack as concrete artefacts.
+
+## Mapping: SML modules → formal obligations (current best guess)
+
+This section is a “wiring diagram” for where future proofs/specs should land.
+It is intentionally redundant with the theory summaries above, but grouped by
+code location rather than by theory name.
+
+- `atlas-scripts-sml/VerifyF4FPP.sml`:
+  should discharge the bridge obligations in
+  `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml` for the fast side, i.e.
+  produce `fast_semantic_ok g` and `bottom_layer_total_ok g dirac (U_fast g)`
+  upon success.
+- `atlas-scripts-sml/F4_FPP_points_compute.sml`:
+  is the main source of the fast-semantic obligations:
+  `fast_witnessed g` and `fast_domain_subset g` (hence `fast_semantic_ok g`).
+  It will likely require additional intermediate lemmas about:
+  - what triples are *considered* (`D_fast g`), and
+  - how each stored parameter in `U_fast g` relates to a witness triple.
+- `atlas-scripts-sml/FPP_globalDirac.sml`:
+  should discharge `bottom_layer_total_ok g dirac (U_fast g)` by linking each
+  check (standard/final, lambda-table, twist-equivalence, hermitian, unitary
+  if Dirac, contragredient closure) to the corresponding predicates in
+  `formal/hol4/F4FPPBottomLayerGoalsScript.sml`.
+- `atlas-scripts-sml/SimplerVerifyF4FPP.sml`:
+  should discharge the slow-side bridge obligations:
+  `slow_refinement_ok g` and `slow_ok_components g`.
+  Concretely, this means linking:
+  - the `for_domain` loop to `dom_list_from_components`,
+  - the “missing witness” predicate to `missing_witness`,
+  - and the counter to `check_domain_fun`.
+- `atlas-scripts-sml/ParamHash.sml` (plus `formal/cakeml/ParamHashProgScript.sml`):
+  is expected to justify that the imperative hash structure implements the set
+  view used in the HOL4 developments (`U_fast g`), under suitable specs for the
+  Atlas equality/hash FFI.
 
 ### Stage 1: “assumption-heavy” program correctness (structure)
 
