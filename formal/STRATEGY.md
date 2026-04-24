@@ -350,6 +350,28 @@ hash. It packages the intended compute obligations:
 
 and proves (OK) that these imply `fast_semantic_ok g`.
 
+#### `F4FPPVerifyParamHashBridgeGoalsTheory` (ParamHash list/contains obligations)
+
+File: `formal/hol4/F4FPPVerifyParamHashBridgeGoalsScript.sml`
+
+Introduces explicit abstract placeholders for the concrete SML `ParamHash`
+observations produced by the compute phase:
+
+- `paramhash_list g`
+- `paramhash_contains g`
+
+and a wiring predicate `fast_param_set_is_paramhash g` stating that
+`fast_param_set g` is exactly the `(list,contains)` pair from ParamHash.
+
+It then states the precise ParamHash obligations we ultimately need:
+
+- list sound/complete w.r.t. `U_fast g`
+- contains sound/complete w.r.t. `U_fast g`
+
+and proves (OK) that these imply `fast_param_set_ok g`. A final bridge lemma
+`fast_compute_program_succeeds_imp_paramhash_ok` is recorded (currently
+`cheat`ed) to connect concrete execution to these obligations.
+
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
