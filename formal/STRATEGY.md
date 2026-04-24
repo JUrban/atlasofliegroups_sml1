@@ -408,6 +408,19 @@ It then records cheated lemmas stating that `fast_compute_program_succeeds g`
 implies each bundle, and derives a factored “success ⇒ obligations” theorem
 from those.
 
+#### `F4FPPVerifyFastComputeParamHashStateRefineGoalsTheory` (compute ParamHash via state bundle)
+
+File: `formal/hol4/F4FPPVerifyFastComputeParamHashStateRefineGoalsScript.sml`
+
+Records the refinement-friendly route:
+
+- `fast_compute_program_succeeds g ⇒ paramhash_obligations_state_factored g` (cheat, state witness)
+- under `atlas_eq_is_hol_eq` + `atlas_hash_range`,
+  `paramhash_obligations_state_factored g ⇒ fast_compute_paramhash_ok g` (OK)
+
+This isolates the “state invariant” obligation as a dedicated proof target for
+the CakeML/translator path.
+
 #### `F4FPPVerifyParamHashBridgeGoalsTheory` (ParamHash list/contains obligations)
 
 File: `formal/hol4/F4FPPVerifyParamHashBridgeGoalsScript.sml`
