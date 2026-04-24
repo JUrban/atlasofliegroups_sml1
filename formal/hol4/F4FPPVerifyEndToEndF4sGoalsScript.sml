@@ -28,8 +28,11 @@ open F4FPPVerifySMLBridgeGoalsTheory;
 open F4FPPVerifyFastProgramSplitBridgeGoalsTheory;
 open F4FPPVerifySlowBridgeDetailedGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
+open F4FPPVerifyRefinedBridgeGoalsTheory;
 open F4FPPVerifySpecTheory;
 open F4FPPBottomLayerGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPVerifyAtlasEqSetGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyEndToEndF4sGoals";
 
@@ -54,5 +57,22 @@ Proof
   metis_tac[fast_and_slow_programs_succeed_gives_equivalence_F4s]
 QED
 
-val _ = export_theory ();
+Theorem fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s:
+  !dirac.
+    atlas_hash_eq_ok /\
+    fast_program_succeeds F4s dirac /\ slow_program_succeeds F4s ==>
+      set_atlas_eq (U_fast F4s) (U_slow F4s (D_slow F4s)) /\
+      bottom_layer_total_ok F4s dirac (U_fast F4s)
+Proof
+  metis_tac[fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq]
+QED
 
+Theorem fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s_dirac:
+  atlas_hash_eq_ok /\ fast_program_succeeds F4s T /\ slow_program_succeeds F4s ==>
+    set_atlas_eq (U_fast F4s) (U_slow F4s (D_slow F4s)) /\
+    bottom_layer_total_ok F4s T (U_fast F4s)
+Proof
+  metis_tac[fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s]
+QED
+
+val _ = export_theory ();

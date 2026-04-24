@@ -37,6 +37,9 @@ More realistic variant (modulo Atlas equality):
   - refined bridge from program-success predicates (cheat-tainted, but clean structure):
     - file: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
       (`fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq`)
+  - concrete specialization for the target group:
+    - file: `formal/hol4/F4FPPVerifyEndToEndF4sGoalsScript.sml`
+      (`fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s`)
   - compatibility lemma (shows modulo statement follows from HOL equality under
     `atlas_eq_is_hol_eq`):
     - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`
