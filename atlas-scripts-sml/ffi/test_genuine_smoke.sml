@@ -1,5 +1,7 @@
 use "atlas-scripts-sml/genuine.sml";
 use "atlas-scripts-sml/KType.sml";
+use "atlas-scripts-sml/KTypePol.sml";
+use "atlas-scripts-sml/Hermitian.sml";
 
 (*
   Smoke test for `atlas-scripts-sml/genuine.sml`.
@@ -34,6 +36,12 @@ val () = assert "K_type_formula ok" (pol <> Foreign.Memory.null);
 val polN = Genuine.coeff_normalize_ktypepol pol;
 val () = assert "coeff_normalize_ktypepol ok" (polN <> Foreign.Memory.null);
 val _ = KTypePol.free polN;
+
+(* Now that branching is available, ensure `is_genuine` runs. *)
+val hf = Hermitian.hermitian_form_irreducible p;
+val _ = Genuine.is_genuine (g, hf, 6);
+val _ = KTypePol.free hf;
+
 val _ = KTypePol.free pol;
 val _ = KType.free t;
 

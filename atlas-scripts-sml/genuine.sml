@@ -201,5 +201,49 @@ structure Genuine = struct
        hermitian_form_irreducible_normalized = hermitian_form_irreducible@Param
      In this port there is currently only one implementation, so this is an alias. *)
   val hermitian_form_irreducible_normalized = Hermitian.hermitian_form_irreducible
-end
 
+  (*
+    “Genuineness” predicates
+
+    Atlas meaning
+    - In `genuine.at`, a `KTypePol P` is interpreted as a virtual sum of
+      standard representations of `K` (“standardrepKs”).
+    - `branch(P,height_bound)` rewrites it (up to the given height cutoff) as a
+      sum of *actual* K-types.
+    - `is_genuine(P,height_bound)` holds iff all coefficients in that branched
+      expansion have nonnegative integer and `s` parts.
+
+    SML port
+    - We delegate branching to the C++ `Rep_context::branch` via `KTypePol.branch`.
+    - Because a `KTypePol` handle does not expose its ambient group/rank on the
+      SML side, callers must supply the group handle `g` so we can decode term
+      data and test coefficient signs.
+  *)
+
+  fun is_genuine (g: AtlasFFI.group, pol: ktypepol, height_bound: int) : bool =
+    let
+      val bran = KTypePol.branch (pol, height_bound)
+      val r = AtlasFFI.atlas_group_rank g
+      val ok = is_positive_ktypepol (bran, r)
+      val () = KTypePol.free bran
+    in
+      ok
+    end
+
+  fun test_genuine (g: AtlasFFI.group, pol: ktypepol, height_bound: int) : bool =
+    is_genuine (g, pol, height_bound)
+
+  fun is_hermitian_form_irreducible_genuine (g: AtlasFFI.group, p: param, height_bound: int) : bool =
+    let
+      val hf = hermitian_form_irreducible_normalized p
+      val ok =
+        (is_genuine (g, hf, height_bound)
+         handle e => (KTypePol.free hf; raise e))
+      val () = KTypePol.free hf
+    in
+      ok
+    end
+
+  fun test_hermitian_form_irreducible_genuine (g: AtlasFFI.group, p: param, height_bound: int) : bool =
+    is_hermitian_form_irreducible_genuine (g, p, height_bound)
+end
