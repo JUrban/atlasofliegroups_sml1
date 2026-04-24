@@ -122,10 +122,29 @@ Definition ph_match_def:
 End
 val ph_match_v_thm = m_translate ph_match_def;
 
+Definition ph_insert_all_def:
+  (ph_insert_all [] = return ()) ∧
+  (ph_insert_all (p::ps) =
+     do
+       () <- ph_match p;
+       ph_insert_all ps
+     od)
+End
+val ph_insert_all_v_thm = m_translate ph_insert_all_def;
+
+Definition ph_all_present_def:
+  (ph_all_present [] = return T) ∧
+  (ph_all_present (p::ps) =
+     do
+       b <- ph_contains p;
+       if b then ph_all_present ps else return F
+     od)
+End
+val ph_all_present_v_thm = m_translate ph_all_present_def;
+
 Definition init_ph_state_def:
   init_ph_state =
     <| bucket_count := ref_init_bucket_count
      ; count := ref_init_count
      ; buckets := rarray_init_buckets |>
 End
-
