@@ -159,7 +159,7 @@ structure WeylgroupAT = struct
   (* Port of `.at`:
        from_simple (RootDatum rd, vec alpha) = (WeylElt, vec)
 
-     Input: `alpha` is assumed to be a positive root (as a vector in X^*).
+     Input: `alpha` is assumed to be a positive root (as a vector in X^* ).
      Output: `(w, beta)` where `beta` is a simple root and `w` is a word such
      that applying the simple reflections in `w` (left-to-right) transforms the
      input root into `beta`.
