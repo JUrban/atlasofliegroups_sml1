@@ -230,6 +230,19 @@ This theory is intentionally *interface-first*: it introduces the abstract
 primitives (`twist`, `param_equiv`, `contragredient`, etc.) that will later be
 linked to Atlas FFI calls.
 
+#### `F4FPPBottomLayerAlgGoalsTheory` (bottom-layer list algorithm skeleton)
+
+File: `formal/hol4/F4FPPBottomLayerAlgGoalsScript.sml`
+
+Defines list-level versions of the bottom-layer checks (mirroring the SML
+“iterate a list and filter/bail” control-flow) and proves equivalence with the
+set-level predicates from `F4FPPBottomLayerGoalsTheory` when `U = set ps`.
+
+This is the intended attachment point for showing:
+
+- `FPP_globalDirac`’s list-based checks imply `bottom_layer_ok g dirac (U_fast g)`
+  once we relate the SML enumeration `ParamHash.list` to `fast_list g`.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
