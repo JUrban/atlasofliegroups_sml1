@@ -92,6 +92,7 @@ val () = tryUse "atlas-scripts-sml/tits.sml"
 val () = tryUse "atlas-scripts-sml/test_unitarity.sml"
 val () = tryUse "atlas-scripts-sml/sp4.sml"
 val () = tryUse "atlas-scripts-sml/restricted_roots.sml"
+val () = tryUse "atlas-scripts-sml/tensor_product_sl2.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
    - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
