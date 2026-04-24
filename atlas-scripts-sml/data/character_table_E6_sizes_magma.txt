@@ -1,0 +1,27 @@
+# Generated from /project/atlas-scripts/character_table_E6.at
+# e6_sizes (Magma order): one int per line
+1
+36
+45
+270
+540
+80
+240
+480
+540
+540
+1620
+3240
+5184
+720
+1440
+1440
+1440
+1440
+2160
+4320
+6480
+5760
+5184
+4320
+4320

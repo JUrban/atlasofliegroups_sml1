@@ -1,0 +1,27 @@
+# Generated from /project/atlas-scripts/character_table_E6.at
+# e6_orders (Magma order): one int per line
+1
+2
+2
+2
+2
+3
+3
+3
+4
+4
+4
+4
+5
+6
+6
+6
+6
+6
+6
+6
+8
+9
+10
+12
+12

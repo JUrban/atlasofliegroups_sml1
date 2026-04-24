@@ -65,6 +65,8 @@ val () = tryUse "atlas-scripts-sml/deform_plus.sml"
 val () = tryUse "atlas-scripts-sml/KL_polynomial_matrices.sml"
 val () = tryUse "atlas-scripts-sml/extended_misc.sml"
 val () = tryUse "atlas-scripts-sml/bigMatrices.sml"
+val () = tryUse "atlas-scripts-sml/character_table_E6.sml"
+val () = tryUse "atlas-scripts-sml/character_table_E7.sml"
 
 (* Geometry / polytope helpers used by FPP code. *)
 val () = tryUse "atlas-scripts-sml/aff_cube.sml"
