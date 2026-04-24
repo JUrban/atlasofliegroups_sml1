@@ -107,6 +107,14 @@ In HOL4 this lemma is currently recorded (but still `cheat`ed) in:
 
 - `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`
 
+Progress note:
+
+- The forward direction (“lookup succeeds ⇒ membership”) is now proved as
+  `ph_lookup_state_SOME_imp_MEM_elems` in
+  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`.
+- The reverse direction (“membership ⇒ lookup succeeds”) is still a goal and
+  remains `CHEAT`-tainted via `MEM_elems_imp_ph_contains_state`.
+
 On the CakeML side, the analogous lemma is *proved* for the pure-state model:
 
 - `formal/cakeml/ParamHashSetGoalsScript.sml` (`ph_rep_ok_iff_MEM_elems`).
@@ -160,4 +168,3 @@ Current approach:
 4. Gradually tighten the FFI contracts
    - from “all Atlas primitives satisfy these laws” to smaller, more local
      assumptions per check/phase.
-

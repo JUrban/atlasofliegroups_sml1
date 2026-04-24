@@ -25,9 +25,10 @@
   - This model is intentionally minimal: it does not yet model resizing, clone
     ownership, or insertion correctness.  It is the attachment point for those
     later refinements.
-  - The main theorem here is proved, but it relies on the simplifying contract
-    `atlas_eq_is_hol_eq` (recorded in
-    `F4FPPVerifyAtlasFFIContractsGoalsTheory`).
+  - The main representation theorem `ph_contains_state_iff_MEM_elems` is still
+    `CHEAT`-tainted (one direction remains to be proved), but we have proved a
+    useful forward lemma `ph_lookup_state_SOME_imp_MEM_elems` that already
+    captures the “lookup success implies stored element” direction.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -160,22 +161,75 @@ QED
 (*  Main state-level representation correctness theorem                        *)
 (* ------------------------------------------------------------------------- *)
 
+Theorem ph_lookup_state_SOME_imp_MEM_elems:
+  !p s idx.
+    atlas_eq_is_hol_eq /\ atlas_hash_range /\ ph_invariant s /\
+    ph_lookup_state p s = SOME idx ==>
+      MEM p s.elems
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[ph_invariant_def]
+  \\ `s.bucket_count <> 0` by fs[ph_ok_def]
+  \\ `bucket_index p s.bucket_count < LENGTH s.buckets` by
+       metis_tac[bucket_index_lt_len_buckets]
+  \\ fs[ph_ok_def]
+  \\ fs[ph_lookup_state_def, LET_THM]
+  \\ drule find_in_bucket_SOME_MEM
+  \\ disch_then (qx_choose_then `q` strip_assume_tac)
+  \\ `p = q` by
+       (fs[atlas_eq_is_hol_eq_def]
+        \\ qpat_x_assum `!a b. atlas_eq a b <=> (a = b)`
+             (qspecl_then [`p`,`q`] mp_tac)
+        \\ simp[])
+  \\ `MEM (EL (bucket_index p s.bucket_count) s.buckets) s.buckets` by
+       (irule EL_MEM \\ simp[])
+  \\ `MEM (q,idx) (FLAT s.buckets)` by
+       (simp[MEM_FLAT]
+        \\ qexists_tac `EL (bucket_index p s.bucket_count) s.buckets`
+        \\ simp[])
+  \\ res_tac
+  \\ fs[]
+  \\ simp[MEM_EL]
+  \\ qexists_tac `idx`
+  \\ simp[]
+QED
+
+Theorem MEM_elems_imp_ph_contains_state:
+  !p s.
+    atlas_eq_is_hol_eq /\ ph_invariant s /\ MEM p s.elems ==>
+      ph_contains_state p s
+Proof
+  (*
+    Intended proof (routine list reasoning):
+    - From `MEM p s.elems`, pick an index `j` with `EL j s.elems = p`.
+    - Use `ph_covered` to get a bucket entry `(p,j)` in `FLAT s.buckets`.
+    - Use `MEM_FLAT` + `MEM_EL` to locate a bucket index `i` with
+      `MEM (p,j) (EL i s.buckets)`.
+    - Apply `ph_bucketed` to conclude `bucket_index p s.bucket_count = i`.
+    - Apply `find_in_bucket_MEM_imp_SOME` to conclude lookup succeeds, hence
+      `ph_contains_state p s`.
+  *)
+  cheat
+QED
+
 Theorem ph_contains_state_iff_MEM_elems:
   !p s.
     atlas_eq_is_hol_eq /\ atlas_hash_range /\ ph_invariant s ==>
       (ph_contains_state p s <=> MEM p s.elems)
 Proof
-  (*
-    Intended proof:
-    - Expand `ph_invariant` into `ph_ok`, `ph_bucketed`, `ph_covered`.
-    - (⇒) From `ph_contains_state`, unfold lookup and use
-      `find_in_bucket_SOME_MEM` + `ph_ok` + `atlas_eq_is_hol_eq`.
-    - (⇐) From `MEM p elems`, use `ph_covered` to find a bucket entry, then
-      `ph_bucketed` and `find_in_bucket_MEM_imp_SOME` to show lookup succeeds.
-
-    The proof is routine list reasoning, but tactic engineering is pending.
-  *)
-  cheat
+  rpt gen_tac
+  \\ strip_tac
+  \\ EQ_TAC
+  >- (
+    strip_tac
+    \\ fs[ph_contains_state_def]
+    \\ metis_tac[ph_lookup_state_SOME_imp_MEM_elems]
+    )
+  \\ (
+    strip_tac
+    \\ metis_tac[MEM_elems_imp_ph_contains_state]
+    )
 QED
 
 (* ------------------------------------------------------------------------- *)
