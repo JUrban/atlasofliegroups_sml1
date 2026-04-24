@@ -340,6 +340,21 @@ Records the split of `fast_program_succeeds` into:
 and composes the phase-level bridge theorems to derive refined fast obligations
 for the concrete target group `F4s`.
 
+#### `F4FPPVerifyEndToEndF4sGoalsTheory` (end-to-end theorem for `F4s`)
+
+File: `formal/hol4/F4FPPVerifyEndToEndF4sGoalsScript.sml`
+
+Composes:
+
+- the refined main theorem `refined_obligations_imply_equivalence`,
+- the fast phase-split bridge lemma specialized to `F4s`, and
+- the detailed slow-bridge lemma,
+
+to obtain the concrete end-user theorem:
+
+- if `fast_program_succeeds F4s dirac` and `slow_program_succeeds F4s` then
+  `U_slow F4s (D_slow F4s) = U_fast F4s` and `bottom_layer_total_ok` holds.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
