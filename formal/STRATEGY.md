@@ -296,6 +296,30 @@ the `FPP_globalDirac` pipeline. It records the intended bridge theorem:
 and then derives (without further cheating) the set-level consequences under
 `fast_param_set_ok`, including `bottom_layer_total_ok` for non-compact groups.
 
+#### `F4FPPVerifyFastComputeBridgeGoalsTheory` (fast compute-phase bridge)
+
+File: `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`
+
+Introduces a dedicated (currently `cheat`ed) bridge predicate
+`fast_compute_program_succeeds g` for the compute phase that builds the fast
+hash. It packages the intended compute obligations:
+
+- `fast_domain_is_pruned g` and `fast_witnessed_pruned g` (domain + witness),
+- `fast_param_set_ok g` (data structure represents `U_fast g`),
+
+and proves (OK) that these imply `fast_semantic_ok g`.
+
+#### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
+
+File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
+
+Splits the slow bridge into two explicit (currently `cheat`ed) obligations:
+
+- `slow_program_succeeds g` implies `slow_refinement_ok g` (domain refinement),
+- `slow_program_succeeds g` implies `slow_ok_components g` (0 misses),
+
+and provides an “OK” convenience lemma bundling them together.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
