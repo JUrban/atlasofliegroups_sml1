@@ -36,6 +36,8 @@ open pred_setTheory pred_setLib;
 open F4FPPVerifySMLBridgeGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifySlowRefineGoalsTheory;
+open F4FPPVerifySlowProgramDecomposeBridgeGoalsTheory;
+open F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifySlowBridgeDetailedGoals";
 
@@ -51,6 +53,13 @@ Proof
     - show the nested `for_domain` loop corresponds to `dom_list_from_components`
       (hence `dom_list_is_components` with an appropriate choice of `dom_list`)
   *)
+  (*
+    For now we keep this as a top-down bridge, but note it can be factored via
+    `F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory` by proving:
+      - `slow_component_lists_ok g`
+      - `slow_dom_list_agrees_components g`
+    from `slow_program_succeeds g`.
+  *)
   cheat
 QED
 
@@ -59,12 +68,10 @@ QED
 Theorem slow_program_succeeds_imp_slow_ok_components:
   !g. slow_program_succeeds g ==> slow_ok_components g
 Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - relate `SimplerVerifyF4FPP.triple_is_missing` to `missing_witness`
-    - relate the loop counter to `check_domain_fun`
-  *)
-  cheat
+  (* Now available as a derived (still cheat-tainted) lemma from the more
+     finely split obligations in
+     `F4FPPVerifySlowProgramDecomposeBridgeGoalsTheory`. *)
+  metis_tac[slow_program_succeeds_imp_slow_ok_components_decomposed]
 QED
 
 (* Convenience: the refined slow obligations used by
@@ -79,4 +86,3 @@ Proof
 QED
 
 val _ = export_theory ();
-

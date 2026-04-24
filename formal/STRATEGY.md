@@ -379,6 +379,19 @@ and defines three small bridge obligations:
 From these it proves (OK) that `slow_ok_components g` holds, and then records
 cheated lemmas stating that `slow_program_succeeds g` implies each obligation.
 
+#### `F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory` (slow refinement: dom_list vs slow loop)
+
+File: `formal/hol4/F4FPPVerifySlowRefinementBridgeDecomposeGoalsScript.sml`
+
+Decomposes the slow-side refinement bundle `slow_refinement_ok g` further by
+introducing an explicit intermediate agreement predicate:
+
+- `dom_list_is_slow_domain_list g`: `dom_list g = slow_domain_list g`
+
+Together with `slow_domain_list_is_components g` (from the previous theory),
+this yields `dom_list_is_components g`, and therefore (combined with component
+list correctness) yields `slow_refinement_ok g`.
+
 #### `F4FPPVerifyTargetGroupGoalsTheory` (fix the concrete `F4_s` instance)
 
 File: `formal/hol4/F4FPPVerifyTargetGroupGoalsScript.sml`
