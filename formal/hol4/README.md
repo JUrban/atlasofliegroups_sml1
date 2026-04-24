@@ -6,6 +6,7 @@ For a narrative description of the overall approach and refinement structure, se
 
 - `formal/STRATEGY.md`
 - `formal/hol4/GOALS.md`
+- `formal/hol4/CHEATS.md`
 
 **Build**
 ```sh
