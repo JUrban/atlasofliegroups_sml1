@@ -68,6 +68,7 @@ val () = tryUse "atlas-scripts-sml/extended_misc.sml"
 val () = tryUse "atlas-scripts-sml/bigMatrices.sml"
 val () = tryUse "atlas-scripts-sml/character_table_E6.sml"
 val () = tryUse "atlas-scripts-sml/character_table_E7.sml"
+val () = tryUse "atlas-scripts-sml/character_table_E8.sml"
 val () = tryUse "atlas-scripts-sml/e8_gap.sml"
 
 (* Geometry / polytope helpers used by FPP code. *)
