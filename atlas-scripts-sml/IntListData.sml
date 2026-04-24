@@ -74,5 +74,11 @@ structure IntListData = struct
     in
       (TextIO.closeIn input; result) handle e => (TextIO.closeIn input; raise e)
     end
-end
 
+  (* Load a flat list of integers from a fixture file. This accepts either:
+       - one integer per line, or
+       - multiple integers per line.
+     (comment/blank lines are ignored as in `loadIntLists`). *)
+  fun loadInts (path: string) : int list =
+    List.concat (loadIntLists path)
+end
