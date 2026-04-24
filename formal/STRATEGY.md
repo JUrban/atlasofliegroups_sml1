@@ -176,6 +176,27 @@ Proves an “OK” lemma composing the algorithmic and domain-refinement results
   if the component enumerators are correct and `slow_ok_components g` holds,
   then `complete_rel g (D_slow g) (U_fast g)`.
 
+#### `F4FPPVerifyAlgAtlasEqGoalsTheory` and `F4FPPVerifySlowRefineAtlasEqGoalsTheory` (slow checker modulo `atlas_eq`)
+
+Files:
+- `formal/hol4/F4FPPVerifyAlgAtlasEqGoalsScript.sml`
+- `formal/hol4/F4FPPVerifySlowRefineAtlasEqGoalsScript.sml`
+
+Motivation:
+- The real SML slow checker tests “membership in the fast set” via ParamHash,
+  which uses the Atlas C++ semantic equality (`atlas_param_equal`), not HOL `=`.
+- Therefore, the slow completeness contract is more naturally stated modulo
+  `atlas_eq`.
+
+What these theories introduce/prove (OK):
+- `check_domain_fun_atlas_eq`: a list-fold miss counter using
+  `missing_witness_atlas_eq` (from `F4FPPVerifySpecAtlasEqGoalsTheory`).
+- `slow_ok_components_atlas_eq g`:
+  `check_domain_fun_atlas_eq g (U_fast g) (dom_list_from_components g) = 0`.
+- `slow_ok_components_atlas_eq_imp_complete_rel_atlas_eq`:
+  under component correctness, `slow_ok_components_atlas_eq g` implies
+  `complete_rel_atlas_eq g (D_slow g) (U_fast g)`.
+
 #### `F4FPPVerifyComponentsBridgeGoalsTheory` (components → program outputs glue)
 
 File: `formal/hol4/F4FPPVerifyComponentsBridgeGoalsScript.sml`
@@ -207,6 +228,18 @@ derives the key equality using *only* the refined obligations:
   if `slow_refinement_ok`, `slow_ok_components`, `fast_semantic_ok`, and the
   bottom-layer predicate `bottom_layer_total_ok` hold, then `U_slow = U_fast`
   (and the bottom-layer predicate holds as well).
+
+#### `F4FPPVerifyRefinedMainAtlasEqGoalsTheory` (refined main theorem modulo `atlas_eq`)
+
+File: `formal/hol4/F4FPPVerifyRefinedMainAtlasEqGoalsScript.sml`
+
+Provides the refined-main theorem in the more realistic conclusion form:
+
+- `refined_obligations_imply_set_atlas_eq` (proved, OK):
+  under `atlas_eq_equiv`, `slow_refinement_ok`, `slow_ok_components_atlas_eq`,
+  `fast_semantic_ok`, and `bottom_layer_total_ok`, it derives
+  `set_atlas_eq (U_fast g) (U_slow g (D_slow g))` (plus the bottom-layer
+  postcondition).
 
 #### `F4FPPBottomLayerGoalsTheory` (bottom-layer checks spec)
 

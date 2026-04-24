@@ -48,6 +48,16 @@ Definition complete_rel_atlas_eq_def:
         mem_set_atlas_eq pi U_fast
 End
 
+(* A “missing witness” predicate, modulo `atlas_eq`: a triple witnesses a unitary
+   final term that is not represented (up to `atlas_eq`) in the fast set. *)
+Definition missing_witness_atlas_eq_def:
+  missing_witness_atlas_eq (g:group) (U_fast:param set) (t:triple) <=>
+    ?pi.
+      first_final_term (mk_param g t) = SOME pi /\
+      is_unitary pi /\
+      ~mem_set_atlas_eq pi U_fast
+End
+
 (* Fast soundness/witnessing, phrased modulo `atlas_eq`: every fast element is
    semantically equal to a slow-witnessed unitary final term. *)
 Definition sound_wrt_domain_atlas_eq_def:
@@ -67,6 +77,15 @@ Theorem complete_rel_atlas_eq_imp_slow_mem_mod_fast:
       !pi. pi IN U_slow g dom ==> mem_set_atlas_eq pi U_fast
 Proof
   rw[complete_rel_atlas_eq_def, U_slow_def]
+QED
+
+Theorem complete_rel_atlas_eq_iff_no_missing:
+  !g dom U_fast.
+    complete_rel_atlas_eq g dom U_fast <=>
+      !t. t IN dom ==> ~missing_witness_atlas_eq g U_fast t
+Proof
+  rw[complete_rel_atlas_eq_def, missing_witness_atlas_eq_def]
+  \\ metis_tac[]
 QED
 
 Theorem sound_wrt_domain_atlas_eq_imp_fast_mem_mod_slow:

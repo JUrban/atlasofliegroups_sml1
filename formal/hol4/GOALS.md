@@ -31,6 +31,9 @@ More realistic variant (modulo Atlas equality):
     - file: `formal/hol4/F4FPPVerifySpecAtlasEqGoalsScript.sml`
       (`complete_rel_atlas_eq`, `sound_wrt_domain_atlas_eq`,
       `sound_and_complete_atlas_eq_gives_set_atlas_eq`)
+  - refined-main composition (shows how refined obligations imply the modulo goal):
+    - file: `formal/hol4/F4FPPVerifyRefinedMainAtlasEqGoalsScript.sml`
+      (`refined_obligations_imply_set_atlas_eq`)
   - compatibility lemma (shows modulo statement follows from HOL equality under
     `atlas_eq_is_hol_eq`):
     - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`
