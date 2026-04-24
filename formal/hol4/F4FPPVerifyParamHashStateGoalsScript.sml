@@ -83,6 +83,15 @@ Definition ph_set_def:
   ph_set (s:ph_state) = set s.elems
 End
 
+(* Membership in a list modulo Atlas's semantic equality.
+
+   This is the representation notion that should be used when `atlas_eq` is a
+   non-trivial equivalence relation on parameters (the realistic situation for
+   an FFI-provided equality). *)
+Definition mem_atlas_eq_def:
+  mem_atlas_eq (p:param) (xs:param list) <=> ?q. MEM q xs /\ atlas_eq p q
+End
+
 (* A structural “hash-table invariant” analogous to the one used on the CakeML
    side: buckets agree with `bucket_index`, and indices point back into `elems`. *)
 Definition ph_ok_def:
@@ -155,6 +164,16 @@ Proof
   \\ fs[atlas_eq_is_hol_eq_def]
   \\ rw[]
   \\ metis_tac[]
+QED
+
+Theorem find_in_bucket_mem_atlas_eq_imp_SOME:
+  !p b.
+    (?q idx. MEM (q,idx) b /\ atlas_eq p q) ==> ?idx'. find_in_bucket p b = SOME idx'
+Proof
+  (* This is a small pure-list lemma, but the proof is currently left as a
+     placeholder: we only need it for the “membership modulo `atlas_eq`” path,
+     which is not yet on the critical path for the overall project. *)
+  cheat
 QED
 
 (* ------------------------------------------------------------------------- *)
@@ -257,6 +276,28 @@ Theorem paramhash_observes_state_and_invariant_imp_paramhash_rep_ok:
 Proof
   rw[paramhash_rep_ok_def, paramhash_observes_state_def]
   \\ metis_tac[ph_contains_state_iff_MEM_elems]
+QED
+
+(* A representation theorem that does not require the simplifying assumption
+   `atlas_eq_is_hol_eq`: membership is expressed modulo `atlas_eq`. *)
+Theorem ph_contains_state_iff_mem_atlas_eq_elems:
+  !p s.
+    atlas_hash_eq_ok /\ ph_invariant s ==>
+      (ph_contains_state p s <=> mem_atlas_eq p s.elems)
+Proof
+  (* This lemma is the next major generalisation step: it removes the
+     simplifying assumption `atlas_eq_is_hol_eq` by stating membership modulo
+     `atlas_eq`.  Completing it cleanly requires additional pure reasoning
+     about `find_in_bucket` and “hash respects eq” facts; for now we keep the
+     statement and treat the proof as a placeholder. *)
+  cheat
+QED
+
+Theorem atlas_eq_is_hol_eq_imp_mem_atlas_eq_eq_MEM:
+  atlas_eq_is_hol_eq ==> !p xs. mem_atlas_eq p xs <=> MEM p xs
+Proof
+  rw[mem_atlas_eq_def, atlas_eq_is_hol_eq_def]
+  \\ metis_tac[]
 QED
 
 val _ = export_theory ();

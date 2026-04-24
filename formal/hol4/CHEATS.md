@@ -79,6 +79,11 @@ Additional split (still `cheat`ed):
 Status:
 - The core representation lemma `ph_contains_state_iff_MEM_elems` is now proved
   (no `cheat`) under the invariant and `atlas_eq_is_hol_eq`.
+- Two follow-on generalisations are present but currently placeholders:
+  - `find_in_bucket_mem_atlas_eq_imp_SOME` (pure list reasoning about
+    `find_in_bucket` when membership is modulo `atlas_eq`).
+  - `ph_contains_state_iff_mem_atlas_eq_elems` (removes `atlas_eq_is_hol_eq` by
+    expressing membership via `mem_atlas_eq`).
 
 Rationale:
 - this is “pure data-structure reasoning” and should eventually be eliminated

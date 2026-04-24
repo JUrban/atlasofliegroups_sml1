@@ -111,14 +111,13 @@ To reduce the “cheat surface” we want the state-level lemma:
   list-membership:
   - `ph_contains_state p s <=> MEM p s.elems`.
 
-In HOL4 this lemma is currently recorded (but still `cheat`ed) in:
-
-- `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`
-
 Progress note:
 
 - The full representation lemma `ph_contains_state_iff_MEM_elems` is now proved
   in `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` (no `cheat`).
+- A follow-on strengthening that removes `atlas_eq_is_hol_eq` is also stated in
+  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` as
+  `ph_contains_state_iff_mem_atlas_eq_elems`, but is currently left as `cheat`.
 
 On the CakeML side, the analogous lemma is *proved* for the pure-state model:
 
