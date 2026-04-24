@@ -32,6 +32,16 @@ val _ = new_constant ("mk_param", ``:group -> triple -> param``);
 val _ = new_constant ("first_final_term", ``:param -> param option``);
 val _ = new_constant ("is_unitary", ``:param -> bool``);
 
+(* Abstract domain components (standing in for Atlas/C++ computations). *)
+val _ = new_constant ("KGB", ``:group -> num set``);
+val _ = new_constant ("FPP_lambdas", ``:group -> num -> ratvec set``);
+val _ = new_constant ("AllBarycenters", ``:group -> ratvec set``);
+
+Definition D_slow_def:
+  D_slow (g:group) : triple set =
+    {t | t.x IN KGB g /\ t.lambda IN FPP_lambdas g t.x /\ t.gamma IN AllBarycenters g}
+End
+
 Definition U_slow_def:
   U_slow (g:group) (dom:triple set) : param set =
     {pi | ?t. t IN dom /\ first_final_term (mk_param g t) = SOME pi /\ is_unitary pi}
