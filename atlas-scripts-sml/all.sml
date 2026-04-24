@@ -26,6 +26,7 @@ fun tryUse (path: string) : unit =
 
 (* Core utilities already ported. *)
 val () = tryUse "atlas-scripts-sml/basic.sml"
+val () = tryUse "atlas-scripts-sml/std_decs.sml"
 val () = tryUse "atlas-scripts-sml/generics.sml"
 val () = tryUse "atlas-scripts-sml/combinatorics.sml"
 val () = tryUse "atlas-scripts-sml/number_theory.sml"

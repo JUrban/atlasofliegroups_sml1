@@ -27,6 +27,7 @@ structure WeylgroupAT = struct
   type rootdatum = RootDatum.t
   type vec = int list
   type mat = IntMatrix.mat
+  type word = int list
 
   fun fail where' msg = raise Fail ("WeylgroupAT." ^ where' ^ ": " ^ msg)
 
@@ -149,4 +150,54 @@ structure WeylgroupAT = struct
   *)
   fun lengthens_left (rd: rootdatum, s: int, m: mat) : bool =
     is_positive_coroot (rd, rowVecMul (simple_coroot (rd, s), m))
+
+  (* Apply a Weyl word left-to-right as successive simple reflections acting on
+     weight vectors in X^* (the convention used internally by `from_simple`). *)
+  fun act_word_ltr (rd: rootdatum, w: word, v: vec) : vec =
+    List.foldl (fn (s, acc) => reflect_simple (rd, s, acc)) v w
+
+  (* Port of `.at`:
+       from_simple (RootDatum rd, vec alpha) = (WeylElt, vec)
+
+     Input: `alpha` is assumed to be a positive root (as a vector in X^*).
+     Output: `(w, beta)` where `beta` is a simple root and `w` is a word such
+     that applying the simple reflections in `w` (left-to-right) transforms the
+     input root into `beta`.
+
+     Notes
+     - The `.at` implementation returns a full `WeylElt`. In SML we return just
+       the word `int list`; callers can obtain the corresponding action matrix
+       if needed by multiplying reflection matrices. *)
+  fun from_simple (rd: rootdatum, alpha0: vec) : word * vec =
+    let
+      val ssr = RootDatum.semisimpleRank rd
+
+      fun lastDescentIndex (alpha: vec) : int =
+        let
+          fun loop i best =
+            if i = ssr then best
+            else
+              let
+                val av = simple_coroot (rd, i)
+              in
+                if RootDatum.dot (av, alpha) > 0 then loop (i + 1) i else loop (i + 1) best
+              end
+        in
+          loop 0 (~1)
+        end
+
+      fun loop (alpha: vec, acc: word) : word * vec =
+        let
+          val i = lastDescentIndex alpha
+          val () = if i >= 0 then () else fail "from_simple" "not a positive root"
+          val alpha_i = simple_root (rd, i)
+        in
+          if alpha = alpha_i then
+            (List.rev acc, alpha)
+          else
+            loop (reflect_simple (rd, i, alpha), i :: acc)
+        end
+    in
+      loop (alpha0, [])
+    end
 end
