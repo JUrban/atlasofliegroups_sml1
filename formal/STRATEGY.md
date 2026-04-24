@@ -126,7 +126,7 @@ Refines `dom_list_correct` into correctness of three component enumerations:
 - `KGB_list_correct`, `FPP_lambdas_list_correct`,
   `AllBarycenters_list_correct`.
 - Goal theorem:
-  - `dom_list_from_components_correct` (**currently `cheat`ed**)
+  - `dom_list_from_components_correct` (proved)
 
 This is meant to be discharged by routine list reasoning once we decide what
 the concrete enumeration functions are (SML, Atlas FFI, fixtures, etc.).

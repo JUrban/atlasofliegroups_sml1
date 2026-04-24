@@ -30,6 +30,13 @@ Proof
   Induct_on `xs` \\ simp[]
 QED
 
+Theorem MEM_FLAT_MAP[simp]:
+  !f xs x.
+    MEM x (FLAT (MAP f xs)) <=> ?y. MEM y xs /\ MEM x (f y)
+Proof
+  simp[MEM_FLAT, MEM_MAP] \\ metis_tac[]
+QED
+
 (* Abstract list-valued enumerators to be refined later. *)
 val _ = new_constant ("KGB_list", ``:group -> num list``);
 val _ = new_constant ("FPP_lambdas_list", ``:group -> num -> ratvec list``);
@@ -69,16 +76,12 @@ Theorem dom_list_from_components_correct:
     AllBarycenters_list_correct g ==>
       set (dom_list_from_components g) = D_slow g
 Proof
-  (*
-    Goal-level lemma: once we pin down concrete enumerators for `KGB`,
-    `FPP_lambdas`, and `AllBarycenters` as lists, the domain list produced by
-    the nested `MAP/FLAT` construction should represent exactly `D_slow`.
-
-    This should be provable with routine list/set reasoning (unfolding `set`,
-    using `MEM_MAP`, `MEM_FLAT`, and the component-correctness equalities), but
-    we keep it as a top-down obligation for now.
-  *)
-  cheat
+  rw[KGB_list_correct_def, FPP_lambdas_list_correct_def, AllBarycenters_list_correct_def]
+  \\ rw[EXTENSION]
+  \\ Cases_on `x`
+  \\ simp[D_slow_def, dom_list_from_components_def, MEM_MAP]
+  \\ simp[GSYM IN_set]
+  \\ fs[triple_component_equality]
 QED
 
 val _ = export_theory ();
