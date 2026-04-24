@@ -283,6 +283,19 @@ and provides a simple glue lemma showing that, once `fast_param_set_ok` holds,
 proving the SML-style predicate `bottom_layer_ok_param_set g dirac (fast_param_set g)`
 is sufficient to conclude `bottom_layer_ok g dirac (U_fast g)`.
 
+#### `F4FPPVerifyGlobalDiracBridgeGoalsTheory` (bottom-layer bridge)
+
+File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
+
+Introduces a dedicated (currently `cheat`ed) bridge predicate
+`bottom_layer_program_succeeds g dirac` representing successful execution of
+the `FPP_globalDirac` pipeline. It records the intended bridge theorem:
+
+- success implies `bottom_layer_ok_param_set g dirac (fast_param_set g)`
+
+and then derives (without further cheating) the set-level consequences under
+`fast_param_set_ok`, including `bottom_layer_total_ok` for non-compact groups.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
