@@ -100,6 +100,13 @@ ParamHash obligations.
   - this is the ideal attachment point for a CakeML proof of the ParamHash
     algorithmic core, plus explicit Atlas hash/equality contracts.
 
+Modulo-`atlas_eq` variant (preferred long-term statement):
+
+- `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
+  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+  - same bridge shape, but the “stores-U-fast” clause is stated as
+    `set_atlas_eq (U_fast g) (set (paramhash_list g))`.
+
 Useful refinement split (for proof engineering):
 
 - `paramhash_observation_witness g`: there exists an abstract state matching the

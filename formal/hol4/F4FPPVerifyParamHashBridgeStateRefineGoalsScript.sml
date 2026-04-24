@@ -80,6 +80,21 @@ Proof
   \\ metis_tac[paramhash_observes_state_and_invariant_imp_paramhash_rep_ok]
 QED
 
+(* More realistic equality: extensional correctness modulo `atlas_eq`. *)
+Theorem paramhash_state_ok_imp_paramhash_rep_ok_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\ paramhash_state_ok g ==> paramhash_rep_ok_atlas_eq g
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ qpat_x_assum `paramhash_state_ok g` mp_tac
+  \\ simp[paramhash_state_ok_def]
+  \\ strip_tac
+  \\ rw[paramhash_rep_ok_atlas_eq_def]
+  \\ fs[paramhash_observes_state_def]
+  \\ simp[ph_contains_state_iff_mem_atlas_eq_elems]
+QED
+
 (* Bridge obligation: fast compute success implies the existence of such a
    witness state.  This is where a future CakeML/translator proof will attach. *)
 Theorem fast_compute_program_succeeds_imp_paramhash_state_ok:
@@ -144,6 +159,16 @@ Theorem fast_compute_program_succeeds_imp_paramhash_rep_ok_via_state:
 Proof
   rpt strip_tac
   \\ match_mp_tac paramhash_state_ok_imp_paramhash_rep_ok
+  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_state_ok]
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_rep_ok_atlas_eq_via_state:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_rep_ok_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac paramhash_state_ok_imp_paramhash_rep_ok_atlas_eq
   \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_state_ok]
 QED
 

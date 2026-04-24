@@ -45,5 +45,15 @@ Proof
   \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_state_factored]
 QED
 
-val _ = export_theory ();
+(* Modulo-`atlas_eq` variant: avoid `atlas_eq_is_hol_eq` in the ParamHash layer. *)
+Theorem fast_compute_program_succeeds_imp_paramhash_obligations_factored_atlas_eq_via_state:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_factored_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac paramhash_state_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
+  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq]
+QED
 
+val _ = export_theory ();

@@ -520,6 +520,13 @@ It proves (modulo the state lemma) that this implies `paramhash_rep_ok g` under
 `atlas_eq_is_hol_eq` + `atlas_hash_range`, and records the cheated bridge
 `fast_compute_program_succeeds ⇒ paramhash_state_ok`.
 
+More realistic equality:
+
+- It also proves a modulo-`atlas_eq` variant:
+  `atlas_hash_eq_ok ∧ paramhash_state_ok g ⇒ paramhash_rep_ok_atlas_eq g`,
+  using the (currently cheat-tainted) state lemma
+  `ph_contains_state_iff_mem_atlas_eq_elems`.
+
 #### `F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory` (compute success ⇒ state-level ParamHash bundle)
 
 File: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
@@ -534,6 +541,15 @@ implies the earlier extensional bundle `paramhash_obligations_factored g`, and
 records the cheated bridge:
 
 - `fast_compute_program_succeeds g ⇒ paramhash_obligations_state_factored g`.
+
+Modulo-`atlas_eq` variant:
+
+- It also introduces `paramhash_obligations_state_factored_atlas_eq g` where the
+  “stores-U-fast” clause is stated as a set equality modulo `atlas_eq`:
+  `paramhash_stores_U_fast_atlas_eq g`.
+- Under `atlas_hash_eq_ok` it implies `paramhash_obligations_factored_atlas_eq g`,
+  and a separate lemma shows that under `atlas_eq_is_hol_eq` this implies the
+  plain `paramhash_obligations_factored g`.
 
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 

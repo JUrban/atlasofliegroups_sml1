@@ -72,6 +72,10 @@ Additional split (still `cheat`ed):
   - `fast_compute_program_succeeds_imp_paramhash_observation_witness`
   - `fast_compute_program_succeeds_imp_paramhash_invariant_on_observation`
 
+Modulo-`atlas_eq` bridge (still `cheat`ed):
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+  - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
+
 ## E. ParamHash state model
 
 - File: `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`

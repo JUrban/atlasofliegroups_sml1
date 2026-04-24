@@ -30,6 +30,7 @@ open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
 
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPBottomLayerParamSetGoalsTheory;
@@ -70,6 +71,72 @@ Proof
        (rw[fast_compute_paramhash_ok_def]
         \\ match_mp_tac paramhash_state_factored_imp_paramhash_obligations_factored
         \\ metis_tac[])
+
+  (* Combine semantic + ParamHash obligations into the full compute bundle. *)
+  \\ `fast_compute_obligations g` by
+       metis_tac[fast_compute_domain_and_paramhash_ok_imp_fast_compute_obligations]
+
+  (* Derive the refined-fast bundle used by the main theorem. *)
+  \\ `fast_semantic_ok g` by
+       metis_tac[fast_compute_obligations_imp_fast_semantic_ok]
+
+  (* Derive the param_set representation invariant for the bottom layer. *)
+  \\ `fast_param_set_ok g` by
+       metis_tac[fast_compute_obligations_imp_fast_param_set_ok]
+
+  (* Bottom-layer: param_set predicate + representation invariant gives set-level check. *)
+  \\ `bottom_layer_ok g dirac (U_fast g)` by
+       metis_tac[fast_param_set_ok_and_bottom_layer_ok_param_set_imp_bottom_layer_ok]
+
+  (* Non-compact case: promote to `bottom_layer_total_ok`. *)
+  \\ `bottom_layer_total_ok g dirac (U_fast g)` by
+       (rw[bottom_layer_total_ok_def] \\ metis_tac[])
+
+  \\ metis_tac[refined_obligations_imply_equivalence]
+QED
+
+(* Variant: state-level ParamHash bundle stated modulo `atlas_eq`.
+
+   This is the next step in removing `atlas_eq_is_hol_eq` from the ParamHash
+   part of the story: the only remaining use of `atlas_eq_is_hol_eq` here is to
+   convert modulo-`atlas_eq` ParamHash obligations into the plain ones used by
+   the rest of the existing goal stack. *)
+Theorem obligations_stack_imply_equivalence_paramhash_atlas_eq:
+  !g dirac.
+    (* Alignment contract (still used by the non-modulo layers of this stack). *)
+    atlas_eq_is_hol_eq /\
+
+    (* Hash/equality contracts for the modulo-`atlas_eq` ParamHash bundle. *)
+    atlas_hash_eq_ok /\
+
+    (* Fast compute-phase obligations: semantic domain/witness part. *)
+    fast_compute_domain_ok g /\
+
+    (* Fast compute-phase obligations: ParamHash state-level bundle, modulo equality. *)
+    paramhash_obligations_state_factored_atlas_eq g /\
+
+    (* Bottom-layer checker obligations, phrased at the param_set interface. *)
+    bottom_layer_ok_param_set g dirac (fast_param_set g) /\
+
+    (* Non-compactness to select the “checks” branch of `bottom_layer_total_ok`. *)
+    ~group_is_compact g /\
+
+    (* Slow-side refined obligations. *)
+    slow_refinement_ok g /\
+    slow_ok_components g ==>
+      U_slow g (D_slow g) = U_fast g /\
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rpt gen_tac
+  \\ rpt strip_tac
+
+  (* Derive the fast compute-phase “ParamHash ok” obligation from the modulo bundle. *)
+  \\ `fast_compute_paramhash_ok g` by
+       (rw[fast_compute_paramhash_ok_def]
+        \\ metis_tac
+             [ paramhash_state_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
+             , atlas_eq_is_hol_eq_and_paramhash_obligations_factored_atlas_eq_imp_factored
+             ])
 
   (* Combine semantic + ParamHash obligations into the full compute bundle. *)
   \\ `fast_compute_obligations g` by
