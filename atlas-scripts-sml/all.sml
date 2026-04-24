@@ -77,6 +77,7 @@ val () = tryUse "atlas-scripts-sml/bruhat.sml"
 val () = tryUse "atlas-scripts-sml/standardize.sml"
 val () = tryUse "atlas-scripts-sml/K_norm.sml"
 val () = tryUse "atlas-scripts-sml/genuine.sml"
+val () = tryUse "atlas-scripts-sml/K_types.sml"
 
 (* FFI-facing representation utilities (partial ports). *)
 val () = tryUse "atlas-scripts-sml/representations.sml"

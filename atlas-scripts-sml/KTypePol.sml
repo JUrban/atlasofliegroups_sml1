@@ -96,6 +96,51 @@ structure KTypePol = struct
         q
     end
 
+  (* Construct a singleton polynomial `e + s*s` times the given K-type.
+     Returns a new owned handle (caller must free). *)
+  fun singleton (t: AtlasFFI.ktype, e: int, s: int) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_singleton (t, e, s)
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.singleton: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
+  (* Branch a `KTypePol` up to height `cutoff`, mirroring Atlas `branch(P,cutoff)`.
+     Returns a new owned handle (caller must free). *)
+  fun branch (pol: ktypepol, cutoff: int) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_branch (pol, cutoff)
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.branch: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
+  (* Extract coefficient parts, returning new owned handles. *)
+  fun intPart (pol: ktypepol) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_int_part pol
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.intPart: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
+  fun sPart (pol: ktypepol) : ktypepol =
+    let
+      val q = AtlasFFI.atlas_ktypepol_s_part pol
+    in
+      if q = Foreign.Memory.null then
+        raise Fail ("KTypePol.sPart: failed: " ^ AtlasFFI.atlas_last_error ())
+      else
+        q
+    end
+
   (* Test purity of a single split coefficient `(e,s)` as in `basic.at`:
      “pure” means `e=0` or `s=0`. *)
   fun coefIsPure (t: term) : bool = #e t = 0 orelse #s t = 0

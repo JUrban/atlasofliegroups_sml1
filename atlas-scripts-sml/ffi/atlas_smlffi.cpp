@@ -5418,6 +5418,128 @@ extern "C" void* atlas_ktypepol_scale_split(void* kt_handle, int e, int s)
   }
 }
 
+extern "C" void* atlas_ktypepol_singleton(void* t_handle, int e, int s)
+{
+  try
+  {
+    if (t_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_singleton: null K_type handle";
+      return nullptr;
+    }
+    const auto* t = static_cast<const KTypeHandle*>(t_handle);
+    if (t->group == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_singleton: null group pointer in K_type";
+      return nullptr;
+    }
+
+    atlas::K_repr::K_type_pol poly(t->t, atlas::arithmetic::Split_integer(e, s));
+    return static_cast<void*>(new KTypePolHandle(t->group, std::move(poly)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_ktypepol_int_part(void* kt_handle)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_int_part: null handle";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    atlas::K_repr::K_type_pol result(kt->poly.cmp());
+    for (const auto& term : kt->poly)
+      result.add_term(term.first, atlas::arithmetic::Split_integer(term.second.e(), 0));
+    return static_cast<void*>(new KTypePolHandle(kt->group, std::move(result)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_ktypepol_s_part(void* kt_handle)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_s_part: null handle";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    atlas::K_repr::K_type_pol result(kt->poly.cmp());
+    for (const auto& term : kt->poly)
+      result.add_term(term.first, atlas::arithmetic::Split_integer(term.second.s(), 0));
+    return static_cast<void*>(new KTypePolHandle(kt->group, std::move(result)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
+extern "C" void* atlas_ktypepol_branch(void* kt_handle, int cutoff)
+{
+  try
+  {
+    if (kt_handle == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_branch: null handle";
+      return nullptr;
+    }
+    if (cutoff < 0)
+    {
+      g_last_error = "atlas_ktypepol_branch: negative cutoff";
+      return nullptr;
+    }
+    const auto* kt = static_cast<const KTypePolHandle*>(kt_handle);
+    if (kt->group == nullptr)
+    {
+      g_last_error = "atlas_ktypepol_branch: null group pointer in polynomial";
+      return nullptr;
+    }
+
+    atlas::repr::Rep_context rc(kt->group->G);
+    auto out = rc.branch(kt->poly.copy(), static_cast<atlas::repr::level>(cutoff));
+    return static_cast<void*>(new KTypePolHandle(kt->group, std::move(out)));
+  }
+  catch (const std::exception& e)
+  {
+    g_last_error = e.what();
+    return nullptr;
+  }
+  catch (...)
+  {
+    g_last_error = "unknown C++ exception";
+    return nullptr;
+  }
+}
+
 static inline bool is_power_of_two_u64(std::uint64_t x) { return x != 0 && ((x & (x - 1)) == 0); }
 
 extern "C" int atlas_ktypepol_equal(void* a_handle, void* b_handle)
