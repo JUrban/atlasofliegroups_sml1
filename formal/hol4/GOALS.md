@@ -120,9 +120,15 @@ Progress note:
 
 - The full representation lemma `ph_contains_state_iff_MEM_elems` is now proved
   in `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` (no `cheat`).
-- A follow-on strengthening that removes `atlas_eq_is_hol_eq` is also stated in
-  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` as
-  `ph_contains_state_iff_mem_atlas_eq_elems`, but is currently left as `cheat`.
+- The more realistic strengthening (membership modulo Atlas semantic equality
+  `atlas_eq`) is developed using:
+  - `formal/hol4/F4FPPVerifyAtlasEqListGoalsScript.sml` (`mem_atlas_eq`), and
+  - `formal/hol4/F4FPPVerifyAtlasEqSetGoalsScript.sml` (`set_atlas_eq`,
+    `atlas_eq_closure`).
+  The key state lemma `ph_contains_state_iff_mem_atlas_eq_elems` is stated in
+  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` and is still
+  `cheat`-tainted via the missing reverse direction (the forward direction is
+  proved).
 
 On the CakeML side, the analogous lemma is *proved* for the pure-state model:
 

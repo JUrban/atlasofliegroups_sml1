@@ -36,10 +36,18 @@ open pred_setTheory pred_setLib;
 
 open F4FPPVerifyGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
 open F4FPPVerifyAtlasEqListGoalsTheory;
+open F4FPPVerifyAtlasEqSetGoalsTheory;
 open F4FPPVerifyParamHashBridgeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeDecomposeGoals";
+
+Theorem IN_set_MEM[simp]:
+  !x xs. x IN set xs <=> MEM x xs
+Proof
+  Induct_on `xs` \\ simp[]
+QED
 
 (* (A) Data-structure correctness: `contains` agrees with membership in `list`. *)
 Definition paramhash_rep_ok_def:
@@ -53,6 +61,14 @@ Definition paramhash_rep_ok_atlas_eq_def:
     !p. paramhash_contains g p <=> mem_atlas_eq p (paramhash_list g)
 End
 
+Theorem paramhash_rep_ok_atlas_eq_iff_mem_set_atlas_eq:
+  !g.
+    paramhash_rep_ok_atlas_eq g <=>
+      !p. paramhash_contains g p <=> mem_set_atlas_eq p (set (paramhash_list g))
+Proof
+  rw[paramhash_rep_ok_atlas_eq_def, mem_atlas_eq_iff_mem_set_atlas_eq_set]
+QED
+
 Theorem atlas_eq_is_hol_eq_and_paramhash_rep_ok_atlas_eq_imp_paramhash_rep_ok:
   !g. atlas_eq_is_hol_eq /\ paramhash_rep_ok_atlas_eq g ==> paramhash_rep_ok g
 Proof
@@ -64,6 +80,32 @@ QED
 Definition paramhash_stores_U_fast_def:
   paramhash_stores_U_fast g <=>
     !p. p IN U_fast g <=> MEM p (paramhash_list g)
+End
+
+(* More realistic semantic agreement: equality of represented sets modulo `atlas_eq`. *)
+Definition paramhash_stores_U_fast_atlas_eq_def:
+  paramhash_stores_U_fast_atlas_eq g <=>
+    set_atlas_eq (U_fast g) (set (paramhash_list g))
+End
+
+Theorem atlas_eq_is_hol_eq_and_paramhash_stores_U_fast_imp_atlas_eq:
+  !g.
+    atlas_eq_is_hol_eq /\ paramhash_stores_U_fast g ==>
+      paramhash_stores_U_fast_atlas_eq g
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ rw[paramhash_stores_U_fast_atlas_eq_def, set_atlas_eq_def]
+  \\ fs[paramhash_stores_U_fast_def]
+  \\ simp[atlas_eq_is_hol_eq_imp_mem_set_atlas_eq_eq_IN, atlas_eq_is_hol_eq_imp_mem_atlas_eq_eq_MEM]
+QED
+
+(* Convenience bundle: ParamHash correctness obligations stated modulo `atlas_eq`. *)
+Definition paramhash_obligations_factored_atlas_eq_def:
+  paramhash_obligations_factored_atlas_eq g <=>
+    fast_param_set_is_paramhash g /\
+    paramhash_rep_ok_atlas_eq g /\
+    paramhash_stores_U_fast_atlas_eq g
 End
 
 Theorem paramhash_rep_ok_and_stores_U_fast_imp_paramhash_ok:
@@ -100,6 +142,32 @@ Theorem paramhash_obligations_factored_imp_paramhash_ok:
 Proof
   rw[paramhash_obligations_factored_def]
   \\ metis_tac[paramhash_rep_ok_and_stores_U_fast_imp_paramhash_ok]
+QED
+
+Theorem atlas_eq_is_hol_eq_and_paramhash_obligations_factored_atlas_eq_imp_factored:
+  !g.
+    atlas_eq_is_hol_eq /\ paramhash_obligations_factored_atlas_eq g ==>
+      paramhash_obligations_factored g
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[]
+  \\ simp[paramhash_obligations_factored_def]
+  \\ conj_tac >- fs[paramhash_obligations_factored_atlas_eq_def]
+  \\ conj_tac >- (
+    fs[paramhash_obligations_factored_atlas_eq_def]
+    \\ metis_tac[atlas_eq_is_hol_eq_and_paramhash_rep_ok_atlas_eq_imp_paramhash_rep_ok]
+  )
+  \\ simp[paramhash_stores_U_fast_def]
+  \\ gen_tac
+  \\ fs[paramhash_obligations_factored_atlas_eq_def]
+  \\ `U_fast g = set (paramhash_list g)` by (
+       fs[paramhash_stores_U_fast_atlas_eq_def]
+       \\ drule atlas_eq_is_hol_eq_imp_set_atlas_eq_eq_eq
+       \\ disch_then (qspecl_then [`U_fast g`, `set (paramhash_list g)`] mp_tac)
+       \\ simp[]
+     )
+  \\ fs[]
 QED
 
 (* --- Bridge from compute-phase success (currently CHEATED) --- *)

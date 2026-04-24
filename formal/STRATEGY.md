@@ -454,6 +454,17 @@ Factors `paramhash_ok g` into two more re-usable obligations:
 - `paramhash_stores_U_fast g`: `∀p. p ∈ U_fast g ⇔ MEM p (paramhash_list g)`
   (algorithmic agreement with the goal-layer fast set).
 
+More realistic (Atlas-facing) variants are also introduced:
+
+- `paramhash_rep_ok_atlas_eq g`: `paramhash_contains g p ⇔ mem_atlas_eq p (paramhash_list g)`
+- `paramhash_stores_U_fast_atlas_eq g`: `set_atlas_eq (U_fast g) (set (paramhash_list g))`
+- `paramhash_obligations_factored_atlas_eq g`: the corresponding bundled form.
+
+These support a top-down story where end-to-end equivalence is stated modulo the
+FFI-provided semantic equality `atlas_eq`. For sanity, the theory proves that
+under the simplifying assumption `atlas_eq_is_hol_eq`, the modulo-`atlas_eq`
+obligations imply the plain ones.
+
 It then proves (OK) that these imply `paramhash_ok g`, and records cheated
 “compute success ⇒ obligations” lemmas in the split form. The intent is:
 
