@@ -24,6 +24,11 @@ From these, the end goal is:
 - `U_slow g (D_slow g) = U_fast g`, and
 - `bottom_layer_total_ok g dirac (U_fast g)`.
 
+More realistic variant (modulo Atlas equality):
+
+- `set_atlas_eq (U_slow g (D_slow g)) (U_fast g)`
+  - file: `formal/hol4/F4FPPVerifyGoalsAtlasEqScript.sml`
+
 There are two main “end-to-end” routes in HOL4:
 
 1. **Refined-main route** (domain + list-model + bottom-layer predicates)
