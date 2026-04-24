@@ -162,6 +162,22 @@ Proves an “OK” lemma composing the algorithmic and domain-refinement results
   if the component enumerators are correct and `slow_ok_components g` holds,
   then `complete_rel g (D_slow g) (U_fast g)`.
 
+#### `F4FPPVerifyComponentsBridgeGoalsTheory` (components → program outputs glue)
+
+File: `formal/hol4/F4FPPVerifyComponentsBridgeGoalsScript.sml`
+
+Introduces the explicit refinement assumption:
+
+- `dom_list_is_components g`:
+  `dom_list g = dom_list_from_components g`.
+
+And proves “OK” glue lemmas:
+
+- `dom_list_is_components_imp_dom_list_correct`:
+  under component correctness, this implies `dom_list_correct g`.
+- `dom_list_is_components_imp_slow_ok_iff`:
+  `slow_ok g` is equivalent to the component-based predicate `slow_ok_components g`.
+
 #### `F4FPPBottomLayerGoalsTheory` (bottom-layer checks spec)
 
 File: `formal/hol4/F4FPPBottomLayerGoalsScript.sml`
