@@ -121,4 +121,26 @@ structure WeylWord = struct
       else
         y
     end
+
+  (* Cross action `cross(KGBElt x, WeylElt w)` (as in `basic.at`).
+
+     In the `.at` code this iterates over `w.word` in forward order, applying
+     the simple-generator cross action at each step.
+
+     We implement this directly using the C++ shim `atlas_kgb_cross` for a
+     single generator. *)
+  fun kgbCrossRight (g: AtlasFFI.group, x: int, w: t) : int =
+    let
+      fun step (s: int, acc: int) =
+        let
+          val y = AtlasFFI.atlas_kgb_cross (g, s, acc)
+        in
+          if y < 0 then
+            raise Fail ("WeylWord.kgbCrossRight: cross failed: " ^ AtlasFFI.atlas_last_error ())
+          else
+            y
+        end
+    in
+      List.foldl step x w
+    end
 end
