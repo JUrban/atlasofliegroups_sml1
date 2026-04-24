@@ -42,6 +42,20 @@ Definition complete_rel_def:
     !t pi. t IN dom /\ first_final_term (mk_param g t) = SOME pi /\ is_unitary pi ==> pi IN U_fast
 End
 
+Definition missing_witness_def:
+  missing_witness (g:group) (U_fast:param set) (t:triple) <=>
+    ?pi. first_final_term (mk_param g t) = SOME pi /\ is_unitary pi /\ pi NOTIN U_fast
+End
+
+Theorem complete_rel_iff_no_missing:
+  !g dom U_fast.
+    complete_rel g dom U_fast <=>
+    !t. t IN dom ==> ~missing_witness g U_fast t
+Proof
+  rw [complete_rel_def, missing_witness_def] >>
+  metis_tac []
+QED
+
 Theorem complete_rel_imp_subset:
   !g dom U_fast. complete_rel g dom U_fast ==> U_slow g dom SUBSET U_fast
 Proof

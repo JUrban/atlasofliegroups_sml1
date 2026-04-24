@@ -15,4 +15,7 @@ verify_f4_fpp
 
 # Downloaded external documentation (local reference only)
 doc/atlasofliegroups-docs/
+
+# HOL4/CakeML build artifacts (Holmake)
+.hol/
 hol/
