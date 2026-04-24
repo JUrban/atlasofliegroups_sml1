@@ -361,6 +361,24 @@ Splits the slow bridge into two explicit (currently `cheat`ed) obligations:
 
 and provides an “OK” convenience lemma bundling them together.
 
+#### `F4FPPVerifySlowProgramDecomposeBridgeGoalsTheory` (slow bridge, finer split)
+
+File: `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeGoalsScript.sml`
+
+Introduces abstract constants for the slow program’s internal structure:
+
+- `slow_domain_list g`: the triple enumeration order (if materialized),
+- `slow_missing g t`: the per-triple “missing witness?” predicate,
+
+and defines three small bridge obligations:
+
+- `slow_missing_ok g`: `slow_missing g t ⇔ missing_witness g (U_fast g) t`
+- `slow_domain_list_is_components g`: `slow_domain_list g = dom_list_from_components g`
+- `slow_ok_sml g`: `LENGTH (FILTER (slow_missing g) (slow_domain_list g)) = 0`
+
+From these it proves (OK) that `slow_ok_components g` holds, and then records
+cheated lemmas stating that `slow_program_succeeds g` implies each obligation.
+
 #### `F4FPPVerifyTargetGroupGoalsTheory` (fix the concrete `F4_s` instance)
 
 File: `formal/hol4/F4FPPVerifyTargetGroupGoalsScript.sml`
