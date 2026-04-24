@@ -459,6 +459,21 @@ It proves (modulo the state lemma) that this implies `paramhash_rep_ok g` under
 `atlas_eq_is_hol_eq` + `atlas_hash_range`, and records the cheated bridge
 `fast_compute_program_succeeds ⇒ paramhash_state_ok`.
 
+#### `F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory` (compute success ⇒ state-level ParamHash bundle)
+
+File: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+
+Introduces a “state-factored” ParamHash bundle:
+
+- `paramhash_obligations_state_factored g`:
+  `fast_param_set_is_paramhash g ∧ paramhash_state_ok g ∧ paramhash_stores_U_fast g`.
+
+Then proves (OK) that under `atlas_eq_is_hol_eq` + `atlas_hash_range` this
+implies the earlier extensional bundle `paramhash_obligations_factored g`, and
+records the cheated bridge:
+
+- `fast_compute_program_succeeds g ⇒ paramhash_obligations_state_factored g`.
+
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
