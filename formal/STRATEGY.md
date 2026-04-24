@@ -445,6 +445,20 @@ It then defines a wiring predicate `paramhash_observes_state` and derives:
 This is the intended attachment point for a future CakeML/translator proof
 that the concrete imperative ParamHash state satisfies `ph_invariant`.
 
+#### `F4FPPVerifyParamHashBridgeStateRefineGoalsTheory` (ParamHash state witness obligation)
+
+File: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
+
+Introduces a named intermediate bridge obligation:
+
+- `paramhash_state_ok g`: there exists an abstract `ph_state` witness `s` such
+  that `ph_invariant s` holds and `paramhash_list/contains` are exactly the
+  observations of `s`.
+
+It proves (modulo the state lemma) that this implies `paramhash_rep_ok g` under
+`atlas_eq_is_hol_eq` + `atlas_hash_range`, and records the cheated bridge
+`fast_compute_program_succeeds ⇒ paramhash_state_ok`.
+
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
