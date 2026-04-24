@@ -111,13 +111,9 @@ Theorem fast_and_slow_programs_succeed_gives_equivalence:
       bottom_layer_total_ok g dirac (U_fast g)
 Proof
   (*
-    This lemma should be provable from:
-      - `fast_and_slow_programs_succeed_imp_full_ok`
-      - `full_ok_implies_set_equality`
-      - `full_ok_implies_bottom_layer_total_ok`
-
-    but we keep it `cheat`ed for now because this entire theory is a
-    top-down “bridge obligations” layer.
+    Intended proof sketch (once the bridge lemmas are proved without `cheat`):
+    - derive `full_ok g dirac` from slow/fast program success
+    - apply `full_ok_implies_set_equality` and `full_ok_implies_bottom_layer_total_ok`
   *)
   cheat
 QED
