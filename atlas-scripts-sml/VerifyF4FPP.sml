@@ -19,9 +19,14 @@ use "atlas-scripts-sml/FPP_globalDirac.sml";
     which loads this file and calls `VerifyF4FPP.run()`.
 *)
 structure VerifyF4FPP = struct
+  type result =
+    { initial_size_ok: bool
+    , final_size: int
+    }
+
   (* Run the full verification pipeline for `F4_s`. Prints progress and
      consistency checks; raises `Fail` on internal errors. *)
-  fun run () : unit =
+  fun compute () : result =
     let
       val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0)
       val uhash = ParamHash.create 4096
@@ -42,14 +47,23 @@ structure VerifyF4FPP = struct
 
       val () = F4_FPP_points_compute.computeAllIntoParamHash (g, uhash)
 
-      val () = TextIO.print (Bool.toString (ParamHash.size uhash = 1864) ^ "\n")
+      val initialOk = (ParamHash.size uhash = 1864)
 
       val () = FPP_globalDirac.FPP_unitary_hash_bottom_layer_param_hash (g, uhash)
 
-      val () = TextIO.print (Int.toString (ParamHash.size uhash) ^ "\n")
+      val finalSize = ParamHash.size uhash
 
       val () = ParamHash.freeAll uhash
       val () = AtlasFFI.atlas_group_free g
+    in
+      {initial_size_ok = initialOk, final_size = finalSize}
+    end
+
+  fun run () : unit =
+    let
+      val r = compute ()
+      val () = TextIO.print (Bool.toString (#initial_size_ok r) ^ "\n")
+      val () = TextIO.print (Int.toString (#final_size r) ^ "\n")
     in
       ()
     end

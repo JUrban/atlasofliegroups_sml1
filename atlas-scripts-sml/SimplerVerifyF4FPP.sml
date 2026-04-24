@@ -39,11 +39,13 @@ use "atlas-scripts-sml/F4_FPP_lambdas.sml";
 use "atlas-scripts-sml/F4_FPP_points_compute.sml";
 use "atlas-scripts-sml/representations.sml";
 use "atlas-scripts-sml/ParamFinals.sml";
+use "atlas-scripts-sml/F4FPPParamConstruct.sml";
 
 structure SimplerVerifyF4FPP = struct
   type group = AtlasFFI.group
   type param = AtlasFFI.param
   type ratvec = Lattice.ratvec
+  type triple = {x: int, lambda: ratvec, gamma: ratvec}
 
   (* Heuristic: detect the standard F4_s instance to use fixtures. *)
   fun looksLikeF4s (g: group) : bool =
@@ -67,44 +69,65 @@ structure SimplerVerifyF4FPP = struct
         FPP_lambdas_fold.FPP_lambdas_table g
     end
 
-  (* Compute `nu = gamma - (I+theta(x))*lambda/2` and build an (unnormalized) param. *)
-  fun param_of_x_lambda_gamma (g: group, x: int, lambda: ratvec, gamma: ratvec) : param =
+  val param_of_x_lambda_gamma = F4FPPParamConstruct.param_of_x_lambda_gamma
+  val first_final_term = F4FPPParamConstruct.first_final_term_consume
+
+  (* Iterate the slow domain D_slow without materializing it as a list. *)
+  fun for_domain (g: group, f: triple -> unit) : unit =
     let
-      val rank = AtlasFFI.atlas_group_rank g
-      val theta =
-        AllParameters.parseInvolutionMatrixText (AtlasFFI.atlas_group_kgb_involution_matrix_text (g, x))
-      val onePlus = Lattice.matAdd (Lattice.identity rank, theta)
-      val thetaPlusHalf = Lattice.ratvecScale (Lattice.matVecMulRatvec onePlus lambda, 1, 2)
-      val nu = Lattice.ratvecSub (gamma, thetaPlusHalf)
+      val gammas = loadBarycenters g
+      val lambdasByX = loadLambdasByX g
+      val kgbSize = Array.length lambdasByX
+      fun loopX x =
+        if x = kgbSize then
+          ()
+        else
+          let
+            val lambdas = Array.sub (lambdasByX, x)
+            fun loopL [] = ()
+              | loopL (lambda :: rest) =
+                  (List.app (fn gamma => f {x = x, lambda = lambda, gamma = gamma}) gammas; loopL rest)
+          in
+            loopL lambdas;
+            loopX (x + 1)
+          end
     in
-      Representations.parameter (g, x, lambda, nu)
+      loopX 0
     end
 
-  (* `first_param(finalize(p))` analogue: normalize then pick the first final term. *)
-  fun first_final_term (p: param) : param option =
+  (* Check one triple from the slow domain. Returns `true` iff it witnesses a
+     “missing” unitary final term (i.e. a counterexample to completeness). *)
+  fun triple_is_missing (g: group, uhash: ParamHash.t, t: triple) : bool =
     let
-      val p1 = AtlasFFI.atlas_param_normalise p
-      val () = AtlasFFI.atlas_param_free p
-      val () =
-        if p1 = Foreign.Memory.null then
-          raise Fail ("SimplerVerifyF4FPP: normalise failed: " ^ AtlasFFI.atlas_last_error ())
+      val {x, lambda, gamma} = t
+      val p0 = param_of_x_lambda_gamma (g, x, lambda, gamma)
+    in
+      case first_final_term p0 of
+        NONE => false
+      | SOME pi =>
+          let
+            val isU = AtlasFFI.atlas_param_is_unitary pi = 1
+            val missing = ParamHash.lookup uhash pi < 0
+            val () = AtlasFFI.atlas_param_free pi
+          in
+            isU andalso missing
+          end
+    end
+
+  (* Iterate the domain and count counterexamples. Optionally print a warning
+     line for each counterexample (matching the original `.at` script). *)
+  fun check_domain (g: group, uhash: ParamHash.t, verbose: bool) : int =
+    let
+      val misses = ref 0
+      fun step t =
+        if triple_is_missing (g, uhash, t) then
+          (misses := !misses + 1;
+           if verbose then TextIO.print "IT'S ALL WRONG!!!\n" else ())
         else
           ()
+      val () = for_domain (g, step)
     in
-      if AtlasFFI.atlas_param_is_final p1 = 1 then
-        SOME p1
-      else
-        let
-          val finals = ParamFinals.finals p1
-          val () = AtlasFFI.atlas_param_free p1
-          fun pick [] = NONE
-            | pick ((q, mult) :: rest) =
-                if mult = 0 then (AtlasFFI.atlas_param_free q; pick rest)
-                else
-                  (List.app (fn (r, _) => AtlasFFI.atlas_param_free r) rest; SOME q)
-        in
-          pick finals
-        end
+      !misses
     end
 
   fun build_known_unitary_hash (g: group) : ParamHash.t =
@@ -125,47 +148,8 @@ structure SimplerVerifyF4FPP = struct
     let
       val g = AtlasFFI.atlas_group_new_simple (#"F", 4, #"s", 0)
       val uhash = build_known_unitary_hash g
-
-      val gammas = loadBarycenters g
-      val lambdasByX = loadLambdasByX g
-      val kgbSize = Array.length lambdasByX
-
-      fun checkGamma (x: int, lambda: ratvec) (gamma: ratvec) : unit =
-        let
-          val p0 = param_of_x_lambda_gamma (g, x, lambda, gamma)
-        in
-          case first_final_term p0 of
-            NONE => ()
-          | SOME pi =>
-              let
-                val isU = AtlasFFI.atlas_param_is_unitary pi = 1
-                val missing = ParamHash.lookup uhash pi < 0
-                val () =
-                  if isU andalso missing then
-                    TextIO.print "IT'S ALL WRONG!!!\n"
-                  else
-                    ()
-                val () = AtlasFFI.atlas_param_free pi
-              in
-                ()
-              end
-        end
-
-      fun loopX x =
-        if x = kgbSize then
-          ()
-        else
-          let
-            val lambdas = Array.sub (lambdasByX, x)
-            fun loopL [] = ()
-              | loopL (lambda :: rest) =
-                  (List.app (checkGamma (x, lambda)) gammas; loopL rest)
-          in
-            loopL lambdas;
-            loopX (x + 1)
-          end
     in
-      loopX 0;
+      ignore (check_domain (g, uhash, true));
       ParamHash.freeAll uhash;
       AtlasFFI.atlas_group_free g
     end
@@ -182,27 +166,6 @@ structure SimplerVerifyF4FPP = struct
       val kgbSize = Array.length lambdasByX
       val xLimit = Int.max (0, Int.min (maxX, kgbSize))
 
-      fun checkGamma (x: int, lambda: ratvec) (gamma: ratvec) : unit =
-        let
-          val p0 = param_of_x_lambda_gamma (g, x, lambda, gamma)
-        in
-          case first_final_term p0 of
-            NONE => ()
-          | SOME pi =>
-              let
-                val isU = AtlasFFI.atlas_param_is_unitary pi = 1
-                val missing = ParamHash.lookup uhash pi < 0
-                val () =
-                  if isU andalso missing then
-                    TextIO.print "IT'S ALL WRONG!!!\n"
-                  else
-                    ()
-                val () = AtlasFFI.atlas_param_free pi
-              in
-                ()
-              end
-        end
-
       fun loopX x =
         if x = xLimit then
           ()
@@ -212,7 +175,14 @@ structure SimplerVerifyF4FPP = struct
             val lambdas = List.take (lambdas0, Int.max (0, Int.min (maxLambdasPerX, length lambdas0)))
             fun loopL [] = ()
               | loopL (lambda :: rest) =
-                  (List.app (checkGamma (x, lambda)) gammas; loopL rest)
+                  ( List.app
+                      (fn gamma =>
+                         if triple_is_missing (g, uhash, {x = x, lambda = lambda, gamma = gamma}) then
+                           TextIO.print "IT'S ALL WRONG!!!\n"
+                         else
+                           ())
+                      gammas;
+                    loopL rest)
           in
             loopL lambdas;
             loopX (x + 1)
