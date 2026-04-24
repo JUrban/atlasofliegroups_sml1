@@ -345,7 +345,8 @@ Introduces a dedicated (currently `cheat`ed) bridge predicate
 hash. It packages the intended compute obligations:
 
 - `fast_domain_is_pruned g` and `fast_witnessed_pruned g` (domain + witness),
-- `fast_param_set_ok g` (data structure represents `U_fast g`),
+- sound/complete obligations for `fast_param_set`’s `list` and `contains`
+  (used to derive `fast_param_set_ok g`),
 
 and proves (OK) that these imply `fast_semantic_ok g`.
 

@@ -36,6 +36,8 @@ open F4FPPVerifyFastPruneGoalsTheory;
 open F4FPPVerifyFastRefineGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyFastParamSetGoalsTheory;
+open F4FPPVerifyFastParamSetListRefineGoalsTheory;
+open F4FPPVerifyFastParamSetContainsRefineGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeBridgeGoals";
 
@@ -49,7 +51,10 @@ Definition fast_compute_obligations_def:
   fast_compute_obligations g <=>
     fast_domain_is_pruned g /\
     fast_witnessed_pruned g /\
-    fast_param_set_ok g
+    fast_param_set_list_sound g /\
+    fast_param_set_list_complete g /\
+    fast_param_set_contains_sound g /\
+    fast_param_set_contains_complete g
 End
 
 (* The actual bridge: success implies the obligations (CHEATED for now). *)
@@ -77,5 +82,11 @@ Proof
   \\ metis_tac[]
 QED
 
-val _ = export_theory ();
+Theorem fast_compute_obligations_imp_fast_param_set_ok:
+  !g. fast_compute_obligations g ==> fast_param_set_ok g
+Proof
+  rw[fast_compute_obligations_def]
+  \\ metis_tac[fast_param_set_list_and_contains_obligations_imp_fast_param_set_ok]
+QED
 
+val _ = export_theory ();

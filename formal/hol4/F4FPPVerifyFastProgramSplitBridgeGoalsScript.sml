@@ -63,7 +63,7 @@ Proof
   \\ drule fast_compute_program_succeeds_imp_obligations
   \\ disch_then assume_tac
   \\ `fast_semantic_ok F4s` by metis_tac[fast_compute_obligations_imp_fast_semantic_ok]
-  \\ `fast_param_set_ok F4s` by fs[fast_compute_obligations_def]
+  \\ `fast_param_set_ok F4s` by metis_tac[fast_compute_obligations_imp_fast_param_set_ok]
   \\ `bottom_layer_total_ok F4s dirac (U_fast F4s)` by
        metis_tac
          [ bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_noncompact
