@@ -95,6 +95,14 @@ ParamHash obligations.
   - this is the ideal attachment point for a CakeML proof of the ParamHash
     algorithmic core, plus explicit Atlas hash/equality contracts.
 
+Useful refinement split (for proof engineering):
+
+- `paramhash_observation_witness g`: there exists an abstract state matching the
+  observed `list/contains` view (“plumbing”).
+- `paramhash_invariant_on_observation g`: any such observed state satisfies the
+  invariant (“data-structure reasoning”).
+  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
+
 ### C. ParamHash state representation lemma (data-structure core)
 
 To reduce the “cheat surface” we want the state-level lemma:

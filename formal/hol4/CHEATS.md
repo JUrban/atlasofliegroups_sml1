@@ -67,6 +67,11 @@ Role:
   *algorithmic* core (enumeration, hashing, bucketing) combined with explicit
   Atlas/FFI contracts for the semantic primitives.
 
+Additional split (still `cheat`ed):
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
+  - `fast_compute_program_succeeds_imp_paramhash_observation_witness`
+  - `fast_compute_program_succeeds_imp_paramhash_invariant_on_observation`
+
 ## E. ParamHash state model
 
 - File: `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml`

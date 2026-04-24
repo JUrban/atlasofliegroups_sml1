@@ -46,6 +46,32 @@ Definition paramhash_state_ok_def:
     ?s. ph_invariant s /\ paramhash_observes_state g s
 End
 
+(* A finer-grained decomposition of `paramhash_state_ok` that matches how we
+   expect the eventual proof to be organised:
+   - `paramhash_observation_witness` is “plumbing”: there *exists* some abstract
+     state whose observations match the concrete `list/contains` view.
+   - `paramhash_invariant_on_observation` is “data-structure reasoning”: any
+     such observed state satisfies the invariant. *)
+Definition paramhash_observation_witness_def:
+  paramhash_observation_witness g <=>
+    ?s. paramhash_observes_state g s
+End
+
+Definition paramhash_invariant_on_observation_def:
+  paramhash_invariant_on_observation g <=>
+    !s. paramhash_observes_state g s ==> ph_invariant s
+End
+
+Theorem paramhash_observation_witness_and_invariant_imp_state_ok:
+  !g.
+    paramhash_observation_witness g /\ paramhash_invariant_on_observation g ==>
+      paramhash_state_ok g
+Proof
+  rw[paramhash_state_ok_def, paramhash_observation_witness_def,
+     paramhash_invariant_on_observation_def]
+  \\ metis_tac[]
+QED
+
 Theorem paramhash_state_ok_imp_paramhash_rep_ok:
   !g.
     atlas_eq_is_hol_eq /\ atlas_hash_range /\ paramhash_state_ok g ==> paramhash_rep_ok g
@@ -67,6 +93,44 @@ Proof
       `paramhash_list g` and `paramhash_contains g`.
   *)
   cheat
+QED
+
+(* Separate bridge obligations corresponding to the decomposed view above. *)
+Theorem fast_compute_program_succeeds_imp_paramhash_observation_witness:
+  !g. fast_compute_program_succeeds g ==> paramhash_observation_witness g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - connect the concrete ParamHash heap object to an abstract state `s`
+      satisfying `paramhash_observes_state`.
+  *)
+  cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_invariant_on_observation:
+  !g. fast_compute_program_succeeds g ==> paramhash_invariant_on_observation g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - show that any abstract state consistent with the observed `list/contains`
+      view must satisfy the invariant; this is where CakeML/translator proofs
+      about the build process and invariant preservation can attach.
+  *)
+  cheat
+QED
+
+(* Recomposing the split bridge obligations to recover `paramhash_state_ok`. *)
+Theorem fast_compute_program_succeeds_imp_paramhash_state_ok_decomposed:
+  !g.
+    fast_compute_program_succeeds g ==>
+      paramhash_state_ok g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac paramhash_observation_witness_and_invariant_imp_state_ok
+  \\ metis_tac
+      [ fast_compute_program_succeeds_imp_paramhash_observation_witness
+      , fast_compute_program_succeeds_imp_paramhash_invariant_on_observation
+      ]
 QED
 
 (* A refinement-friendly variant of the original bridge lemma in
