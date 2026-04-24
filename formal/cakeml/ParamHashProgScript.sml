@@ -67,12 +67,12 @@ Definition find_in_bucket_def:
 End
 val find_in_bucket_v_thm = translate find_in_bucket_def;
 
-Definition nth_def:
-  (nth 0n (x::xs) = x) ∧
-  (nth (SUC n) (x::xs) = nth n xs) ∧
-  (nth _ [] = 0n)
+Definition nthn_def:
+  (nthn 0n (x::xs) = x) ∧
+  (nthn (SUC n) (x::xs) = nthn n xs) ∧
+  (nthn _ [] = 0n)
 End
-val nth_v_thm = translate nth_def;
+val nthn_v_thm = translate nthn_def;
 
 (* --- Monadic operations --- *)
 
@@ -101,7 +101,7 @@ Definition ph_index_def:
   ph_index (j:num) =
   do
     ps <- get_elems;
-    return (nth j ps)
+    return (nthn j ps)
   od
 End
 val ph_index_v_thm = m_translate ph_index_def;
@@ -188,7 +188,7 @@ Definition ph_ok_def:
     (∀p idx.
        MEM (p,idx) (FLAT (s.buckets)) ⇒
          (idx < LENGTH (s.elems)) ∧
-         (nth idx (s.elems) = p))
+         (nthn idx (s.elems) = p))
 End
 
 Definition ph_lookup_state_def:
@@ -261,9 +261,9 @@ Proof
 QED
 
 Theorem nth_lt_imp_MEM:
-  ∀xs n. n < LENGTH xs ⇒ MEM (nth n xs) xs
+  ∀xs n. n < LENGTH xs ⇒ MEM (nthn n xs) xs
 Proof
-  Induct \\ Cases_on `n` \\ rw[nth_def]
+  Induct \\ Cases_on `n` \\ rw[nthn_def]
 QED
 
 Theorem ph_lookup_state_SOME_imp_in_set:
@@ -279,9 +279,39 @@ Proof
         qpat_x_assum `∀p idx. MEM (p,idx) (FLAT (s.buckets)) ⇒ _`
           (fn impth => mp_tac (MP (SPECL [``p:num``, ``idx:num``] impth) memth)))
   \\ strip_tac
-  \\ `MEM (nth idx (s.elems)) (s.elems)` by metis_tac[nth_lt_imp_MEM]
+  \\ `MEM (nthn idx (s.elems)) (s.elems)` by metis_tac[nth_lt_imp_MEM]
   \\ metis_tac[]
 QED
+
+Definition ph_bucketed_def:
+  ph_bucketed (s:ph_state) =
+    ∀i p idx.
+      (i < LENGTH (s.buckets) ∧ MEM (p,idx) (EL i (s.buckets))) ⇒
+        (bucket_index p (s.bucket_count) = i)
+End
+
+Definition ph_covered_def:
+  ph_covered (s:ph_state) =
+    ∀j. j < LENGTH (s.elems) ⇒ MEM (nthn j (s.elems), j) (FLAT (s.buckets))
+End
+
+Definition ph_invariant_def:
+  ph_invariant (s:ph_state) = ph_ok s ∧ ph_bucketed s ∧ ph_covered s
+End
+
+Theorem MEM_imp_exists_nth:
+  ∀(x:num) (xs:num list). MEM x xs ⇒ ∃n. (n < LENGTH xs) ∧ (nthn n xs = x)
+Proof
+  Induct_on `xs` \\ rw[]
+  >- (qexists_tac `0n` \\ simp[nthn_def])
+  \\ first_x_assum (drule) \\ strip_tac
+  \\ qexists_tac `SUC n` \\ simp[nthn_def]
+QED
+
+(* TODO (next verification step): prove that `ph_invariant s` makes `ph_lookup_state`
+   complete for membership in `s.elems`, i.e. `MEM p s.elems` implies
+   `∃idx. ph_lookup_state p s = SOME idx`.  This will be used to connect the
+   stateful/hash-table model to a pure `set` abstraction. *)
 
 Definition init_ph_state_def:
   init_ph_state =
