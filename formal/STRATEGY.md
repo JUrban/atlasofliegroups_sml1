@@ -373,6 +373,12 @@ It records cheated lemmas “`bottom_layer_program_succeeds ⇒ bl_*_ok`” for 
 check, and then recombines them (OK) into a single lemma
 `bottom_layer_program_succeeds ⇒ bottom_layer_ok_param_set`.
 
+It also derives the usual downstream consequences (OK), routed through the
+decomposition:
+
+- `bottom_layer_program_succeeds ∧ fast_param_set_ok ⇒ bottom_layer_ok ...`
+- `... ∧ ~group_is_compact ⇒ bottom_layer_total_ok ...`
+
 #### `F4FPPVerifyFastComputeBridgeGoalsTheory` (fast compute-phase bridge)
 
 File: `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`

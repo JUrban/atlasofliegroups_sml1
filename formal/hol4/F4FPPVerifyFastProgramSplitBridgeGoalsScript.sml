@@ -30,6 +30,7 @@ open F4FPPVerifySMLBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
+open F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyTargetGroupGoalsTheory;
 
@@ -67,7 +68,7 @@ Proof
   \\ `fast_param_set_ok F4s` by metis_tac[fast_compute_obligations_imp_fast_param_set_ok]
   \\ `bottom_layer_total_ok F4s dirac (U_fast F4s)` by
        metis_tac
-         [ bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_noncompact
+         [ bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_noncompact_decomposed
          , F4s_not_compact
          ]
   \\ simp[]

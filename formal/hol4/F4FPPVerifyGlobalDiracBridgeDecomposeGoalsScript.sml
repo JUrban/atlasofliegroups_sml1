@@ -28,6 +28,7 @@ open HolKernel Parse boolLib bossLib;
 open F4FPPBottomLayerParamSetGoalsTheory;
 open F4FPPVerifyFastParamSetGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
+open F4FPPBottomLayerGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyGlobalDiracBridgeDecomposeGoals";
 
@@ -142,5 +143,27 @@ Proof
        ]
 QED
 
-val _ = export_theory ();
+(* The same downstream consequences as in `F4FPPVerifyGlobalDiracBridgeGoalsTheory`,
+   but routed through the per-check decomposition above. *)
+Theorem bottom_layer_program_succeeds_and_fast_param_set_ok_imp_bottom_layer_ok_decomposed:
+  !g dirac.
+    bottom_layer_program_succeeds g dirac /\ fast_param_set_ok g ==>
+      bottom_layer_ok g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ match_mp_tac fast_param_set_ok_and_bottom_layer_ok_param_set_imp_bottom_layer_ok
+  \\ conj_tac
+  >- simp[]
+  \\ metis_tac[bottom_layer_program_succeeds_imp_bottom_layer_ok_param_set_decomposed]
+QED
 
+Theorem bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_noncompact_decomposed:
+  !g dirac.
+    bottom_layer_program_succeeds g dirac /\ fast_param_set_ok g /\ ~group_is_compact g ==>
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rw[bottom_layer_total_ok_def]
+  \\ metis_tac[bottom_layer_program_succeeds_and_fast_param_set_ok_imp_bottom_layer_ok_decomposed]
+QED
+
+val _ = export_theory ();
