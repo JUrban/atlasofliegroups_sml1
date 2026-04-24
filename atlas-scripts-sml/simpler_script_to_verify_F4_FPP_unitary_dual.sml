@@ -3,6 +3,13 @@
    This file is intentionally tiny and does NOT `use` the heavy implementation
    module unless explicitly enabled by environment variables.
 
+   The corresponding Atlas-script source (`.at`) is essentially:
+     set G=F4_s
+     set all_barycenters_of_facets = FPP_barycenters(G,-1).##
+     <F4_FPP_points.at
+     big_unitary_hash.uhash(G).list().# = 1864
+     for x in KGB(G) do for lambda in FPP_lambdas(x) do for nu in all_barycenters_of_facets do ...
+
    - Full (very slow) run:
        ATLAS_RUN_SLOW_SIMPLER_VERIFY=1 poly -q < atlas-scripts-sml/simpler_script_to_verify_F4_FPP_unitary_dual.sml
 

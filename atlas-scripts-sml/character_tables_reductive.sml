@@ -21,7 +21,9 @@ use "atlas-scripts-sml/classical_character_tables.sml";
   - Implements only the “simple exceptional” dispatchers:
       - E6/E7/E8 via the precomputed Magma/GAP tables already ported.
       - F4 and G2 via the Kondo-order and fixed-order tables already ported.
-  - Classical types A/B/C/D and the general `combine` logic are not yet ported.
+  - Implements classical type A (via symmetric groups) and types B/C (via the
+    hyperoctahedral character recursion).
+  - Type D is not yet ported.
 
   Notes
   - For G2, the current implementation constructs the split group `G2_s` via
@@ -169,6 +171,8 @@ structure CharacterTablesReductive = struct
   fun simple_character_table (lt: LieType.t) : character_table =
     (case lt of
        [(#"A", r)] => ClassicalCharacterTables.character_table_S (r + 1)
+     | [(#"B", r)] => ClassicalCharacterTables.character_table_B r
+     | [(#"C", r)] => ClassicalCharacterTables.character_table_C r
      | [(#"E", 6)] => CharacterTable_E6.character_table_E6_magma ()
      | [(#"E", 7)] => CharacterTable_E7.character_table_E7_magma ()
      | [(#"E", 8)] => CharacterTable_E8.character_table_E8_gap ()

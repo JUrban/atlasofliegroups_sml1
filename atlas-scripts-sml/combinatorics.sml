@@ -14,6 +14,9 @@ structure Combinatorics = struct
   type permutation = int list
   type mat = IntMatrix.mat
   type partition = Partitions.partition
+  type bipartition = partition * partition
+  type signed_cycle = int * bool
+  type signed_cycles = signed_cycle list
 
   val is_permutation = MatrixAT.is_permutation
 
@@ -514,5 +517,240 @@ structure Combinatorics = struct
           end
     in
       mn j0
+    end
+
+  (* ---------------- hyperoctahedral group helpers (ported from `combinatorics.at`) ---------------- *)
+
+  (* Generate pairs of partitions of total size `n`, ordering as in the `.at`
+     `pairs_of_total_sum` helper: take larger left size first (i=n..0), and
+     within each size use the `lister` ordering. *)
+  fun pairs_of_total_sum (n: int, lister: int -> partition list) : bipartition list =
+    if n < 0 then
+      []
+    else
+      let
+        val lists = List.tabulate (n + 1, lister) (* lists[i] = lister i *)
+        fun at i = List.nth (lists, i)
+        fun allPairsAt i =
+          let
+            val lefts = at i
+            val rights = at (n - i)
+          in
+            List.concat (List.map (fn lam => List.map (fn mu => (lam, mu)) rights) lefts)
+          end
+      in
+        List.concat (List.map allPairsAt (List.rev (List.tabulate (n + 1, fn i => i))))
+      end
+
+  (* Conjugacy class parameterization for the hyperoctahedral group H_n:
+     all bipartitions of total size `n` in the `.at` `partition_pairs` order. *)
+  fun partition_pairs (n: int) : bipartition list =
+    pairs_of_total_sum (n, Partitions.partitions)
+
+  fun rank_bipartition ((lambda, mu): bipartition) : int = sumInts lambda + sumInts mu
+
+  fun rank_signed_cycles (cy: signed_cycles) : int =
+    List.foldl (fn ((l, _), acc) => acc + l) 0 cy
+
+  fun bipartition_toString ((lambda, mu): bipartition) : string =
+    "(" ^ Partitions.toString lambda ^ "," ^ Partitions.toString mu ^ ")"
+
+  fun signed_cycles_toString (cy: signed_cycles) : string =
+    let
+      fun one (l, isNeg) = "(" ^ Int.toString l ^ "," ^ (if isNeg then "-" else "+") ^ ")"
+    in
+      "[" ^ String.concatWith "," (List.map one cy) ^ "]"
+    end
+
+  fun to_cycles ((lambda, mu): bipartition) : signed_cycles =
+    List.map (fn part => (part, false)) lambda @ List.map (fn part => (part, true)) mu
+
+  fun signed_cycle_type_order (cycles: signed_cycles) : int =
+    let
+      fun one ((cycle, sign): signed_cycle) = if sign then cycle + cycle else cycle
+    in
+      lcm_list (List.map one cycles)
+    end
+
+  fun signed_cycle_centralizer_order_IntInf (cycles: signed_cycles) : IntInf.int =
+    let
+      val plus_cycles = List.map #1 (List.filter (fn (_, s) => not s) cycles)
+      val minus_cycles = List.map #1 (List.filter (fn (_, s) => s) cycles)
+      val fp = frequencies (Basic.sort (op >=) plus_cycles)
+      val fm = frequencies (Basic.sort (op >=) minus_cycles)
+      val part0 = productIntInf (List.map (fn (cycle, _) => cycle + cycle) cycles)
+      val part1 = List.foldl (fn (m, acc) => acc * factorialIntInf m) 1 fp
+      val part2 = List.foldl (fn (m, acc) => acc * factorialIntInf m) 1 fm
+    in
+      part0 * part1 * part2
+    end
+
+  fun signed_cycle_class_size (cycles: signed_cycles) : int =
+    let
+      val n = rank_signed_cycles cycles
+      val num = factorialIntInf n * IntInf.pow (2, n)
+      val denom = signed_cycle_centralizer_order_IntInf cycles
+      val (q, r) = IntInf.divMod (num, denom)
+      val () = if r = 0 then () else raise Fail "Combinatorics.signed_cycle_class_size: inexact"
+    in
+      toIntChecked ("signed_cycle_class_size", q)
+    end
+
+  fun signed_cycle_power (cycles: signed_cycles, k: int) : signed_cycles =
+    let
+      val m = List.foldl Int.max 0 (List.map #1 cycles)
+      val counts = Array.tabulate (m + 1, fn _ => (0, 0)) (* (pos,neg) by length *)
+
+      fun addCount (len: int, isNeg: bool, delta: int) =
+        let
+          val (p, n) = Array.sub (counts, len)
+        in
+          if isNeg then Array.update (counts, len, (p, n + delta))
+          else Array.update (counts, len, (p + delta, n))
+        end
+
+      val () =
+        List.app
+          (fn (l, sign) =>
+             let
+               val d = gcd (l, k)
+               val len = l div d
+               val isNeg = sign andalso (((k div d) mod 2) = 1)
+             in
+               addCount (len, isNeg, d)
+             end)
+          cycles
+
+      fun emit (len: int, (pos, neg), accPos, accNeg) =
+        ( List.tabulate (pos, fn _ => (len, false)) @ accPos
+        , List.tabulate (neg, fn _ => (len, true)) @ accNeg
+        )
+
+      val (posAcc, negAcc) =
+        List.foldr
+          (fn (len, (accP, accN)) =>
+             let
+               val c = Array.sub (counts, len)
+             in
+               emit (len, c, accP, accN)
+             end)
+          ([], [])
+          (List.tabulate (m, fn i => i + 1))
+    in
+      (* `.at` orders negative cycles before positive; within each, larger lengths first. *)
+      Basic.sort (fn ((a, _), (b, _)) => a >= b) negAcc @ Basic.sort (fn ((a, _), (b, _)) => a >= b) posAcc
+    end
+
+  (* Hyperoctahedral character recursion. *)
+  fun hyperoctahedral_character (pair: bipartition, signed_cycle_type: signed_cycles) : int =
+    let
+      val () =
+        if rank_bipartition pair = rank_signed_cycles signed_cycle_type then
+          ()
+        else
+          raise Fail "Combinatorics.hyperoctahedral_character: size mismatch"
+
+      val alpha = Basic.sort_by (#1, (op <=)) signed_cycle_type (* increasing by length *)
+
+      val c = List.length (List.filter (fn (l, s) => l = 1 andalso s) alpha) (* negative 1-cycles *)
+      val d = List.length (List.filter (fn (l, s) => l = 1 andalso not s) alpha) (* positive 1-cycles *)
+
+      val (lambda, mu) = pair
+      val (edge0List, _) = edge_sequence lambda
+      val (edge1List, _) = edge_sequence mu
+      val edge0 = Array.fromList edge0List
+      val edge1 = Array.fromList edge1List
+
+      fun productHooks (hs: int list) : IntInf.int =
+        List.foldl (fn (h, acc) => acc * IntInf.fromInt h) 1 hs
+
+      fun binomI (n: int, k: int) : IntInf.int = binomIntInf (n, k)
+
+      fun baseCase () : int =
+        let
+          val hl0 = hook_lengths_edges edge0
+          val hl1 = hook_lengths_edges edge1
+          val a = length hl0
+          val b = length hl1
+          val () = if a + b = c + d then () else raise Fail "Combinatorics.hyperoctahedral_character: basecase size mismatch"
+          val lwb = Int.max (0, d - a)
+          val upb = Int.min (b, d)
+          fun sumL l acc =
+            if l > upb then acc
+            else
+              let
+                val sgn = if l mod 2 = 0 then 1 else ~1
+                val term = IntInf.fromInt sgn * binomI (c, b - l) * binomI (d, l)
+              in
+                sumL (l + 1) (acc + term)
+              end
+          val comb = sumL lwb 0
+          val dim0 =
+            let
+              val num = factorialIntInf a
+              val den = productHooks hl0
+              val (q, r) = IntInf.divMod (num, den)
+              val () = if r = 0 then () else raise Fail "Combinatorics.hyperoctahedral_character: dim0 inexact"
+            in
+              q
+            end
+          val dim1 =
+            let
+              val num = factorialIntInf b
+              val den = productHooks hl1
+              val (q, r) = IntInf.divMod (num, den)
+              val () = if r = 0 then () else raise Fail "Combinatorics.hyperoctahedral_character: dim1 inexact"
+            in
+              q
+            end
+          val out = comb * dim0 * dim1
+        in
+          toIntChecked ("hyperoctahedral_character", out)
+        end
+
+      fun sumHooks (edge: bool array, k: int, recVal: unit -> int) : int =
+        let
+          val lenEdge = Array.length edge
+          val limit = lenEdge - k
+          fun loopI i acc =
+            if i >= limit then
+              acc
+            else if (not (Array.sub (edge, i))) andalso Array.sub (edge, i + k) then
+              let
+                val () = Array.update (edge, i + k, false)
+                val () = Array.update (edge, i, true)
+                val sign = if countTrueSlice (edge, i + 1, i + k) mod 2 = 0 then 1 else ~1
+                val term = sign * recVal ()
+                val () = Array.update (edge, i, false)
+                val () = Array.update (edge, i + k, true)
+              in
+                loopI (i + 1) (acc + term)
+              end
+            else
+              loopI (i + 1) acc
+        in
+          loopI 0 0
+        end
+
+      fun f j =
+        if j < 0 then
+          1
+        else
+          let
+            val (k, sign) = List.nth (alpha, j)
+          in
+            if k = 1 then
+              baseCase ()
+            else
+              let
+                fun recVal () = f (j - 1)
+                val s0 = sumHooks (edge0, k, recVal)
+                val s1 = sumHooks (edge1, k, recVal)
+              in
+                if sign then s0 - s1 else s0 + s1
+              end
+          end
+    in
+      f (length alpha - 1)
     end
 end
