@@ -283,6 +283,23 @@ and provides a simple glue lemma showing that, once `fast_param_set_ok` holds,
 proving the SML-style predicate `bottom_layer_ok_param_set g dirac (fast_param_set g)`
 is sufficient to conclude `bottom_layer_ok g dirac (U_fast g)`.
 
+#### `F4FPPVerifyFastParamSetRefineGoalsTheory` (split `fast_param_set_ok`)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetRefineGoalsScript.sml`
+
+Refines `fast_param_set_ok g` into two smaller obligations that match how the
+SML code is used:
+
+- `fast_param_set_list_ok g`: `ps_list (fast_param_set g) = fast_list g`
+- `fast_param_set_contains_ok g`: `ps_contains (fast_param_set g) p ⇔ p ∈ U_fast g`
+
+and provides the “OK” composition lemma:
+
+- `fast_param_set_rep_ok g ⇒ fast_param_set_ok g`
+
+This isolates exactly what we will eventually need to prove about the concrete
+`ParamHash.list` and `ParamHash.contains` operations.
+
 #### `F4FPPVerifyGlobalDiracBridgeGoalsTheory` (bottom-layer bridge)
 
 File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
