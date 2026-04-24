@@ -23,4 +23,5 @@ $HOLDIR/bin/Holmake
 - `F4FPPCheckDomainProgScript.sml`: a minimal pure checker (`check_domain_fun`)
   that counts “missing witnesses” in a domain list; translated with the
   (non-monadic) CakeML translator.
-
+- `ParamHashProgScript.sml`: an initial monadic (stateful) model of a
+  ParamHash-like bucketed set, translated with the monadic translator.

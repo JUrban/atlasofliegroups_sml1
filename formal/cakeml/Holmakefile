@@ -3,6 +3,9 @@ CAKEMLDIR = /project/hol/cakeml
 # We depend on CakeML's translator and the semanticPrimitives theory.
 INCLUDES = \
   $(CAKEMLDIR)/translator \
+  $(CAKEMLDIR)/translator/.hol/objs \
+  $(CAKEMLDIR)/translator/monadic \
+  $(CAKEMLDIR)/translator/monadic/.hol/objs \
   $(CAKEMLDIR)/developers \
   $(CAKEMLDIR)/misc \
   $(CAKEMLDIR)/semantics \
@@ -11,4 +14,3 @@ INCLUDES = \
 
 all: $(DEFAULT_TARGETS)
 .PHONY: all
-
