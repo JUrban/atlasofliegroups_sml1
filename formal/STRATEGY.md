@@ -243,6 +243,16 @@ This is the intended attachment point for showing:
 - `FPP_globalDirac`’s list-based checks imply `bottom_layer_ok g dirac (U_fast g)`
   once we relate the SML enumeration `ParamHash.list` to `fast_list g`.
 
+#### `F4FPPVerifyBottomLayerRefineGoalsTheory` (bottom-layer: fast list hook)
+
+File: `formal/hol4/F4FPPVerifyBottomLayerRefineGoalsScript.sml`
+
+Adds the tiny but useful lemma rewriting the bottom-layer goal for `U_fast g`
+into a list-level goal on `fast_list g`. For non-compact groups it shows:
+
+- `bottom_layer_total_ok g dirac (U_fast g)` is equivalent to
+  `bottom_layer_ok_list g dirac (fast_list g)`.
+
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 
 File: `formal/hol4/F4FPPVerifyFullGoalsScript.sml`
