@@ -476,6 +476,14 @@ insertion-order list of stored parameters) and a minimal invariant
 for the CakeML pure-state model: `ph_rep_ok_iff_MEM_elems` in
 `formal/cakeml/ParamHashSetGoalsScript.sml`.)
 
+More realistic equality:
+
+- In the intended end-to-end story, `atlas_eq` is an FFI-provided semantic
+  equality and should not be assumed equal to HOL `=`.
+- The corresponding state lemma is therefore stated in the same file as
+  `ph_contains_state_iff_mem_atlas_eq_elems`, using `mem_atlas_eq` (membership
+  modulo `atlas_eq`), but it is currently left as a `cheat`ed placeholder.
+
 It then defines a wiring predicate `paramhash_observes_state` and derives:
 
 - `paramhash_observes_state_and_invariant_imp_paramhash_rep_ok`
