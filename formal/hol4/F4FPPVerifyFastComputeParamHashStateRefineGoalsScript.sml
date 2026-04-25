@@ -36,6 +36,8 @@ open F4FPPVerifyParamHashBridgeStateBuildDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeCheatsGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeParamHashStateRefineGoals";
 
@@ -100,6 +102,22 @@ Proof
   \\ `paramhash_obligations_build_state_factored_atlas_eq g` by
        metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_state_factored_atlas_eq]
   \\ metis_tac[paramhash_build_state_factored_atlas_eq_imp_build_factored_atlas_eq]
+QED
+
+(* Most specified modulo-`atlas_eq` route:
+
+   This avoids any list-based stores predicate by using the state-based
+   `paramhash_build_stores_U_fast_atlas_eq` obligation for the canonical
+   trace-based build model. This is intended to match what a CakeML/translator
+   proof would naturally establish about the concrete ParamHash state. *)
+Theorem fast_compute_program_succeeds_imp_paramhash_obligations_factored_atlas_eq_via_build_state_stores:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_factored_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac atlas_hash_eq_ok_and_build_state_stores_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
+  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_state_stores_factored_atlas_eq]
 QED
 
 (* Modulo-`atlas_eq` variant: avoid `atlas_eq_is_hol_eq` in the ParamHash layer. *)
