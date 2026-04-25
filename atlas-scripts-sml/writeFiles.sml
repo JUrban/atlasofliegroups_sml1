@@ -133,7 +133,7 @@ structure WriteFiles = struct
   fun write_param_list_sml
     (out: TextIO.outstream, groupVar: string, ps: param list, listName: string) : unit =
     let
-      val ctors = List.map (emitParamCtorSml groupVar) ps
+      val ctors = List.map (fn p => emitParamCtorSml (groupVar, p)) ps
       val body = "[\n" ^ joinWith (",\n", ctors) ^ "\n]"
       val () = emitLine (out, "use \"atlas-scripts-sml/ffi/AtlasFFI.sml\";")
       val () = emitLine (out, "(* Requires: val " ^ groupVar ^ " : AtlasFFI.group = ... *)")
