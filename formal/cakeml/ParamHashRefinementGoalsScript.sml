@@ -27,8 +27,8 @@
   - `ph_match_state_preserves_ok` is proved (no `cheat`) in the shared pure
     base theory `ParamHashBuildGoalsTheory`; it is used here to justify the
     `insert_all`/`build_state` iteration step.
-  - “End-to-end” consequences that rely on invariant-preservation (which is
-    still cheat-tainted) are stated in `ParamHashEndToEndGoalsTheory` instead.
+  - End-to-end consequences (create + insert_all + query) are packaged in
+    `ParamHashEndToEndGoalsTheory`.
 
   Planned discharge
   - Prove these theorems by:

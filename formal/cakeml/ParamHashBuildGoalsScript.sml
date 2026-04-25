@@ -7,9 +7,9 @@
       - `ParamHashRefinementGoalsTheory` (monadic ⇔ pure-state refinement).
 
   Why this file exists
-  - `ParamHashInvariantGoalsTheory` intentionally contains `cheat`ed theorems.
-    If we want a clean refinement layer, we must avoid importing a cheated
-    theory just to access basic helper lemmas/definitions.
+  - This isolates small “pure build” facts (list/nthn helpers, `ph_build_state`,
+    and `ph_match_state_preserves_ok`) so that refinement/end-to-end layers can
+    re-use them without pulling in heavier proof dependencies.
 
   Contents
   - Two list/nthn helper lemmas used when reasoning about appending a fresh
@@ -52,6 +52,28 @@ Theorem nthn_append_sing_len:
 Proof
   Induct_on `xs`
   \\ simp[nthn_def]
+QED
+
+(* A more index-friendly characterisation of membership in `FLAT`.
+
+   This is frequently useful when reasoning about `LUPDATE` on a list-of-lists:
+   turning `MEM x (FLAT xss)` into an explicit bucket index lets us case split
+   on whether the updated position is the witness position. *)
+Theorem MEM_FLAT_EL:
+  !x xss. MEM x (FLAT xss) <=> ?i. i < LENGTH xss /\ MEM x (EL i xss)
+Proof
+  rw[MEM_FLAT]
+  \\ eq_tac
+  >- (
+    strip_tac
+    \\ rename1 `MEM ys xss`
+    \\ `?i. i < LENGTH xss /\ (EL i xss = ys)` by metis_tac[MEM_EL]
+    \\ pop_assum strip_assume_tac
+    \\ qexists_tac `i`
+    \\ fs[] )
+  \\ strip_tac
+  \\ qexists_tac `EL i xss`
+  \\ simp[EL_MEM]
 QED
 
 (* ------------------------------------------------------------------------- *)

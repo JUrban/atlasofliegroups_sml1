@@ -21,9 +21,7 @@
   - Pure-state consequences are proved (OK).
   - The top-level theorem
       `ph_build_into_new_refines_build_from_create_state`
-    is now proved by *composition* (no new `cheat`), but it is still
-    CHEAT-tainted because it depends on cheat-tainted invariant-preservation
-    layers (e.g. `ParamHashInvariantGoalsTheory`).
+    is proved by *composition* (no `cheat`).
 *)
 
 open HolKernel Parse boolLib bossLib;
