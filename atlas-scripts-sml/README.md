@@ -51,6 +51,7 @@ New script/data ports:
 - `atlas-scripts-sml/test_unitarity.sml`: partial translation of `atlas-scripts/test_unitarity.at`
 - `atlas-scripts-sml/test_unitarity_main.sml`: runnable entrypoint for checking the tables via Poly/ML
 - `atlas-scripts-sml/Hermitian.sml`: wrapper exposing `hermitian_form_irreducible` via FFI
+- `atlas-scripts-sml/Smith.sml`: translation of `atlas-scripts/Smith.at` (Bezout/echelon helpers over `IntInf.int` and `BigRat.t`)
 
 ## Build & run
 

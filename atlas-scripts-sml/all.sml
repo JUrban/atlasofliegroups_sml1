@@ -51,6 +51,7 @@ val () = tryUse "atlas-scripts-sml/A1.sml"
 val () = tryUse "atlas-scripts-sml/matrix.sml"
 val () = tryUse "atlas-scripts-sml/ratmat.sml"
 val () = tryUse "atlas-scripts-sml/Gaussian_elim.sml"
+val () = tryUse "atlas-scripts-sml/Smith.sml"
 val () = tryUse "atlas-scripts-sml/lattice_aux.sml"
 val () = tryUse "atlas-scripts-sml/lattice.sml"
 
