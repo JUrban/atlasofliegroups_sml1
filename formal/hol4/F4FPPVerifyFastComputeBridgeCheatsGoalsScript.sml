@@ -23,21 +23,16 @@
 open HolKernel Parse boolLib bossLib;
 
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
+open F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeBridgeCheatsGoals";
 
 Theorem fast_compute_program_succeeds_imp_obligations:
   !g. fast_compute_program_succeeds g ==> fast_compute_obligations g
 Proof
-  (*
-    Intended proof ingredients:
-    - a domain accounting argument for which triples are enumerated by the
-      implementation (`fast_considers`),
-    - a witness argument tying every stored parameter to some considered triple,
-    - a data-structure argument that `ParamHash.list/contains` satisfy
-      `fast_param_set_ok`.
-  *)
-  cheat
+  (* Derived: the actual `cheat` surface is the smaller bridge obligations
+     recorded in `F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory`. *)
+  metis_tac[fast_compute_program_succeeds_imp_fast_compute_obligations_factored]
 QED
 
 Theorem fast_compute_program_succeeds_imp_obligations_atlas_eq:
@@ -47,4 +42,3 @@ Proof
 QED
 
 val _ = export_theory ();
-

@@ -116,6 +116,12 @@ Fast-domain split (still `cheat`ed):
   - `fast_compute_program_succeeds_imp_fast_domain_is_pruned`
   - `fast_compute_program_succeeds_imp_fast_witnessed_pruned`
 
+Note:
+- `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml` no longer
+  introduces an additional top-level `cheat` for
+  `fast_compute_program_succeeds_imp_obligations`; it is now derived from the
+  factored bridge lemma `fast_compute_program_succeeds_imp_fast_compute_obligations_factored`.
+
 Modulo-`atlas_eq` bridge (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
