@@ -20,8 +20,8 @@
   Status
   - The pure-state facts about `ph_create_state` are proved (OK).
   - The refinement theorem connecting monadic `ph_create` to `ph_create_state`
-    is currently recorded and `cheat`ed: it depends on translator semantics
-    for refs/resizable-arrays and is intended to be discharged later.
+    is now proved (OK): it follows by unfolding the monadic definitions
+    (`set_*` and `alloc_buckets`) and the state-and-exception monad bind.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -31,6 +31,7 @@ open rich_listTheory;
 open pairTheory;
 open pred_setTheory pred_setLib;
 
+open ml_monadBaseTheory;
 open ml_monad_translatorTheory;  (* `M_success` / `M_failure` *)
 
 open ParamHashProgTheory;
@@ -104,15 +105,12 @@ Theorem ph_create_refines_create_state:
     m <> 0n ==>
       ph_create m s = (M_success (), ph_create_state m)
 Proof
-  (*
-    Intended proof outline (later, without `cheat`):
-    - unfold `ph_create_def`,
-    - show the success branch performs the four updates:
-        set_bucket_count; set_count; set_elems; alloc_buckets
-      and that they result in exactly `ph_create_state m`,
-    - discharge any translator-side side-conditions about resizeable arrays.
-  *)
-  cheat
+  rpt strip_tac
+  \\ simp[ph_create_def,
+          st_ex_ignore_bind_def, st_ex_bind_def, st_ex_return_def,
+          set_bucket_count_def, set_count_def, set_elems_def,
+          alloc_buckets_def, Marray_alloc_def,
+          ph_create_state_def]
 QED
 
 Theorem ph_create_succeeds_imp_invariant:

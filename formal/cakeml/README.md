@@ -33,7 +33,7 @@ $HOLDIR/bin/Holmake
   statements for later CakeML evaluation proofs.
 - `ParamHashCreateGoalsScript.sml`: initialization goals for the monadic model:
   defines the pure initial state `ph_create_state` and records the refinement
-  lemma `ph_create_refines_create_state` (currently `cheat`ed).
+  lemma `ph_create_refines_create_state` (now proved, no `cheat`).
 - `ParamHashEndToEndGoalsScript.sml`: composes `create` + `insert_all` into a
   single end-to-end reference model (`ph_build_from_create_state`) and records
   the corresponding monadic refinement goal (now proved by composition, but

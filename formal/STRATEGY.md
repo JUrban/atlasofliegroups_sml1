@@ -955,7 +955,8 @@ Pins down the missing initialization layer for the ParamHash story:
 - defines the pure initial state `ph_create_state m`, and proves it satisfies
   `ph_invariant` for `m ≠ 0`;
 - records the refinement goal `ph_create_refines_create_state`, connecting the
-  monadic `ph_create` operation (translator-level) to that pure initial state.
+  monadic `ph_create` operation (translator-level) to that pure initial state
+  (now proved by unfolding the monadic definitions).
 
 This is the intended starting point for any end-to-end “create; insert_all”
 proof, and it complements `ParamHashRefinementGoalsTheory`, which assumes a
