@@ -64,6 +64,12 @@ There are two main “end-to-end” routes in HOL4:
    - `formal/hol4/F4FPPVerifyEndToEndProgramSuccessStackGoalsScript.sml`
    - best when focusing on the fast compute pipeline, ParamHash state, and the
      Atlas hash/equality contracts.
+   - now includes a fully modulo-`atlas_eq` statement that avoids
+     `atlas_eq_is_hol_eq` entirely:
+     - `obligations_stack_imply_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq`
+       (obligations ⇒ modulo set equality + modulo bottom-layer postcondition)
+     - `program_success_implies_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq_via_obligation_stack`
+       (program success ⇒ obligations ⇒ the same modulo conclusion)
 
 Both routes are consistent: they express the same end consequence but expose
 different proof boundaries.
@@ -79,6 +85,9 @@ At a high level:
    - `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeGoalsScript.sml`
    - gives fast-side semantic obligations (`fast_semantic_ok`) and a
      ParamHash-related bundle (currently via a state-factored predicate).
+   - modulo-`atlas_eq` variants now exist for the compute obligations bundle:
+     `fast_compute_obligations_atlas_eq`, yielding `fast_semantic_ok_atlas_eq`
+     and `fast_param_set_ok_atlas_eq` without `atlas_eq_is_hol_eq`.
 3. Bottom-layer success implies **bottom-layer obligations**
    - decomposed per check in:
      `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml`

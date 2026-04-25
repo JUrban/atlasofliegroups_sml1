@@ -25,16 +25,23 @@
   - The recombination lemmas are all OK.
 *)
 
-open HolKernel Parse boolLib bossLib;
+	open HolKernel Parse boolLib bossLib;
 
-open pred_setTheory pred_setLib;
+	open pred_setTheory pred_setLib;
 
-open F4FPPVerifyFastPruneGoalsTheory;
-open F4FPPVerifyFastComputeBridgeGoalsTheory;
-open F4FPPVerifyParamHashBridgeGoalsTheory;
-open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
+	open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+	open F4FPPVerifyAtlasEqListGoalsTheory;
+	open F4FPPVerifyAtlasEqSetGoalsTheory;
+
+	open F4FPPVerifyFastPruneGoalsTheory;
+	open F4FPPVerifyFastComputeBridgeGoalsTheory;
+	open F4FPPVerifyParamHashBridgeGoalsTheory;
+	open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
+	open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
 open F4FPPVerifyFastParamSetListRefineGoalsTheory;
 open F4FPPVerifyFastParamSetContainsRefineGoalsTheory;
+open F4FPPVerifyFastParamSetContainsRefineAtlasEqGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateRefineGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeBridgeDecomposeGoals";
 
@@ -43,6 +50,12 @@ Definition fast_compute_domain_ok_def:
   fast_compute_domain_ok g <=>
     fast_domain_is_pruned g /\
     fast_witnessed_pruned g
+End
+
+Definition fast_compute_domain_ok_atlas_eq_def:
+  fast_compute_domain_ok_atlas_eq g <=>
+    fast_domain_is_pruned g /\
+    fast_witnessed_pruned_atlas_eq g
 End
 
 (* Bundle (B): data-structure interface correctness, via ParamHash. *)
@@ -70,6 +83,64 @@ Proof
   \\ metis_tac[fast_param_set_is_paramhash_and_paramhash_contains_complete_imp_contains_complete]
 QED
 
+(* A factored recombination lemma for the modulo-`atlas_eq` compute bundle.
+
+   Here the ParamHash part is supplied as the *state-level* bundle (wiring +
+   state_ok + exact stores_U_fast), from which we derive:
+   - representation correctness modulo `atlas_eq` for `contains`, and
+   - the list sound/complete obligations needed to relate `ps_list` to `U_fast`.
+*)
+Theorem fast_compute_domain_and_state_factored_imp_fast_compute_obligations_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\
+    fast_compute_domain_ok_atlas_eq g /\
+    paramhash_obligations_state_factored g ==>
+      fast_compute_obligations_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ fs[paramhash_obligations_state_factored_def]
+  \\ rw[fast_compute_obligations_atlas_eq_def]
+  >- fs[fast_compute_domain_ok_atlas_eq_def]
+  >- fs[fast_compute_domain_ok_atlas_eq_def]
+  >- (
+    (* list sound *)
+    fs[paramhash_stores_U_fast_def, fast_param_set_is_paramhash_def,
+       fast_param_set_list_sound_def]
+  )
+  >- (
+    (* list complete *)
+    fs[paramhash_stores_U_fast_def, fast_param_set_is_paramhash_def,
+       fast_param_set_list_complete_def]
+  )
+  >- (
+    (* contains sound modulo atlas_eq *)
+    fs[fast_param_set_is_paramhash_def, fast_param_set_contains_sound_atlas_eq_def]
+    \\ rpt strip_tac
+    \\ `paramhash_rep_ok_atlas_eq g` by
+         metis_tac[paramhash_state_ok_imp_paramhash_rep_ok_atlas_eq]
+    \\ `mem_atlas_eq p (paramhash_list g)` by fs[paramhash_rep_ok_atlas_eq_def]
+    \\ qpat_x_assum `mem_atlas_eq p (paramhash_list g)`
+         (qx_choose_then `q` strip_assume_tac o REWRITE_RULE[mem_atlas_eq_def])
+    \\ rw[mem_set_atlas_eq_def]
+    \\ qexists_tac `q`
+    \\ simp[]
+    \\ fs[paramhash_stores_U_fast_def]
+  )
+  \\ (
+    (* contains complete modulo atlas_eq *)
+    fs[fast_param_set_is_paramhash_def, fast_param_set_contains_complete_atlas_eq_def]
+    \\ rpt strip_tac
+    \\ `paramhash_rep_ok_atlas_eq g` by
+         metis_tac[paramhash_state_ok_imp_paramhash_rep_ok_atlas_eq]
+    \\ qpat_x_assum `mem_set_atlas_eq p (U_fast g)`
+         (qx_choose_then `q` strip_assume_tac o REWRITE_RULE[mem_set_atlas_eq_def])
+    \\ `MEM q (paramhash_list g)` by metis_tac[paramhash_stores_U_fast_def]
+    \\ `mem_atlas_eq p (paramhash_list g)` by
+         (rw[mem_atlas_eq_def] \\ metis_tac[])
+    \\ fs[paramhash_rep_ok_atlas_eq_def]
+  )
+QED
+
 (* --- Bridge obligations from compute-phase success (currently CHEATED) --- *)
 
 Theorem fast_compute_program_succeeds_imp_fast_compute_domain_ok:
@@ -83,6 +154,14 @@ Proof
     - show every stored element of `U_fast g` is witnessed by such a triple.
   *)
   cheat
+QED
+
+Theorem fast_compute_domain_ok_imp_fast_compute_domain_ok_atlas_eq:
+  !g.
+    atlas_eq_equiv /\ fast_compute_domain_ok g ==> fast_compute_domain_ok_atlas_eq g
+Proof
+  rw[fast_compute_domain_ok_def, fast_compute_domain_ok_atlas_eq_def]
+  \\ metis_tac[fast_witnessed_pruned_imp_fast_witnessed_pruned_atlas_eq]
 QED
 
 Theorem fast_compute_program_succeeds_imp_fast_compute_paramhash_ok:

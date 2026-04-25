@@ -81,6 +81,14 @@ Definition fast_witnessed_pruned_atlas_eq_def:
           atlas_eq pi pi'
 End
 
+Theorem fast_witnessed_pruned_imp_fast_witnessed_pruned_atlas_eq:
+  !g.
+    atlas_eq_equiv /\ fast_witnessed_pruned g ==> fast_witnessed_pruned_atlas_eq g
+Proof
+  rw[fast_witnessed_pruned_def, fast_witnessed_pruned_atlas_eq_def, atlas_eq_equiv_def]
+  \\ metis_tac[]
+QED
+
 Theorem fast_domain_is_pruned_imp_fast_domain_subset:
   !g. fast_domain_is_pruned g ==> fast_domain_subset g
 Proof

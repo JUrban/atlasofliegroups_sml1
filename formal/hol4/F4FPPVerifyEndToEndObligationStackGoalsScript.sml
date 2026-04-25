@@ -25,7 +25,10 @@
 open HolKernel Parse boolLib bossLib;
 
 open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPVerifyAtlasEqSetGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
+open F4FPPVerifyRefinedMainAtlasEqGoalsTheory;
+open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
 
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
@@ -35,6 +38,8 @@ open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPBottomLayerParamSetGoalsTheory;
 open F4FPPVerifyFastParamSetGoalsTheory;
+open F4FPPBottomLayerParamSetAtlasEqGoalsTheory;
+open F4FPPVerifyFastParamSetAtlasEqGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyEndToEndObligationStackGoals";
 
@@ -159,6 +164,48 @@ Proof
        (rw[bottom_layer_total_ok_def] \\ metis_tac[])
 
   \\ metis_tac[refined_obligations_imply_equivalence]
+QED
+
+(* Full modulo-`atlas_eq` obligation stack:
+
+   This is the version we ultimately want to hook the program-success bridges to.
+   It avoids `atlas_eq_is_hol_eq` entirely:
+   - the compute phase is phrased using `fast_compute_obligations_atlas_eq`,
+     derived from the state-level ParamHash bundle plus `atlas_hash_eq_ok`;
+   - the bottom-layer checker is phrased via the param_set interface using
+     `bottom_layer_total_ok_param_set_atlas_eq`, and then lifted to
+     `bottom_layer_total_ok_atlas_eq`.
+
+   The conclusion matches `F4FPPVerifyRefinedMainAtlasEqGoalsTheory`:
+     `set_atlas_eq (U_fast g) (U_slow g (D_slow g))`
+   plus the bottom-layer postcondition modulo `atlas_eq`. *)
+Theorem obligations_stack_imply_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq:
+  !g dirac.
+    atlas_hash_eq_ok /\
+    atlas_eq_congruent_bottom_layer /\
+    fast_compute_domain_ok_atlas_eq g /\
+    paramhash_obligations_state_factored g /\
+    bottom_layer_total_ok_param_set_atlas_eq g dirac (fast_param_set g) /\
+    slow_refinement_ok g /\
+    slow_ok_components_atlas_eq g ==>
+      set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok_atlas_eq g dirac (U_fast g)
+Proof
+  rpt gen_tac
+  \\ rpt strip_tac
+  \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
+
+  \\ `fast_compute_obligations_atlas_eq g` by
+       metis_tac[fast_compute_domain_and_state_factored_imp_fast_compute_obligations_atlas_eq]
+  \\ `fast_semantic_ok_atlas_eq g` by
+       metis_tac[fast_compute_obligations_atlas_eq_imp_fast_semantic_ok_atlas_eq]
+  \\ `fast_param_set_ok_atlas_eq g` by
+       metis_tac[fast_compute_obligations_atlas_eq_imp_fast_param_set_ok_atlas_eq]
+
+  \\ `bottom_layer_total_ok_atlas_eq g dirac (U_fast g)` by
+       metis_tac[fast_param_set_ok_atlas_eq_and_bottom_layer_total_ok_param_set_atlas_eq_imp_bottom_layer_total_ok_atlas_eq]
+
+  \\ metis_tac[refined_obligations_imply_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq]
 QED
 
 val _ = export_theory ();

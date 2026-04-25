@@ -774,6 +774,18 @@ premises that match the program’s phase structure:
 This gives a single place to see the full list of obligations that still need
 to be discharged to obtain end-to-end equivalence.
 
+This file also now records the **fully modulo-`atlas_eq`** obligation-stack
+theorem:
+
+- `obligations_stack_imply_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq`
+
+which avoids `atlas_eq_is_hol_eq` entirely by:
+
+- phrasing the compute phase via `fast_compute_obligations_atlas_eq` (and
+  deriving `fast_semantic_ok_atlas_eq` + `fast_param_set_ok_atlas_eq`), and
+- phrasing the bottom-layer phase via `bottom_layer_total_ok_param_set_atlas_eq`
+  and then lifting to `bottom_layer_total_ok_atlas_eq`.
+
 #### `F4FPPVerifyEndToEndProgramSuccessStackGoalsTheory` (explicit end-to-end from program success)
 
 File: `formal/hol4/F4FPPVerifyEndToEndProgramSuccessStackGoalsScript.sml`
@@ -790,6 +802,13 @@ Records a single theorem
 
 This is the most explicit “roadmap theorem” for the full argument: it shows
 exactly which bridge lemmas remain to be proved/justified.
+
+It also records the fully modulo-`atlas_eq` program-success theorem:
+
+- `program_success_implies_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq_via_obligation_stack`
+
+whose conclusion matches the refined-main modulo theory and the modulo bottom-layer
+postcondition.
 
 #### `F4FPPVerifyFullGoalsTheory` (packaged top-level statement)
 

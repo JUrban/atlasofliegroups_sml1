@@ -65,5 +65,6 @@ Proof
   \\ metis_tac[bottom_layer_total_ok_param_set_atlas_eq_imp_bottom_layer_total_ok_atlas_eq]
 QED
 
+(* Combine list sound/complete with modulo-`atlas_eq` contains correctness to
+   obtain the full `fast_param_set_ok_atlas_eq` representation predicate. *)
 val _ = export_theory ();
-
