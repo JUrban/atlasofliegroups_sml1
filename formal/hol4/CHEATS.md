@@ -102,6 +102,11 @@ Additional split (still `cheat`ed):
   - `fast_compute_program_succeeds_imp_paramhash_observation_witness`
   - `fast_compute_program_succeeds_imp_paramhash_invariant_on_observation`
 
+Fast-domain split (still `cheat`ed):
+- file: `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsScript.sml`
+  - `fast_compute_program_succeeds_imp_fast_domain_is_pruned`
+  - `fast_compute_program_succeeds_imp_fast_witnessed_pruned`
+
 Modulo-`atlas_eq` bridge (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
