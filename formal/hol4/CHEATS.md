@@ -154,6 +154,9 @@ Trace-level stores upgrade (optional target):
     (if `U_fast` matches the build trace list, then it matches `ph_set` of the build state)
   - `atlas_hash_eq_ok_and_paramhash_build_m_ok_and_build_stores_imp_build_ps_stores`
     (converse direction; useful if one first proves the state-based stores predicate)
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsScript.sml`
+  - `atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq`
+    (packages wiring + build_state_ok + trace-level stores into extensional obligations)
 - file: `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
   - provides the pure build-set lemma `ph_build_from_create_state_set_atlas_eq_set_ps` (currently CHEAT)
 

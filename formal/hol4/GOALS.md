@@ -194,6 +194,9 @@ Newer, more specified refinement split (build-witness based):
               (`*_imp_build_stores` and `*_imp_build_ps_stores`)
           - pure build-set lemma used by the upgrade (CHEAT for now):
             - `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
+          - trace-level bundle and its implication to extensional ParamHash obligations:
+            - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeGoalsScript.sml`
+            - CHEAT-tainted composition: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsScript.sml`
         - strongest derived bundle (build_state_ok + state-based stores + wiring):
           - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`
           - derived bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`
