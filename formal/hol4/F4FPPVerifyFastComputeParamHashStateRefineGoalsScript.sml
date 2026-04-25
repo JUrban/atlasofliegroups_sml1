@@ -34,6 +34,8 @@ open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildDecomposeCheatsGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeParamHashStateRefineGoals";
 
@@ -72,6 +74,32 @@ Proof
   rpt strip_tac
   \\ match_mp_tac atlas_hash_eq_ok_and_build_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
   \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_factored_atlas_eq]
+QED
+
+(* Most specified route: use the canonical trace-based model directly. *)
+Theorem fast_compute_program_succeeds_imp_fast_compute_paramhash_ok_via_build_state:
+  !g.
+    atlas_eq_is_hol_eq /\ atlas_hash_range /\ fast_compute_program_succeeds g ==>
+      fast_compute_paramhash_ok g
+Proof
+  rpt strip_tac
+  \\ rw[fast_compute_paramhash_ok_def]
+  \\ match_mp_tac atlas_hash_range_and_build_factored_imp_paramhash_obligations_factored
+  \\ `paramhash_obligations_build_state_factored g` by
+       metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_state_factored]
+  \\ metis_tac[paramhash_build_state_factored_imp_build_factored]
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_obligations_factored_atlas_eq_via_build_state:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_factored_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac atlas_hash_eq_ok_and_build_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
+  \\ `paramhash_obligations_build_state_factored_atlas_eq g` by
+       metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_state_factored_atlas_eq]
+  \\ metis_tac[paramhash_build_state_factored_atlas_eq_imp_build_factored_atlas_eq]
 QED
 
 (* Modulo-`atlas_eq` variant: avoid `atlas_eq_is_hol_eq` in the ParamHash layer. *)
