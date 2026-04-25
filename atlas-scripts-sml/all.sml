@@ -104,6 +104,7 @@ val () = tryUse "atlas-scripts-sml/K_norm.sml"
 val () = tryUse "atlas-scripts-sml/genuine.sml"
 val () = tryUse "atlas-scripts-sml/K.sml"
 val () = tryUse "atlas-scripts-sml/K_types.sml"
+val () = tryUse "atlas-scripts-sml/K_types_plus.sml"
 val () = tryUse "atlas-scripts-sml/K_type_formula_generalized.sml"
 val () = tryUse "atlas-scripts-sml/K_type_formula.sml"
 
