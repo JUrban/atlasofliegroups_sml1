@@ -43,6 +43,7 @@ More realistic variant (modulo Atlas equality):
   - refined bridge from program-success predicates (cheat-tainted, but clean structure):
     - file: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
       (`fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq`)
+      (also `fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq_bottom_layer_atlas_eq`)
   - concrete specialization for the target group:
     - file: `formal/hol4/F4FPPVerifyEndToEndF4sGoalsScript.sml`
       (`fast_and_slow_programs_succeed_gives_equivalence_atlas_eq_F4s`)

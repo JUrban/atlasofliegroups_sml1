@@ -37,10 +37,11 @@ open F4FPPVerifyFastRefineAtlasEqGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyRefinedMainAtlasEqGoalsTheory;
-open F4FPPVerifyAtlasFFIContractsGoalsTheory;
-open F4FPPVerifyAtlasEqSetGoalsTheory;
-open F4FPPVerifySMLBridgeGoalsTheory;
-open F4FPPVerifySlowBridgeDetailedGoalsTheory;
+	open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+	open F4FPPVerifyAtlasEqSetGoalsTheory;
+	open F4FPPBottomLayerGoalsAtlasEqTheory;
+	open F4FPPVerifySMLBridgeGoalsTheory;
+	open F4FPPVerifySlowBridgeDetailedGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyRefinedBridgeGoals";
 
@@ -145,6 +146,37 @@ Proof
   \\ mp_tac (SPEC_ALL slow_program_succeeds_imp_refined_slow_obligations_atlas_eq)
   \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
   \\ metis_tac[refined_obligations_imply_set_atlas_eq_fast_atlas_eq]
+QED
+
+(* Derived variant: also expose the bottom-layer postcondition modulo `atlas_eq`. *)
+Theorem fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq_bottom_layer_atlas_eq:
+  !g dirac.
+    atlas_hash_eq_ok /\ atlas_eq_congruent_bottom_layer /\
+    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
+      set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok_atlas_eq g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ `set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok g dirac (U_fast g)` by
+       metis_tac[fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq]
+  \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
+  \\ metis_tac[bottom_layer_total_ok_imp_bottom_layer_total_ok_atlas_eq]
+QED
+
+Theorem fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq_fast_atlas_eq_bottom_layer_atlas_eq:
+  !g dirac.
+    atlas_hash_eq_ok /\ atlas_eq_congruent_bottom_layer /\
+    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
+      set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok_atlas_eq g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ `set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+      bottom_layer_total_ok g dirac (U_fast g)` by
+       metis_tac[fast_and_slow_programs_succeed_gives_refined_equivalence_atlas_eq_fast_atlas_eq]
+  \\ `atlas_eq_equiv` by fs[atlas_hash_eq_ok_def]
+  \\ metis_tac[bottom_layer_total_ok_imp_bottom_layer_total_ok_atlas_eq]
 QED
 
 val _ = export_theory ();

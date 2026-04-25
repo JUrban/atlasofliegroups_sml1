@@ -33,9 +33,10 @@ open F4FPPVerifyAtlasFFIContractsGoalsTheory;
 open F4FPPVerifyAtlasEqSetGoalsTheory;
 open F4FPPVerifySpecAtlasEqGoalsTheory;
 
-open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
-open F4FPPVerifyFastRefineAtlasEqGoalsTheory;
-open F4FPPVerifyRefinedMainGoalsTheory;
+	open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
+	open F4FPPVerifyFastRefineAtlasEqGoalsTheory;
+	open F4FPPVerifyRefinedMainGoalsTheory;
+	open F4FPPBottomLayerGoalsAtlasEqTheory;
 
 val _ = new_theory "F4FPPVerifyRefinedMainAtlasEqGoals";
 
@@ -94,11 +95,61 @@ Proof
   \\ `set_atlas_eq (U_fast g) (U_slow g (D_slow g))` by (
     match_mp_tac sound_and_complete_atlas_eq_gives_set_atlas_eq
     \\ conj_tac >- fs[]
-    \\ conj_tac
-    >- metis_tac[fast_semantic_ok_atlas_eq_imp_sound_wrt_domain_atlas_eq]
+    \\ conj_tac >- metis_tac[fast_semantic_ok_atlas_eq_imp_sound_wrt_domain_atlas_eq]
     \\ metis_tac[slow_refinement_ok_def, slow_ok_components_atlas_eq_imp_complete_rel_atlas_eq]
     )
   \\ `bottom_layer_total_ok g dirac (U_fast g)` by fs[]
+  \\ fs[]
+QED
+
+(* Variant with the bottom-layer postcondition stated modulo `atlas_eq`. *)
+Theorem refined_obligations_imply_set_atlas_eq_and_bottom_layer_total_ok_atlas_eq:
+  !g dirac.
+    (atlas_eq_equiv /\
+     slow_refinement_ok g /\
+     slow_ok_components_atlas_eq g /\
+     fast_semantic_ok g /\
+     bottom_layer_total_ok_atlas_eq g dirac (U_fast g)) ==>
+      (set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+       bottom_layer_total_ok_atlas_eq g dirac (U_fast g))
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[]
+  \\ `set_atlas_eq (U_fast g) (U_slow g (D_slow g))` by (
+    match_mp_tac sound_and_complete_atlas_eq_gives_set_atlas_eq
+    \\ conj_tac >- fs[]
+    \\ conj_tac
+    >- (
+      match_mp_tac fast_sound_imp_sound_wrt_domain_atlas_eq
+      \\ conj_tac >- fs[]
+      \\ `fast_sound g` by metis_tac[fast_semantic_ok_imp_fast_sound]
+      \\ fs[fast_sound_def]
+      )
+    \\ metis_tac[slow_refinement_ok_def, slow_ok_components_atlas_eq_imp_complete_rel_atlas_eq]
+    )
+  \\ fs[]
+QED
+
+Theorem refined_obligations_imply_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq:
+  !g dirac.
+    (atlas_eq_equiv /\
+     slow_refinement_ok g /\
+     slow_ok_components_atlas_eq g /\
+     fast_semantic_ok_atlas_eq g /\
+     bottom_layer_total_ok_atlas_eq g dirac (U_fast g)) ==>
+      (set_atlas_eq (U_fast g) (U_slow g (D_slow g)) /\
+       bottom_layer_total_ok_atlas_eq g dirac (U_fast g))
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[]
+  \\ `set_atlas_eq (U_fast g) (U_slow g (D_slow g))` by (
+    match_mp_tac sound_and_complete_atlas_eq_gives_set_atlas_eq
+    \\ conj_tac >- fs[]
+    \\ conj_tac >- metis_tac[fast_semantic_ok_atlas_eq_imp_sound_wrt_domain_atlas_eq]
+    \\ metis_tac[slow_refinement_ok_def, slow_ok_components_atlas_eq_imp_complete_rel_atlas_eq]
+    )
   \\ fs[]
 QED
 

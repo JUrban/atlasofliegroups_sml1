@@ -29,6 +29,10 @@ open F4FPPBottomLayerParamSetGoalsTheory;
 open F4FPPVerifyFastParamSetGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPBottomLayerGoalsAtlasEqTheory;
+open F4FPPBottomLayerParamSetAtlasEqGoalsTheory;
+open F4FPPVerifyFastParamSetAtlasEqGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyGlobalDiracBridgeDecomposeGoals";
 
@@ -62,6 +66,12 @@ End
 Definition bl_dual_closed_ok_def:
   bl_dual_closed_ok g <=>
     dual_closed_contains_ok (fast_param_set g)
+End
+
+(* For compact groups, the pipeline seeds the structure with `rho_set g`. *)
+Definition bl_rho_seeded_ok_def:
+  bl_rho_seeded_ok g <=>
+    !p. p IN rho_set g ==> ps_contains (fast_param_set g) p
 End
 
 (* --- Bridge lemmas: success implies each check obligation (CHEATED). --- *)
@@ -98,6 +108,12 @@ QED
 
 Theorem bottom_layer_program_succeeds_imp_bl_dual_closed_ok:
   !g dirac. bottom_layer_program_succeeds g dirac ==> bl_dual_closed_ok g
+Proof
+  cheat
+QED
+
+Theorem bottom_layer_program_succeeds_imp_bl_rho_seeded_ok:
+  !g dirac. bottom_layer_program_succeeds g dirac ==> bl_rho_seeded_ok g
 Proof
   cheat
 QED
@@ -164,6 +180,35 @@ Theorem bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_noncomp
 Proof
   rw[bottom_layer_total_ok_def]
   \\ metis_tac[bottom_layer_program_succeeds_and_fast_param_set_ok_imp_bottom_layer_ok_decomposed]
+QED
+
+(* --------------------------------------------------------------------- *)
+(*  Modulo-`atlas_eq` variants                                            *)
+(* --------------------------------------------------------------------- *)
+
+Theorem bottom_layer_program_succeeds_imp_bottom_layer_total_ok_param_set_atlas_eq_decomposed:
+  !g dirac.
+    bottom_layer_program_succeeds g dirac ==>
+      bottom_layer_total_ok_param_set_atlas_eq g dirac (fast_param_set g)
+Proof
+  rpt strip_tac
+  \\ Cases_on `group_is_compact g`
+  \\ fs[bottom_layer_total_ok_param_set_atlas_eq_def]
+  >- metis_tac[bottom_layer_program_succeeds_imp_bl_rho_seeded_ok, bl_rho_seeded_ok_def]
+  \\ metis_tac[bottom_layer_program_succeeds_imp_bottom_layer_ok_param_set_decomposed]
+QED
+
+Theorem bottom_layer_program_succeeds_and_fast_param_set_ok_atlas_eq_imp_total_ok_atlas_eq_decomposed:
+  !g dirac.
+    atlas_eq_equiv /\ atlas_eq_congruent_bottom_layer /\
+    bottom_layer_program_succeeds g dirac /\ fast_param_set_ok_atlas_eq g ==>
+      bottom_layer_total_ok_atlas_eq g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ match_mp_tac
+       fast_param_set_ok_atlas_eq_and_bottom_layer_total_ok_param_set_atlas_eq_imp_bottom_layer_total_ok_atlas_eq
+  \\ asm_rewrite_tac[]
+  \\ metis_tac[bottom_layer_program_succeeds_imp_bottom_layer_total_ok_param_set_atlas_eq_decomposed]
 QED
 
 val _ = export_theory ();

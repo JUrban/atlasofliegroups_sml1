@@ -27,13 +27,17 @@
 
 open HolKernel Parse boolLib bossLib;
 
-open pred_setTheory pred_setLib;
+	open pred_setTheory pred_setLib;
 
-open F4FPPBottomLayerGoalsTheory;
-open F4FPPBottomLayerParamSetGoalsTheory;
-open F4FPPVerifyFastParamSetGoalsTheory;
+	open F4FPPBottomLayerGoalsTheory;
+	open F4FPPBottomLayerParamSetGoalsTheory;
+	open F4FPPVerifyFastParamSetGoalsTheory;
+	open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+	open F4FPPBottomLayerGoalsAtlasEqTheory;
+	open F4FPPBottomLayerParamSetAtlasEqGoalsTheory;
+	open F4FPPVerifyFastParamSetAtlasEqGoalsTheory;
 
-val _ = new_theory "F4FPPVerifyGlobalDiracBridgeGoals";
+	val _ = new_theory "F4FPPVerifyGlobalDiracBridgeGoals";
 
 (* Abstract predicate: the SML bottom-layer pipeline returned successfully for
    the fast program’s param_set (no exception raised). *)
@@ -79,4 +83,40 @@ Proof
   \\ metis_tac[bottom_layer_program_succeeds_and_fast_param_set_ok_imp_bottom_layer_ok]
 QED
 
-val _ = export_theory ();
+(* --------------------------------------------------------------------- *)
+(*  Modulo-`atlas_eq` variants                                            *)
+(* --------------------------------------------------------------------- *)
+
+(* Bridge obligation: success implies the param_set total predicate with
+   modulo-`atlas_eq` membership semantics for `contains`. *)
+Theorem bottom_layer_program_succeeds_imp_bottom_layer_total_ok_param_set_atlas_eq:
+  !g dirac.
+    bottom_layer_program_succeeds g dirac ==>
+      bottom_layer_total_ok_param_set_atlas_eq g dirac (fast_param_set g)
+Proof
+  (*
+    Intended proof ingredients (later, without `cheat`):
+    - in the non-compact branch: the same reasoning as for
+      `bottom_layer_program_succeeds_imp_bottom_layer_ok_param_set`,
+    - in the compact branch: show the program seeds the hash with `rho_set g`,
+      so `contains` returns true on all `p IN rho_set g`.
+  *)
+  cheat
+QED
+
+(* Composition: success + modulo representation implies the modulo bottom-layer
+   postcondition on `U_fast g`. *)
+Theorem bottom_layer_program_succeeds_and_fast_param_set_ok_atlas_eq_imp_total_ok_atlas_eq:
+  !g dirac.
+    atlas_eq_equiv /\ atlas_eq_congruent_bottom_layer /\
+    bottom_layer_program_succeeds g dirac /\ fast_param_set_ok_atlas_eq g ==>
+      bottom_layer_total_ok_atlas_eq g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ match_mp_tac
+       fast_param_set_ok_atlas_eq_and_bottom_layer_total_ok_param_set_atlas_eq_imp_bottom_layer_total_ok_atlas_eq
+  \\ asm_rewrite_tac[]
+  \\ metis_tac[bottom_layer_program_succeeds_imp_bottom_layer_total_ok_param_set_atlas_eq]
+QED
+
+	val _ = export_theory ();

@@ -136,6 +136,15 @@ Planned discharge:
 - shallow proofs that the SML code traverses the right set and calls the right
   predicates, plus FFI contracts for those predicates.
 
+Modulo-`atlas_eq` additions:
+- `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml` now also records a
+  cheated bridge `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq`,
+  intended to cover both the compact rho-seeding branch and the non-compact
+  check branch.
+- `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml` adds a
+  compact-specific cheated predicate `bl_rho_seeded_ok` and uses it to derive
+  the modulo-`atlas_eq` total postcondition `bottom_layer_total_ok_atlas_eq`.
+
 ## H. Slow checker bridge
 
 - Files:

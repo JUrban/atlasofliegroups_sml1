@@ -452,6 +452,15 @@ the `FPP_globalDirac` pipeline. It records the intended bridge theorem:
 and then derives (without further cheating) the set-level consequences under
 `fast_param_set_ok`, including `bottom_layer_total_ok` for non-compact groups.
 
+Modulo-`atlas_eq` variants:
+- records a separate (currently `cheat`ed) bridge obligation
+  `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq ...`,
+  which covers both compact (rho-seeding) and non-compact (checks) branches.
+- derives the more realistic postcondition
+  `bottom_layer_total_ok_atlas_eq g dirac (U_fast g)` under
+  `fast_param_set_ok_atlas_eq` and the explicit congruence contract
+  `atlas_eq_congruent_bottom_layer`.
+
 #### `F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory` (bottom-layer bridge, per-check)
 
 File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml`
@@ -465,6 +474,7 @@ structure of `atlas-scripts-sml/FPP_globalDirac.sml`:
 - `bl_hermitian_ok g`
 - `bl_unitary_if_ok g dirac`
 - `bl_dual_closed_ok g`
+- `bl_rho_seeded_ok g` (compact groups: `rho_set g` is present via `contains`)
 
 It records cheated lemmas “`bottom_layer_program_succeeds ⇒ bl_*_ok`” for each
 check, and then recombines them (OK) into a single lemma
@@ -475,6 +485,10 @@ decomposition:
 
 - `bottom_layer_program_succeeds ∧ fast_param_set_ok ⇒ bottom_layer_ok ...`
 - `... ∧ ~group_is_compact ⇒ bottom_layer_total_ok ...`
+
+It additionally provides the modulo-`atlas_eq` total-postcondition route:
+- `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq ...`
+- `... ∧ fast_param_set_ok_atlas_eq ⇒ bottom_layer_total_ok_atlas_eq ...`
 
 #### `F4FPPVerifyFastComputeBridgeGoalsTheory` (fast compute-phase bridge)
 
