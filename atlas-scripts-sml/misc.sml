@@ -187,8 +187,9 @@ structure Misc = struct
   fun vecAdd (xs: vec, ys: vec) : vec = ListPair.mapEq (op +) (xs, ys)
   fun vecSub (xs: vec, ys: vec) : vec = ListPair.mapEq (op -) (xs, ys)
 
-  (* Return (p,q) where alpha+p*beta is a root (max p) and alpha-q*beta is a root (max q). *)
-  fun root_string (rd: rootdatum, beta: vec, alpha: vec) : int * int =
+  (* Return (p,q) where `alpha+p*beta` is a root (max p) and `alpha-q*beta` is
+     a root (max q). This matches `root_string(rd,alpha,beta)` in `misc.at`. *)
+  fun root_string (rd: rootdatum, alpha: vec, beta: vec) : int * int =
     let
       val () =
         if alpha = List.map (fn x => ~x) beta then raise Fail "Misc.root_string: alpha = -beta" else ()
