@@ -118,6 +118,8 @@ val () = tryUse "atlas-scripts-sml/representations.sml"
 val () = tryUse "atlas-scripts-sml/parameters.sml"
 val () = tryUse "atlas-scripts-sml/translate.sml"
 val () = tryUse "atlas-scripts-sml/convert_c_form.sml"
+val () = tryUse "atlas-scripts-sml/new_blocks.sml"
+val () = tryUse "atlas-scripts-sml/dual.sml"
 val () = tryUse "atlas-scripts-sml/c_form_branch.sml"
 val () = tryUse "atlas-scripts-sml/complex.sml"
 val () = tryUse "atlas-scripts-sml/is_normal.sml"
@@ -131,6 +133,12 @@ val () = tryUse "atlas-scripts-sml/restricted_roots.sml"
 val () = tryUse "atlas-scripts-sml/tensor_product_sl2.sml"
 val () = tryUse "atlas-scripts-sml/tensor_product_A1.sml"
 val () = tryUse "atlas-scripts-sml/Tensor_Products.sml"
+val () = tryUse "atlas-scripts-sml/unitary_induction.sml"
+val () = tryUse "atlas-scripts-sml/speh.sml"
+val () = tryUse "atlas-scripts-sml/wallace.sml"
+val () = tryUse "atlas-scripts-sml/weakly_unipotent.sml"
+val () = tryUse "atlas-scripts-sml/harmonic.sml"
+val () = tryUse "atlas-scripts-sml/induction_sp4.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
    - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
@@ -140,11 +148,11 @@ val () = tryUse "atlas-scripts-sml/Tensor_Products.sml"
      `good_W_representatives.at`, `finite_unipotents.at`, `weyltosemisimple.at`,
      `cyclotomic_field_bracket.at`, `tits_centralizer.at`, `stable.at`,
      `GK_dimension.at`, `restricted_roots.at`, `nilpotent_centralizer.at`,
-     `weak_packets_precomputed_cell_traces.at`, `arthur_parameters.at`,
+      `weak_packets_precomputed_cell_traces.at`, `arthur_parameters.at`,
      `coherent_irreducible.at`, `truncated_induction.at`, `dirac_index.at`,
      `sub_cells.at`, `associated_variety_annihilator.at`, `sommers.at`,
      `projectors_using_character_tables.at`, `new_conjugacy.at`, `test_braid.at`,
      `geck_generic.at`, `lusztig_cells.at`, `four.at`, `special_rep.at`,
      `families.at`, `FPP_globalDirac.at`, `L_packet.at`, `adams_johnson.at`,
-     `speh.at`, ...
+     ...
 *)
