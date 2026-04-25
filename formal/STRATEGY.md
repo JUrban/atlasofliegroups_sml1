@@ -340,6 +340,20 @@ predicate `dual_closed U`. This is the intended hook for connecting the
 hash-table membership test (`ParamHash.contains`) to the abstract goal
 `bottom_layer_ok`.
 
+#### `F4FPPBottomLayerParamSetAtlasEqGoalsTheory` (bottom-layer: param_set modulo `atlas_eq`)
+
+File: `formal/hol4/F4FPPBottomLayerParamSetAtlasEqGoalsScript.sml`
+
+Provides the analogous refinement layer for the realistic membership semantics
+of ParamHash/ParamSet:
+
+- `param_set_rep_ok_atlas_eq (ps,contains) U`:
+  `U = set ps` and `contains p ⇔ mem_set_atlas_eq p U`.
+
+It proves that the SML dual-closure check based on `contains` implies the
+modulo-`atlas_eq` set predicate `dual_closed_atlas_eq`, and that the combined
+param_set-based bottom-layer predicate implies `bottom_layer_ok_atlas_eq`.
+
 #### `F4FPPVerifyFastParamSetGoalsTheory` (fast output as a param_set)
 
 File: `formal/hol4/F4FPPVerifyFastParamSetGoalsScript.sml`

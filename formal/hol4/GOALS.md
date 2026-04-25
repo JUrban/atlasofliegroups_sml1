@@ -31,6 +31,8 @@ More realistic variant (modulo Atlas equality):
     `bottom_layer_total_ok_atlas_eq g dirac (U_fast g)` (compact case uses
     `mem_set_atlas_eq` rather than `IN`).
     - file: `formal/hol4/F4FPPBottomLayerGoalsAtlasEqScript.sml`
+    - param_set/`contains` refinement layer (matches ParamHash semantics):
+      - file: `formal/hol4/F4FPPBottomLayerParamSetAtlasEqGoalsScript.sml`
   - spec-level shape + supporting lemmas:
     - file: `formal/hol4/F4FPPVerifySpecAtlasEqGoalsScript.sml`
       (`complete_rel_atlas_eq`, `sound_wrt_domain_atlas_eq`,
