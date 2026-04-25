@@ -200,6 +200,8 @@ Newer, more specified refinement split (build-witness based):
           - trace-level bundle and its implication to extensional ParamHash obligations:
             - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeGoalsScript.sml`
             - CHEAT-tainted composition: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsScript.sml`
+          - adapter to feed the trace-level bundle into the existing state-level bundle (OK, no `cheat`):
+            - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceToStateGoalsScript.sml`
           - bridge from compute success to the trace-level stores predicate (intended translator target; CHEAT for now):
             - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoalsScript.sml`
         - strongest derived bundle (build_state_ok + state-based stores + wiring):

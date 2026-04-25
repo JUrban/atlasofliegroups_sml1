@@ -157,6 +157,10 @@ Trace-level stores upgrade (optional target):
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsScript.sml`
   - `atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq`
     (packages wiring + build_state_ok + trace-level stores into extensional obligations)
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceToStateGoalsScript.sml`
+  - OK adapter under `atlas_hash_eq_ok`:
+    `atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_state_factored_atlas_eq`
+    (lets the obligation stack consume the trace-level bundle)
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_build_ps_complete_U_fast_atlas_eq`
   - `fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq`

@@ -747,6 +747,12 @@ lemmas, most notably:
 - `fast_compute_program_succeeds g ==> paramhash_build_stores_U_fast_atlas_eq g`
   (state-based target phrased against `ph_set`).
 
+Adapter (OK):
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceToStateGoalsScript.sml`
+  shows how to convert the trace-level canonical-build bundle into the existing
+  state-level ParamHash bundle required by the end-to-end obligation stack,
+  under `atlas_hash_eq_ok`.
+
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
