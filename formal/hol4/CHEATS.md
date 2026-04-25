@@ -93,7 +93,7 @@ Modulo-`atlas_eq` bridge (still `cheat`ed):
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
 
 Modulo-`atlas_eq` compute bundle (still `cheat`ed):
-- file: `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`
+- file: `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_obligations_atlas_eq`
 
 ## F. ParamHash state model

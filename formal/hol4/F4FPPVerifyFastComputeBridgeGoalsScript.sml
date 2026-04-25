@@ -24,9 +24,10 @@
   - `fast_semantic_ok g` (the bundle used by the refined main theorem)
 
   Status
-  - The bridge theorem linking “fast compute program succeeds” to the
-    obligations is currently `cheat`ed. The rest is OK composition.
-*)
+  - The “execution success ⇒ obligations” bridge theorems are maintained in a
+    separate theory (`F4FPPVerifyFastComputeBridgeCheatsGoalsTheory`) to keep
+    this theory entirely OK (definitions + logical consequences only).
+ *)
 
 open HolKernel Parse boolLib bossLib;
 
@@ -75,26 +76,8 @@ Definition fast_compute_obligations_atlas_eq_def:
 End
 
 (* The actual bridge: success implies the obligations (CHEATED for now). *)
-Theorem fast_compute_program_succeeds_imp_obligations:
-  !g. fast_compute_program_succeeds g ==> fast_compute_obligations g
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - a domain accounting argument for which triples are enumerated by the
-      implementation (`fast_considers`),
-    - a witness argument tying every stored parameter to some considered triple,
-    - a data-structure argument that `ParamHash.list/contains` satisfy
-      `fast_param_set_ok`.
-  *)
-  cheat
-QED
-
-(* A parallel bridge statement for the modulo-`atlas_eq` compute bundle. *)
-Theorem fast_compute_program_succeeds_imp_obligations_atlas_eq:
-  !g. fast_compute_program_succeeds g ==> fast_compute_obligations_atlas_eq g
-Proof
-  cheat
-QED
+(* Bridge theorems linking `fast_compute_program_succeeds` to these obligations
+   are recorded in `F4FPPVerifyFastComputeBridgeCheatsGoalsTheory`. *)
 
 (* OK: compute obligations imply the semantic obligations used by the refined
    main theorem. *)
