@@ -23,6 +23,12 @@ open F4FPPVerifyGoalsTheory;
 open F4FPPVerifyFullGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPVerifySMLBridgeGoalsTheory;
+open F4FPPVerifyFastProgramSplitBridgeCheatsGoalsTheory;
+open F4FPPVerifyFastComputeBridgeCheatsGoalsTheory;
+open F4FPPVerifyFastComputeBridgeGoalsTheory;
+open F4FPPVerifyRefinedMainGoalsTheory;
+open F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsTheory;
+open F4FPPVerifySlowBridgeDetailedGoalsTheory;
 
 val _ = new_theory "F4FPPVerifySMLBridgeCheatsGoals";
 
@@ -30,23 +36,31 @@ val _ = new_theory "F4FPPVerifySMLBridgeCheatsGoals";
 Theorem fast_program_succeeds_imp_fast_ok:
   !g dirac. fast_program_succeeds g dirac ==> fast_ok g dirac
 Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - relate `VerifyF4FPP.sml` to the fast compute + bottom-layer bridges
-      (or to the refined obligation bundles directly).
-  *)
-  cheat
+  rpt strip_tac
+  \\ drule fast_program_succeeds_imp_phase_success
+  \\ disch_then strip_assume_tac
+  \\ drule fast_compute_program_succeeds_imp_obligations
+  \\ disch_then assume_tac
+  \\ `fast_semantic_ok g` by metis_tac[fast_compute_obligations_imp_fast_semantic_ok]
+  \\ `fast_sound g` by metis_tac[fast_semantic_ok_imp_fast_sound]
+  \\ `fast_param_set_ok g` by metis_tac[fast_compute_obligations_imp_fast_param_set_ok]
+  \\ `bottom_layer_total_ok g dirac (U_fast g)` by
+       metis_tac[bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_decomposed]
+  \\ fs[fast_ok_def, fast_checks_ok_def]
 QED
 
 Theorem slow_program_succeeds_imp_dom_and_slow_ok:
   !g. slow_program_succeeds g ==> dom_list_correct g /\ slow_ok g
 Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - relate `SimplerVerifyF4FPP.sml` to the slow program decomposition bridges
-      (`slow_domain_list`, `slow_missing`, “0 misses”), and to `dom_list_correct`.
-  *)
-  cheat
+  rpt strip_tac
+  \\ `slow_refinement_ok g /\ slow_ok_components g` by
+       metis_tac[slow_program_succeeds_imp_refined_slow_obligations_detailed]
+  \\ pop_assum strip_assume_tac
+  \\ `dom_list_correct g` by metis_tac[slow_refinement_ok_imp_dom_list_correct]
+  \\ `slow_ok g <=> slow_ok_components g` by
+       metis_tac[slow_refinement_ok_imp_slow_ok_iff_components]
+  \\ `slow_ok g` by fs[]
+  \\ simp[]
 QED
 
 Theorem slow_program_succeeds_imp_dom_list_correct:

@@ -40,7 +40,14 @@ These `cheat`s isolate the connection between the actual Poly/ML programs in
   - `formal/hol4/F4FPPVerifySMLBridgeCheatsGoalsScript.sml` (records the `cheat`ed bridge theorems)
 - Role: `fast_program_succeeds` / `slow_program_succeeds` are abstract
   predicates; success should imply the abstract obligations.
-- Status: all program-success implications are placeholders (`cheat`).
+- Status:
+  - the “whole-program success ⇒ obligations” lemmas are now proved by
+    composition (no new `cheat` introduced in
+    `formal/hol4/F4FPPVerifySMLBridgeCheatsGoalsScript.sml`), but they remain
+    CHEAT-tainted because they depend on smaller bridge lemmas that are still
+    placeholders.
+  - this keeps the remaining trusted surface *below* the top-level glue,
+    making it easier to chip away at bridge obligations one-by-one.
 
 Planned discharge:
 - refactor SML to be I/O-free and return structured results,
@@ -174,6 +181,10 @@ Modulo-`atlas_eq` additions:
   cheated bridge `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq`,
   intended to cover both the compact rho-seeding branch and the non-compact
   check branch.
+- For HOL equality (non-modulo), `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsScript.sml`
+  now also provides the convenience composition lemma
+  `bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_decomposed`,
+  which covers both branches by cases on `group_is_compact g`.
 - `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml` adds a
   compact-specific predicate `bl_rho_seeded_ok` and uses it to derive
   the modulo-`atlas_eq` total postcondition `bottom_layer_total_ok_atlas_eq`.

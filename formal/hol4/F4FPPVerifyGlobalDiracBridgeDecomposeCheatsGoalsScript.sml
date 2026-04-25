@@ -18,6 +18,8 @@
 
 open HolKernel Parse boolLib bossLib;
 
+open pred_setTheory pred_setLib;
+
 open F4FPPBottomLayerParamSetGoalsTheory;
 open F4FPPVerifyFastParamSetGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
@@ -116,6 +118,26 @@ Proof
   \\ metis_tac[bottom_layer_program_succeeds_and_fast_param_set_ok_imp_bottom_layer_ok_decomposed]
 QED
 
+(* A more convenient all-groups composition lemma:
+   - compact groups: use the rho-seeding postcondition,
+   - noncompact: use the bottom-layer check conjunction. *)
+Theorem bottom_layer_program_succeeds_and_fast_param_set_ok_imp_total_ok_decomposed:
+  !g dirac.
+    bottom_layer_program_succeeds g dirac /\ fast_param_set_ok g ==>
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rpt strip_tac
+  \\ Cases_on `group_is_compact g`
+  >- (
+    rw[bottom_layer_total_ok_def, SUBSET_DEF]
+    \\ drule bottom_layer_program_succeeds_imp_bl_rho_seeded_ok
+    \\ strip_tac
+    \\ fs[bl_rho_seeded_ok_def, fast_param_set_ok_def, param_set_rep_ok_def]
+    \\ metis_tac[] )
+  \\ rw[bottom_layer_total_ok_def]
+  \\ metis_tac[bottom_layer_program_succeeds_and_fast_param_set_ok_imp_bottom_layer_ok_decomposed]
+QED
+
 (* --------------------------------------------------------------------- *)
 (*  Modulo-`atlas_eq` variants                                            *)
 (* --------------------------------------------------------------------- *)
@@ -146,4 +168,3 @@ Proof
 QED
 
 val _ = export_theory ();
-
