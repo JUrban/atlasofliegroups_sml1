@@ -113,8 +113,18 @@ Additional split (still `cheat`ed):
 
 Fast-domain split (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsScript.sml`
-  - `fast_compute_program_succeeds_imp_fast_domain_is_pruned`
-  - `fast_compute_program_succeeds_imp_fast_witnessed_pruned`
+  - `fast_compute_program_succeeds_imp_fast_domain_sound`
+  - `fast_compute_program_succeeds_imp_fast_domain_complete`
+  - `fast_compute_program_succeeds_imp_fast_domain_is_pruned` (derived, no new `cheat`)
+  - `fast_compute_program_succeeds_imp_fast_witnessed_pruned_exists`
+  - `fast_compute_program_succeeds_imp_fast_unitary_set`
+  - `fast_compute_program_succeeds_imp_fast_witnessed_pruned` (derived, no new `cheat`)
+
+Decomposition helper (OK):
+- `formal/hol4/F4FPPVerifyFastPruneDecomposeGoalsScript.sml` introduces the
+  inclusion-direction obligations (`fast_domain_sound`, `fast_domain_complete`)
+  and the split witness obligations (`fast_witnessed_pruned_exists`,
+  `fast_unitary_set`) and provides the recombination lemmas.
 
 Note:
 - `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml` no longer
