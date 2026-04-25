@@ -368,6 +368,19 @@ and provides a simple glue lemma showing that, once `fast_param_set_ok` holds,
 proving the SML-style predicate `bottom_layer_ok_param_set g dirac (fast_param_set g)`
 is sufficient to conclude `bottom_layer_ok g dirac (U_fast g)`.
 
+#### `F4FPPVerifyFastParamSetAtlasEqGoalsTheory` (fast output as a param_set modulo `atlas_eq`)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetAtlasEqGoalsScript.sml`
+
+Adds the more realistic representation predicate:
+
+- `fast_param_set_ok_atlas_eq g`: `param_set_rep_ok_atlas_eq (fast_param_set g) (U_fast g)`
+
+meaning `contains p ⇔ mem_set_atlas_eq p (U_fast g)` rather than `p IN U_fast g`.
+It provides glue lemmas showing that bottom-layer success over the param_set
+implies the modulo-`atlas_eq` postconditions `bottom_layer_ok_atlas_eq` and
+`bottom_layer_total_ok_atlas_eq`.
+
 #### `F4FPPVerifyFastParamSetRefineGoalsTheory` (split `fast_param_set_ok`)
 
 File: `formal/hol4/F4FPPVerifyFastParamSetRefineGoalsScript.sml`
@@ -385,6 +398,17 @@ and provides the “OK” composition lemma:
 This isolates exactly what we will eventually need to prove about the concrete
 `ParamHash.list` and `ParamHash.contains` operations.
 
+#### `F4FPPVerifyFastParamSetRefineAtlasEqGoalsTheory` (split `fast_param_set_ok_atlas_eq`)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetRefineAtlasEqGoalsScript.sml`
+
+Provides the analogous refinement layer, defining:
+
+- `fast_param_set_contains_ok_atlas_eq g`:
+  `contains p ⇔ mem_set_atlas_eq p (U_fast g)`,
+
+and bundling it with the existing list obligation `fast_param_set_list_ok g`.
+
 #### `F4FPPVerifyFastParamSetContainsRefineGoalsTheory` (split `contains_ok`)
 
 File: `formal/hol4/F4FPPVerifyFastParamSetContainsRefineGoalsScript.sml`
@@ -395,6 +419,13 @@ Splits `fast_param_set_contains_ok g` into the two one-way obligations:
 - `fast_param_set_contains_complete g`: `p ∈ U_fast g ⇒ contains p`
 
 and provides the “OK” recombination lemma back to the original biconditional.
+
+#### `F4FPPVerifyFastParamSetContainsRefineAtlasEqGoalsTheory` (split `contains_ok_atlas_eq`)
+
+File: `formal/hol4/F4FPPVerifyFastParamSetContainsRefineAtlasEqGoalsScript.sml`
+
+Provides the analogous soundness/completeness split where the abstract set view
+is `mem_set_atlas_eq p (U_fast g)`.
 
 #### `F4FPPVerifyFastParamSetListRefineGoalsTheory` (split list enumeration)
 
