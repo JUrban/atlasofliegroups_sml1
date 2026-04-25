@@ -448,12 +448,8 @@ structure Combinatorics = struct
       | _ => false
     end
 
-  (* Type-D related parity predicates (ported from `combinatorics.at`). *)
-  fun is_very_even (p0: partition) : bool =
-    List.all (fn x => x mod 2 = 0) (strip_to_partition p0)
-
-  (* Even parts only, and every part (hence every even part) occurs with even
-     multiplicity. *)
+  (* Parity predicate (ported from `combinatorics.at`):
+     even parts only, and every part occurs with even multiplicity. *)
   fun is_doubly_even (p0: partition) : bool =
     let
       val p = strip_to_partition p0
@@ -1124,7 +1120,8 @@ structure Combinatorics = struct
 
   (* ---------------- type D (even signed permutations) helpers (ported from `combinatorics.at`) ---------------- *)
 
-  fun is_very_even (p: partition) : bool = List.all (fn x => x mod 2 = 0) p
+  fun is_very_even (p0: partition) : bool =
+    List.all (fn x => x mod 2 = 0) (strip_to_partition p0)
 
   fun D_rank_class (c: D_class) : int =
     (case c of
