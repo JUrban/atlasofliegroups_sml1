@@ -50,6 +50,41 @@ structure Basic = struct
   fun complement (limit: int, pred: int -> bool) : int list =
     list (limit, fn i => not (pred i))
 
+  (* ---------------- sequence transforms (ported from `basic.at`) ---------------- *)
+
+  (* Partial sums left-to-right:
+       cumulate_forward [a0,a1,...] = [a0, a0+a1, a0+a1+a2, ...] *)
+  fun cumulate_forward (seq: int list) : int list =
+    let
+      fun loop ([], _, acc) = List.rev acc
+        | loop (k :: ks, sum, acc) =
+            let
+              val sum2 = sum + k
+            in
+              loop (ks, sum2, sum2 :: acc)
+            end
+    in
+      loop (seq, 0, [])
+    end
+
+  (* Partial sums right-to-left:
+       cumulate_backward [a0,...,an] = [a0+...+an, a1+...+an, ..., an] *)
+  fun cumulate_backward (seq: int list) : int list =
+    List.rev (cumulate_forward (List.rev seq))
+
+  (* Inverse of `cumulate_forward` (with implicit initial 0). *)
+  fun forward_differences (seq: int list) : int list =
+    let
+      fun loop ([], _, acc) = List.rev acc
+        | loop (k :: ks, last, acc) = loop (ks, k, (k - last) :: acc)
+    in
+      loop (seq, 0, [])
+    end
+
+  (* Inverse of `cumulate_backward` (with implicit terminal 0). *)
+  fun backward_differences (seq: int list) : int list =
+    List.rev (forward_differences (List.rev seq))
+
   (* `complement(n,vec list)` from `basic.at` specialized to int lists: *)
   fun complement_of_list (n: int, xs: int list) : int list =
     if n < 0 then
