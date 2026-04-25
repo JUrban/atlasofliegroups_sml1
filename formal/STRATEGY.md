@@ -552,7 +552,9 @@ It then states the precise ParamHash obligations we ultimately need:
 
 and proves (OK) that these imply `fast_param_set_ok g`. A final bridge lemma
 `fast_compute_program_succeeds_imp_paramhash_ok` is recorded (currently
-`cheat`ed) to connect concrete execution to these obligations.
+`cheat`ed) in the isolated theory
+`formal/hol4/F4FPPVerifyParamHashBridgeCheatsGoalsScript.sml`, to connect
+concrete execution to these obligations without tainting the core theory.
 
 #### `F4FPPVerifyParamHashBridgeDecomposeGoalsTheory` (ParamHash obligations, factored)
 
@@ -577,7 +579,9 @@ under the simplifying assumption `atlas_eq_is_hol_eq`, the modulo-`atlas_eq`
 obligations imply the plain ones.
 
 It then proves (OK) that these imply `paramhash_ok g`, and records cheated
-“compute success ⇒ obligations” lemmas in the split form. The intent is:
+“compute success ⇒ obligations” lemmas in the split form in
+`formal/hol4/F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsScript.sml`. The
+intent is:
 
 - discharge `paramhash_rep_ok` via a CakeML hash-table proof, and
 - discharge `paramhash_stores_U_fast` via a fast-compute semantic argument.

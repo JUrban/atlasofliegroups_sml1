@@ -26,7 +26,9 @@
 
   Status
   - Definitions and implication lemmas are OK.
-  - “program success ⇒ obligations” lemmas are recorded but `cheat`ed.
+  - “execution success ⇒ obligations” bridge lemmas are isolated in
+    `F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory`, to keep this theory
+    entirely OK.
  *)
 
 open HolKernel Parse boolLib bossLib;
@@ -170,45 +172,7 @@ Proof
   \\ fs[]
 QED
 
-(* --- Bridge from compute-phase success (currently CHEATED) --- *)
-
-Theorem fast_compute_program_succeeds_imp_paramhash_rep_ok:
-  !g. fast_compute_program_succeeds g ==> paramhash_rep_ok g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - relate the concrete SML `ParamHash.contains` and `ParamHash.list`
-      observations for the post-state of `computeAllIntoParamHash`.
-    - prove `contains p <=> MEM p (list())` for that post-state.
-    - discharge any FFI coherence obligations needed for hashing/equality.
-  *)
-  cheat
-QED
-
-Theorem fast_compute_program_succeeds_imp_paramhash_stores_U_fast:
-  !g. fast_compute_program_succeeds g ==> paramhash_stores_U_fast g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - show the fast compute phase inserts *exactly* the parameters that
-      constitute `U_fast g` (as defined in the goal layer).
-    - this is an algorithmic/semantic argument, independent of hash-table
-      representation.
-  *)
-  cheat
-QED
-
-Theorem fast_compute_program_succeeds_imp_paramhash_obligations_factored:
-  !g. fast_compute_program_succeeds g ==> paramhash_obligations_factored g
-Proof
-  rpt strip_tac
-  \\ rw[paramhash_obligations_factored_def]
-  >- (
-    (* In the current development, “wiring” is part of `paramhash_ok` rather than
-       being derived from execution; we record it as a future obligation. *)
-    cheat )
-  >- metis_tac[fast_compute_program_succeeds_imp_paramhash_rep_ok]
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_stores_U_fast]
-QED
+(* Bridge lemmas from `fast_compute_program_succeeds` to these obligations are
+   recorded in `F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory`. *)
 
 val _ = export_theory ();

@@ -28,10 +28,10 @@
   the `(list,contains)` pair extracted from ParamHash.
 
   Status
-  - The ParamHash correctness obligations are stated here.
-  - The ultimate bridge from SML execution/FFI semantics to these obligations
-    remains future work (and will likely require CakeML proofs for the
-    data-structure skeleton plus FFI specs for Atlas equality/hash coherence).
+  - The ParamHash correctness obligations are stated here (definitions + OK
+    implications only).
+  - Any “execution success ⇒ obligations” bridge theorems are isolated in
+    dedicated `*Cheats*` theories, to keep this theory entirely OK.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -145,20 +145,7 @@ Proof
 QED
 
 (* --- Bridge from compute-phase success (currently CHEATED) --- *)
-
-Theorem fast_compute_program_succeeds_imp_paramhash_ok:
-  !g. fast_compute_program_succeeds g ==> paramhash_ok g
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - relate the concrete `ParamHash.t` state after `computeAllIntoParamHash`
-      to `paramhash_list` and `paramhash_contains`,
-    - prove `ParamHash.list` enumerates exactly the stored elements,
-    - prove `ParamHash.contains` matches membership in that stored set,
-    - connect that stored-set view to `U_fast g` (goal-layer fast set).
-  *)
-  cheat
-QED
+(* Bridge theorems from execution to these obligations are recorded in
+   `F4FPPVerifyParamHashBridgeCheatsGoalsTheory`. *)
 
 val _ = export_theory ();
-

@@ -70,9 +70,12 @@ Role:
 
 - Files:
   - `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyParamHashBridgeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeDecomposeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
 

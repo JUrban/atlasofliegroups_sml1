@@ -21,23 +21,25 @@
   Status
   - The bridge from `fast_compute_program_succeeds` to the two bundles is
     stated here; the ParamHash part can re-use the already-stated cheated lemma
-    `fast_compute_program_succeeds_imp_paramhash_ok`.
+    `fast_compute_program_succeeds_imp_paramhash_obligations_factored` (from the
+    isolated `*Cheats*` theory `F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory`).
   - The recombination lemmas are all OK.
 *)
 
-	open HolKernel Parse boolLib bossLib;
+open HolKernel Parse boolLib bossLib;
 
-	open pred_setTheory pred_setLib;
+open pred_setTheory pred_setLib;
 
-	open F4FPPVerifyAtlasFFIContractsGoalsTheory;
-	open F4FPPVerifyAtlasEqListGoalsTheory;
-	open F4FPPVerifyAtlasEqSetGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPVerifyAtlasEqListGoalsTheory;
+open F4FPPVerifyAtlasEqSetGoalsTheory;
 
-	open F4FPPVerifyFastPruneGoalsTheory;
-	open F4FPPVerifyFastComputeBridgeGoalsTheory;
-	open F4FPPVerifyParamHashBridgeGoalsTheory;
-	open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
-	open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
+open F4FPPVerifyFastPruneGoalsTheory;
+open F4FPPVerifyFastComputeBridgeGoalsTheory;
+open F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory;
+open F4FPPVerifyParamHashBridgeGoalsTheory;
+open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
 open F4FPPVerifyFastParamSetListRefineGoalsTheory;
 open F4FPPVerifyFastParamSetContainsRefineGoalsTheory;
 open F4FPPVerifyFastParamSetContainsRefineAtlasEqGoalsTheory;
