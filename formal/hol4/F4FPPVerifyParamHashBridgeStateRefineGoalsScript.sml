@@ -62,6 +62,57 @@ Definition paramhash_invariant_on_observation_def:
     !s. paramhash_observes_state g s ==> ph_invariant s
 End
 
+(* Further decomposition: split the invariant into its three components.
+   This mirrors how the CakeML-side invariant preservation proof will likely be
+   organised. *)
+Definition paramhash_ok_on_observation_def:
+  paramhash_ok_on_observation g <=>
+    !s. paramhash_observes_state g s ==> ph_ok s
+End
+
+Definition paramhash_bucketed_on_observation_def:
+  paramhash_bucketed_on_observation g <=>
+    !s. paramhash_observes_state g s ==> ph_bucketed s
+End
+
+Definition paramhash_covered_on_observation_def:
+  paramhash_covered_on_observation g <=>
+    !s. paramhash_observes_state g s ==> ph_covered s
+End
+
+Theorem paramhash_ok_bucketed_covered_imp_invariant_on_observation:
+  !g.
+    paramhash_ok_on_observation g /\
+    paramhash_bucketed_on_observation g /\
+    paramhash_covered_on_observation g ==>
+      paramhash_invariant_on_observation g
+Proof
+  rw[paramhash_invariant_on_observation_def,
+     paramhash_ok_on_observation_def,
+     paramhash_bucketed_on_observation_def,
+     paramhash_covered_on_observation_def]
+  \\ rw[ph_invariant_def]
+  \\ metis_tac[]
+QED
+
+Theorem paramhash_invariant_on_observation_imp_ok_on_observation:
+  !g. paramhash_invariant_on_observation g ==> paramhash_ok_on_observation g
+Proof
+  rw[paramhash_invariant_on_observation_def, paramhash_ok_on_observation_def, ph_invariant_def]
+QED
+
+Theorem paramhash_invariant_on_observation_imp_bucketed_on_observation:
+  !g. paramhash_invariant_on_observation g ==> paramhash_bucketed_on_observation g
+Proof
+  rw[paramhash_invariant_on_observation_def, paramhash_bucketed_on_observation_def, ph_invariant_def]
+QED
+
+Theorem paramhash_invariant_on_observation_imp_covered_on_observation:
+  !g. paramhash_invariant_on_observation g ==> paramhash_covered_on_observation g
+Proof
+  rw[paramhash_invariant_on_observation_def, paramhash_covered_on_observation_def, ph_invariant_def]
+QED
+
 Theorem paramhash_observation_witness_and_invariant_imp_state_ok:
   !g.
     paramhash_observation_witness g /\ paramhash_invariant_on_observation g ==>

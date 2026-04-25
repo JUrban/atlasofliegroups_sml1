@@ -109,7 +109,11 @@ Role:
 Additional split (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_observation_witness`
-  - `fast_compute_program_succeeds_imp_paramhash_invariant_on_observation`
+  - `fast_compute_program_succeeds_imp_paramhash_ok_on_observation`
+  - `fast_compute_program_succeeds_imp_paramhash_bucketed_on_observation`
+  - `fast_compute_program_succeeds_imp_paramhash_covered_on_observation`
+  - `fast_compute_program_succeeds_imp_paramhash_invariant_on_observation` (derived, no new `cheat`)
+  - `fast_compute_program_succeeds_imp_paramhash_state_ok` (derived, no new `cheat`)
 
 Fast-domain split (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsScript.sml`

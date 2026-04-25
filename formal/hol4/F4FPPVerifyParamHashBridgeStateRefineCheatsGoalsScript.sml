@@ -22,19 +22,6 @@ open F4FPPVerifyParamHashBridgeStateRefineGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateRefineCheatsGoals";
 
-Theorem fast_compute_program_succeeds_imp_paramhash_state_ok:
-  !g. fast_compute_program_succeeds g ==> paramhash_state_ok g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - identify a concrete ParamHash post-state after `computeAllIntoParamHash`,
-    - establish `ph_invariant` for that state,
-    - show `ParamHash.list` and `ParamHash.contains` correspond to
-      `paramhash_list g` and `paramhash_contains g`.
-  *)
-  cheat
-QED
-
 Theorem fast_compute_program_succeeds_imp_paramhash_observation_witness:
   !g. fast_compute_program_succeeds g ==> paramhash_observation_witness g
 Proof
@@ -46,16 +33,49 @@ Proof
   cheat
 QED
 
-Theorem fast_compute_program_succeeds_imp_paramhash_invariant_on_observation:
-  !g. fast_compute_program_succeeds g ==> paramhash_invariant_on_observation g
+Theorem fast_compute_program_succeeds_imp_paramhash_ok_on_observation:
+  !g. fast_compute_program_succeeds g ==> paramhash_ok_on_observation g
 Proof
   (*
     Intended proof (later, without `cheat`):
-    - show that any abstract state consistent with the observed `list/contains`
-      view must satisfy the invariant; this is where CakeML/translator proofs
-      about the build process and invariant preservation can attach.
+    - show any observed abstract state satisfies `ph_ok`:
+        bucket counts, bucket lengths, and index correctness.
   *)
   cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_bucketed_on_observation:
+  !g. fast_compute_program_succeeds g ==> paramhash_bucketed_on_observation g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - show any observed abstract state satisfies `ph_bucketed`:
+        every bucket entry is stored in the bucket determined by `atlas_hash_mod`.
+  *)
+  cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_covered_on_observation:
+  !g. fast_compute_program_succeeds g ==> paramhash_covered_on_observation g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - show any observed abstract state satisfies `ph_covered`:
+        every element in the enumerated list appears at its index in the buckets.
+  *)
+  cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_invariant_on_observation:
+  !g. fast_compute_program_succeeds g ==> paramhash_invariant_on_observation g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac paramhash_ok_bucketed_covered_imp_invariant_on_observation
+  \\ metis_tac
+      [ fast_compute_program_succeeds_imp_paramhash_ok_on_observation
+      , fast_compute_program_succeeds_imp_paramhash_bucketed_on_observation
+      , fast_compute_program_succeeds_imp_paramhash_covered_on_observation
+      ]
 QED
 
 Theorem fast_compute_program_succeeds_imp_paramhash_state_ok_decomposed:
@@ -67,6 +87,12 @@ Proof
       [ fast_compute_program_succeeds_imp_paramhash_observation_witness
       , fast_compute_program_succeeds_imp_paramhash_invariant_on_observation
       ]
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_state_ok:
+  !g. fast_compute_program_succeeds g ==> paramhash_state_ok g
+Proof
+  metis_tac[fast_compute_program_succeeds_imp_paramhash_state_ok_decomposed]
 QED
 
 Theorem fast_compute_program_succeeds_imp_paramhash_rep_ok_via_state:
@@ -90,4 +116,3 @@ Proof
 QED
 
 val _ = export_theory ();
-
