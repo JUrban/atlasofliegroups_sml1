@@ -185,6 +185,9 @@ Newer, more specified refinement split (build-witness based):
         - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceConsequencesGoalsScript.sml`
       - state-based stores-U-fast predicate for the canonical build model:
         - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresGoalsScript.sml`
+        - strongest derived bundle (build_state_ok + state-based stores + wiring):
+          - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`
+          - derived bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`
     - build-state factored bundles (wiring + build_state_ok + stores-U-fast):
       - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeGoalsScript.sml`
       - CHEATED bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeCheatsGoalsScript.sml`
