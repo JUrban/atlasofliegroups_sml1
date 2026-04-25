@@ -946,6 +946,21 @@ interface between:
 - translator evaluation proofs (CakeML semantics), and
 - the already-proved extensional lemmas in `ParamHashSetGoalsTheory`.
 
+#### `ParamHashCreateGoalsTheory` (monadic create ⇔ pure initial state)
+
+File: `formal/cakeml/ParamHashCreateGoalsScript.sml`
+
+Pins down the missing initialization layer for the ParamHash story:
+
+- defines the pure initial state `ph_create_state m`, and proves it satisfies
+  `ph_invariant` for `m ≠ 0`;
+- records the refinement goal `ph_create_refines_create_state`, connecting the
+  monadic `ph_create` operation (translator-level) to that pure initial state.
+
+This is the intended starting point for any end-to-end “create; insert_all”
+proof, and it complements `ParamHashRefinementGoalsTheory`, which assumes a
+well-formed starting state.
+
 ## How the overall proof will be staged
 
 This matches the intent of `VERIFY_ESTIMATE.md`, but with the current theory
@@ -1013,6 +1028,7 @@ The CakeML side models this as:
 
 - `ParamHashProgTheory` (monadic translator model),
 - `ParamHashGoalsTheory` (lookup/all-present completeness goals), and
+- `ParamHashCreateGoalsTheory` (create/init refinement + initial invariants),
 - `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state refinement goals),
 - `ParamHashSetGoalsTheory` (set-interface view: `contains` ↔ membership).
 

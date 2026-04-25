@@ -67,8 +67,10 @@ Role:
 - Files:
   - `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml` (OK composition)
   - `formal/hol4/F4FPPVerifyFastProgramSplitBridgeCheatsGoalsScript.sml` (split lemma)
-- Placeholder:
-  - `fast_program_succeeds_imp_phase_success`
+- Placeholders:
+  - `fast_program_succeeds_imp_fast_compute_program_succeeds`
+  - `fast_program_succeeds_imp_bottom_layer_program_succeeds`
+  - `fast_program_succeeds_imp_phase_success` (derived, no new `cheat`)
 
 Role:
 - makes the fast program’s control-flow (“compute phase; then bottom-layer

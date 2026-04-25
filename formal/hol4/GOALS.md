@@ -117,7 +117,9 @@ explicitly justified axioms.
 These state that “the program ran successfully” implies success of each phase
 and the abstract obligations of each phase.
 
-- `fast_program_succeeds_imp_phase_success`
+- `fast_program_succeeds_imp_fast_compute_program_succeeds`
+- `fast_program_succeeds_imp_bottom_layer_program_succeeds`
+  - together these imply `fast_program_succeeds_imp_phase_success`
   - file: `formal/hol4/F4FPPVerifyFastProgramSplitBridgeCheatsGoalsScript.sml`
   - ideal proof: relate `fast_program_succeeds` to the control-flow of
     `atlas-scripts-sml/VerifyF4FPP.sml` (exceptions, return values).

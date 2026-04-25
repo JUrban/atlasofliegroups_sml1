@@ -24,18 +24,44 @@ open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastProgramSplitBridgeCheatsGoals";
 
+(* Split the control-flow bridge into two smaller obligations, so later proofs
+   can focus independently on the compute and bottom-layer calls. *)
+Theorem fast_program_succeeds_imp_fast_compute_program_succeeds:
+  !g dirac.
+    fast_program_succeeds g dirac ==> fast_compute_program_succeeds g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - unfold `VerifyF4FPP.compute` and show it calls
+        `computeAllIntoParamHash`
+      before any bottom-layer logic, so overall success implies the compute
+      phase completed without raising.
+  *)
+  cheat
+QED
+
+Theorem fast_program_succeeds_imp_bottom_layer_program_succeeds:
+  !g dirac.
+    fast_program_succeeds g dirac ==> bottom_layer_program_succeeds g dirac
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - unfold `VerifyF4FPP.compute` and show that after the compute phase it
+      calls the bottom-layer checker, so overall success implies the checker
+      completed without raising.
+  *)
+  cheat
+QED
+
 Theorem fast_program_succeeds_imp_phase_success:
   !g dirac.
     fast_program_succeeds g dirac ==>
       fast_compute_program_succeeds g /\ bottom_layer_program_succeeds g dirac
 Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - unfold `VerifyF4FPP.compute` and show it calls the two phases in sequence,
-      and “overall success” implies each returns without raising.
-  *)
-  cheat
+  metis_tac
+    [ fast_program_succeeds_imp_fast_compute_program_succeeds
+    , fast_program_succeeds_imp_bottom_layer_program_succeeds
+    ]
 QED
 
 val _ = export_theory ();
-
