@@ -148,6 +148,15 @@ Canonical build-state + state-based stores bundle:
   - `fast_compute_program_succeeds_imp_paramhash_obligations_build_state_stores_factored_atlas_eq`
     (packages wiring + `paramhash_build_state_ok` + state-based stores)
 
+Trace-level stores upgrade (optional target):
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceCheatsGoalsScript.sml`
+  - `atlas_hash_eq_ok_and_paramhash_build_m_ok_and_build_ps_stores_imp_build_stores`
+    (if `U_fast` matches the build trace list, then it matches `ph_set` of the build state)
+  - `atlas_hash_eq_ok_and_paramhash_build_m_ok_and_build_stores_imp_build_ps_stores`
+    (converse direction; useful if one first proves the state-based stores predicate)
+- file: `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
+  - provides the pure build-set lemma `ph_build_from_create_state_set_atlas_eq_set_ps` (currently CHEAT)
+
 Modulo-`atlas_eq` compute bundle (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_obligations_atlas_eq`

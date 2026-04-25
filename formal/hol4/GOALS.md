@@ -188,6 +188,12 @@ Newer, more specified refinement split (build-witness based):
         - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceConsequencesGoalsScript.sml`
       - state-based stores-U-fast predicate for the canonical build model:
         - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresGoalsScript.sml`
+        - optional trace-level target: `paramhash_build_ps_stores_U_fast_atlas_eq`
+          - upgrade lemma to state-based stores (CHEAT-tainted composition):
+            - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceCheatsGoalsScript.sml`
+              (`*_imp_build_stores` and `*_imp_build_ps_stores`)
+          - pure build-set lemma used by the upgrade (CHEAT for now):
+            - `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
         - strongest derived bundle (build_state_ok + state-based stores + wiring):
           - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`
           - derived bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`

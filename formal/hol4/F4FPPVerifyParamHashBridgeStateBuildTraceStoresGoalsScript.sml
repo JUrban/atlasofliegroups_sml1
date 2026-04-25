@@ -38,6 +38,14 @@ Definition paramhash_build_stores_U_fast_atlas_eq_def:
     set_atlas_eq (U_fast g) (ph_set (paramhash_build_state g))
 End
 
+(* Trace-level variant: push the “stores-U-fast” obligation onto the trace list
+   `paramhash_build_ps g`. A separate (currently CHEAT-tainted) lemma relates
+   this to the state-based predicate via the pure build model. *)
+Definition paramhash_build_ps_stores_U_fast_atlas_eq_def:
+  paramhash_build_ps_stores_U_fast_atlas_eq g <=>
+    set_atlas_eq (U_fast g) (set (paramhash_build_ps g))
+End
+
 Theorem paramhash_build_state_ok_and_build_stores_imp_paramhash_stores_U_fast_atlas_eq:
   !g.
     paramhash_build_state_ok g /\ paramhash_build_stores_U_fast_atlas_eq g ==>
