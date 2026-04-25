@@ -95,6 +95,9 @@ At a high level:
      `fast_domain_complete`) or via a list witness:
      - OK trace vocabulary: `formal/hol4/F4FPPVerifyFastPruneTraceGoalsScript.sml`
      - CHEATED bridge targets: `formal/hol4/F4FPPVerifyFastPruneTraceCheatsGoalsScript.sml`
+   - fast witnessing/unitarity can also be targeted via an explicit insert-event trace:
+     - OK trace vocabulary: `formal/hol4/F4FPPVerifyFastWitnessTraceGoalsScript.sml`
+     - CHEATED bridge targets: `formal/hol4/F4FPPVerifyFastWitnessTraceCheatsGoalsScript.sml`
 
 ParamHash modulo-`atlas_eq` state direction (more detailed decomposition):
 - `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml`

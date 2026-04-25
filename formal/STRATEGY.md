@@ -136,6 +136,26 @@ recorded (currently `cheat`ed) in:
 
 - `formal/hol4/F4FPPVerifyFastPruneTraceCheatsGoalsScript.sml`
 
+#### `F4FPPVerifyFastWitnessTraceGoalsTheory` (fast witness via an insert trace)
+
+File: `formal/hol4/F4FPPVerifyFastWitnessTraceGoalsScript.sml`
+
+Introduces an abstract event trace `fast_insert_trace g : (triple # param) list`
+intended to record “witness triple `t` produced param `pi` (and was inserted /
+matched)”. It defines:
+
+- `fast_insert_trace_sound g`: every event is justified by `first_final_term (mk_param g t) = SOME pi`
+  and `t` satisfies the pruning predicate.
+- `fast_insert_trace_covers_U_fast g`: every `pi ∈ U_fast g` appears in the trace.
+- `fast_insert_trace_unitary g`: every traced `pi` is unitary.
+
+It proves (OK) that these imply the earlier witness obligations
+`fast_witnessed_pruned_exists` and `fast_unitary_set`.
+
+Bridge placeholders from compute success are recorded (currently `cheat`ed) in:
+
+- `formal/hol4/F4FPPVerifyFastWitnessTraceCheatsGoalsScript.sml`
+
 #### `F4FPPVerifyGoalsTheory` (top-level goal layer)
 
 File: `formal/hol4/F4FPPVerifyGoalsScript.sml`

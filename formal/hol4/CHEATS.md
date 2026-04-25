@@ -130,6 +130,12 @@ Fast-domain trace targets (new translator-friendly layer; `cheat`ed):
   - `fast_compute_program_succeeds_imp_fast_domain_trace_sound`
   - `fast_compute_program_succeeds_imp_fast_domain_trace_complete`
 
+Fast witness trace targets (new translator-friendly layer; `cheat`ed):
+- file: `formal/hol4/F4FPPVerifyFastWitnessTraceCheatsGoalsScript.sml`
+  - `fast_compute_program_succeeds_imp_fast_insert_trace_sound`
+  - `fast_compute_program_succeeds_imp_fast_insert_trace_covers_U_fast`
+  - `fast_compute_program_succeeds_imp_fast_insert_trace_unitary`
+
 Decomposition helper (OK):
 - `formal/hol4/F4FPPVerifyFastPruneDecomposeGoalsScript.sml` introduces the
   inclusion-direction obligations (`fast_domain_sound`, `fast_domain_complete`)

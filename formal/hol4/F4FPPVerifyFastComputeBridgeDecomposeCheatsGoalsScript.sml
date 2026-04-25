@@ -24,6 +24,8 @@ open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyFastPruneDecomposeGoalsTheory;
 open F4FPPVerifyFastPruneTraceGoalsTheory;
 open F4FPPVerifyFastPruneTraceCheatsGoalsTheory;
+open F4FPPVerifyFastWitnessTraceGoalsTheory;
+open F4FPPVerifyFastWitnessTraceCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeBridgeDecomposeCheatsGoals";
@@ -82,7 +84,12 @@ Proof
     - show each stored element was inserted due to some witness triple that
       passed pruning and produced that final parameter.
   *)
-  cheat
+  rpt strip_tac
+  \\ match_mp_tac fast_insert_trace_sound_and_covers_imp_fast_witnessed_pruned_exists
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_fast_insert_trace_sound
+       , fast_compute_program_succeeds_imp_fast_insert_trace_covers_U_fast
+       ]
 QED
 
 Theorem fast_compute_program_succeeds_imp_fast_unitary_set:
@@ -93,7 +100,12 @@ Proof
     - relate the SML filter `atlas_param_is_unitary` (under the flag setting
       used by `VerifyF4FPP`) to the abstract predicate `is_unitary`.
   *)
-  cheat
+  rpt strip_tac
+  \\ match_mp_tac fast_insert_trace_unitary_and_covers_imp_fast_unitary_set
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_fast_insert_trace_unitary
+       , fast_compute_program_succeeds_imp_fast_insert_trace_covers_U_fast
+       ]
 QED
 
 Theorem fast_compute_program_succeeds_imp_fast_witnessed_pruned:
