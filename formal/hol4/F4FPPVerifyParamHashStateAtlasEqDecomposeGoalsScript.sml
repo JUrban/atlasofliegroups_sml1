@@ -3,7 +3,7 @@
 
   Purpose
   - Make the modulo-`atlas_eq` ParamHash state proof more explicit by
-    decomposing the (currently `cheat`ed) direction:
+    decomposing the direction:
 
       `mem_atlas_eq p s.elems ==> ph_contains_state p s`
 
@@ -12,8 +12,9 @@
 
   Why this is useful
   - `F4FPPVerifyParamHashStateGoalsTheory` already contains the end-to-end
-    statement `ph_contains_state_iff_mem_atlas_eq_elems`, but the hard direction
-    is currently recorded as a single `cheat` with an informal proof sketch.
+    statement `ph_contains_state_iff_mem_atlas_eq_elems`.  This file provides a
+    structured proof of the hard direction, with the intended intermediate
+    lemmas named explicitly.
   - For top-down verification planning (and for eventual CakeML translator
     proofs), it helps to expose the *exact* “hinge points”:
       - how `ph_covered` and `ph_ok` connect `MEM q elems` to a bucket entry,
@@ -23,10 +24,7 @@
         `atlas_eq`.
 
   Status
-  - Many sublemmas here are proved (“OK”).
-  - The key pure lemma about `find_in_bucket` completeness modulo `atlas_eq` is
-    recorded but left as `cheat` for now; once discharged, the main lemma in
-    this file should become entirely “OK”.
+  - Entirely “OK”: all lemmas in this file are proved (no `cheat`).
 *)
 
 open HolKernel Parse boolLib bossLib;
