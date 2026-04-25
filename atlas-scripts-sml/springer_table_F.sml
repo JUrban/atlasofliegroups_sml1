@@ -1,5 +1,6 @@
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/sort.sml";
+use "atlas-scripts-sml/springer_tables.sml";
 
 (*
   File: atlas-scripts-sml/springer_table_F.sml
@@ -87,4 +88,7 @@ structure Springer_table_F = struct
 
   fun F4_Springer_map (d: diagram) : int =
     lookupSorted (F4_Springer_table, d, "Springer_map")
+
+  val diagram_table : Springer_tables.diagram_table =
+    Springer_tables.make_involutive (F4_nilpotent_orbit_dual_map, F4_Springer_map)
 end

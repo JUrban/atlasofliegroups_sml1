@@ -1,4 +1,5 @@
 use "atlas-scripts-sml/basic.sml";
+use "atlas-scripts-sml/springer_tables.sml";
 
 (*
   File: atlas-scripts-sml/springer_table_G.sml
@@ -36,4 +37,7 @@ structure Springer_table_G = struct
     | [1, 0] => [0, 2]
     | [0, 2] => [0, 2]
     | _ => raise Fail "Springer_table_G: unknown G2 diagram"
+
+  val diagram_table : Springer_tables.diagram_table =
+    Springer_tables.make_involutive (G2_nilpotent_orbit_dual_map, G2_Springer_map)
 end
