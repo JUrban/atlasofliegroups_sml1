@@ -27,10 +27,12 @@ $HOLDIR/bin/Holmake
   ParamHash-like bucketed set, translated with the monadic translator.
 - `ParamHashGoalsScript.sml`: “top-down” correctness goals for the pure-state
   model (`ph_lookup_state_complete`, `ph_all_present_state_iff_subset`, ...).
-- `ParamHashRefinementGoalsScript.sml`: refinement goals connecting the monadic
-  operations (`ph_match`, `ph_insert_all`, ...) to the pure-state model
-  (`ph_match_state`, `ph_build_state`, ...); these are the intended glue
-  statements for later CakeML evaluation proofs.
+- `ParamHashBuildGoalsScript.sml`: a small non-cheated base theory:
+  `ph_build_state` + list/nthn helper lemmas used across multiple layers.
+- `ParamHashRefinementGoalsScript.sml`: refinement lemmas connecting the monadic
+  operations (`ph_lookup`, `ph_match`, `ph_insert_all`, `ph_all_present`) to the
+  pure-state model (`ph_*_state`) under `ph_ok`. Most are proved; currently
+  CHEAT-tainted via the placeholder lemma `ph_match_state_preserves_ok`.
 - `ParamHashCreateGoalsScript.sml`: initialization goals for the monadic model:
   defines the pure initial state `ph_create_state` and records the refinement
   lemma `ph_create_refines_create_state` (now proved, no `cheat`).

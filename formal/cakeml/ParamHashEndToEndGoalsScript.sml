@@ -22,9 +22,8 @@
   - The top-level theorem
       `ph_build_into_new_refines_build_from_create_state`
     is now proved by *composition* (no new `cheat`), but it is still
-    CHEAT-tainted because it depends on the translator-facing refinement goals
-    in `ParamHashCreateGoalsTheory` / `ParamHashRefinementGoalsTheory` that are
-    currently recorded as `cheat`.
+    CHEAT-tainted because it depends on cheat-tainted invariant-preservation
+    layers (e.g. `ParamHashInvariantGoalsTheory`).
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -107,6 +106,24 @@ Proof
   \\ fs[ph_build_into_new_def, st_ex_ignore_bind_def]
   \\ fs[ph_create_refines_create_state]
   \\ fs[ph_insert_all_refines_build_state, ph_build_from_create_state_def]
+QED
+
+(* A convenient corollary: if we build from an invariant state, then the
+   resulting table’s observable `contains` agrees with membership in `elems`. *)
+Theorem ph_contains_after_insert_all_iff_MEM_elems:
+  !p ps s s'.
+    ph_invariant s /\
+    ph_insert_all ps s = (M_success (), s') ==>
+      (ph_contains_state p s' <=> MEM p s'.elems)
+Proof
+  rpt strip_tac
+  \\ `ph_ok s` by fs[ph_invariant_def]
+  \\ `ph_insert_all ps s = (M_success (), ph_build_state ps s)` by
+       metis_tac[ph_insert_all_refines_build_state]
+  \\ `s' = ph_build_state ps s` by metis_tac[pairTheory.PAIR_EQ]
+  \\ fs[]
+  \\ match_mp_tac ph_rep_ok_iff_MEM_elems
+  \\ metis_tac[ph_build_state_preserves_invariant]
 QED
 
 val _ = export_theory ();

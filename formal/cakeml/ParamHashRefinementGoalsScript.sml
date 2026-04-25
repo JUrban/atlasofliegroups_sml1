@@ -23,9 +23,12 @@
       where `(result,new_state)` is exactly the pure-state function’s output.
 
   Status
-  - The theorems here are stated precisely but are currently `cheat`ed.
-    This is deliberate: the user value is in pinning down the exact “glue”
-    statements that will replace the HOL4-side `*Cheats*` bridge lemmas.
+  - Most refinement theorems in this file are proved by unfolding definitions.
+  - Currently **CHEAT-tainted**: `ph_match_state_preserves_ok` is recorded with
+    `cheat` as a placeholder (needed to justify the `insert_all`/`build_state`
+    iteration step). The intent is to replace this with a real proof.
+  - “End-to-end” consequences that rely on invariant-preservation (which is
+    still cheat-tainted) are stated in `ParamHashEndToEndGoalsTheory` instead.
 
   Planned discharge
   - Prove these theorems by:
@@ -47,11 +50,12 @@ open listTheory;
 open pairTheory;
 open pred_setTheory pred_setLib;
 
-open ml_monad_translatorTheory;  (* for `M_success` / `M_failure` *)
+open ml_monadBaseTheory;
+	open ml_monad_translatorTheory;  (* for `M_success` / `M_failure` *)
 
-open ParamHashProgTheory;
-open ParamHashInvariantGoalsTheory;
-open ParamHashSetGoalsTheory;
+	open ParamHashProgTheory;
+	open ParamHashSetGoalsTheory;
+	open ParamHashBuildGoalsTheory;
 
 val _ = new_theory "ParamHashRefinementGoals";
 
@@ -66,13 +70,13 @@ Theorem ph_lookup_refines_lookup_state:
     ph_ok s ==>
       ph_lookup p s = (M_success (ph_lookup_state p s), s)
 Proof
-  (*
-    Intended proof outline (later):
-    - unfold `ph_lookup_def` and show the `bucket_count = 0` and Subscript
-      cases are impossible under `ph_ok`,
-    - relate `buckets_sub (bucket_index p m)` to `EL i s.buckets`.
-  *)
-  cheat
+  rpt strip_tac
+  \\ fs[ph_ok_def]
+  \\ simp[ph_lookup_def, st_ex_bind_def, st_ex_return_def, get_bucket_count_def]
+  \\ simp[buckets_sub_def, Marray_sub_def, st_ex_bind_def, st_ex_return_def]
+  \\ `bucket_index p s.bucket_count < s.bucket_count` by metis_tac[bucket_index_lt]
+  \\ `bucket_index p s.bucket_count < LENGTH s.buckets` by fs[]
+  \\ simp[Msub_eq, ph_lookup_state_def, LET_THM]
 QED
 
 Theorem ph_contains_refines_contains_state:
@@ -81,12 +85,11 @@ Theorem ph_contains_refines_contains_state:
       ph_contains p s =
         (M_success (ph_contains_state p s), s)
 Proof
-  (*
-    Intended proof outline (later):
-    - unfold `ph_contains_def`, rewrite via `ph_lookup_refines_lookup_state`,
-    - rewrite `ph_contains_state_def`.
-  *)
-  cheat
+  rpt strip_tac
+  \\ simp[ph_contains_def, st_ex_bind_def, st_ex_return_def]
+  \\ simp[ph_lookup_refines_lookup_state]
+  \\ Cases_on `ph_lookup_state p s`
+  \\ simp[ph_contains_state_def]
 QED
 
 (* ------------------------------------------------------------------------- *)
@@ -99,12 +102,31 @@ Theorem ph_match_refines_match_state:
       ph_match p s =
         (M_success (FST (ph_match_state p s)), SND (ph_match_state p s))
 Proof
-  (*
-    Intended proof outline (later):
-    - case split on `ph_lookup_state p s` using `ph_lookup_refines_lookup_state`,
-    - in the NONE branch, show the `update_buckets` and `set_elems` effects
-      match `ph_match_state_def`’s `LUPDATE`/append, and show no exceptions.
-  *)
+  rpt strip_tac
+  \\ simp[ph_match_def, st_ex_bind_def, st_ex_ignore_bind_def, st_ex_return_def]
+  \\ simp[ph_lookup_refines_lookup_state]
+  \\ Cases_on `ph_lookup_state p s`
+  >- (
+    simp[ph_match_state_def, LET_THM]
+    \\ fs[ph_ok_def]
+    \\ simp[get_bucket_count_def, get_count_def, get_elems_def,
+            buckets_sub_def, update_buckets_def, set_count_def, set_elems_def,
+            Marray_sub_def, Marray_update_def,
+            st_ex_bind_def, st_ex_ignore_bind_def, st_ex_return_def]
+    \\ `bucket_index p s.bucket_count < s.bucket_count` by
+         metis_tac[bucket_index_lt]
+    \\ `bucket_index p s.bucket_count < LENGTH s.buckets` by fs[]
+    \\ simp[Msub_eq, Mupdate_eq, LET_THM, ph_state_component_equality])
+  \\ simp[ph_match_state_def]
+QED
+
+Theorem ph_match_state_preserves_ok:
+  !p s. ph_ok s ==> ph_ok (SND (ph_match_state p s))
+Proof
+  (* TODO(verify-estimate): This should be provable without `cheat` by expanding
+     `ph_ok_def` and reasoning about membership in `FLAT` across the single
+     `LUPDATE` performed by the NONE branch of `ph_match_state_def`.  The proof
+     attempt is left for later refinement of this theory. *)
   cheat
 QED
 
@@ -114,12 +136,18 @@ Theorem ph_insert_all_refines_build_state:
       ph_insert_all ps s =
         (M_success (), ph_build_state ps s)
 Proof
-  (*
-    Intended proof outline (later):
-    - induction on `ps`,
-    - use `ph_match_refines_match_state` to rewrite the monadic step.
-  *)
-  cheat
+  Induct_on `ps`
+  >- (
+    rpt strip_tac
+    \\ simp[ph_insert_all_def, ph_build_state_def, st_ex_return_def])
+  \\ rpt strip_tac
+  \\ simp[ph_insert_all_def, st_ex_ignore_bind_def, st_ex_bind_def]
+  \\ simp[ph_match_refines_match_state]
+  \\ `ph_ok (SND (ph_match_state h s))` by
+       metis_tac[ph_match_state_preserves_ok]
+  \\ first_x_assum (qspec_then `SND (ph_match_state h s)` mp_tac)
+  \\ impl_tac >- simp[]
+  \\ simp[ph_build_state_def]
 QED
 
 Theorem ph_all_present_refines_all_present_state:
@@ -128,31 +156,15 @@ Theorem ph_all_present_refines_all_present_state:
       ph_all_present ps s =
         (M_success (ph_all_present_state ps s), s)
 Proof
-  (*
-    Intended proof outline (later):
-    - induction on `ps`,
-    - rewrite via `ph_contains_refines_contains_state`,
-    - note `ph_all_present` does not mutate state.
-  *)
-  cheat
-QED
-
-(* A convenient corollary: if we build from an invariant state, then the
-   resulting table’s observable `contains` agrees with membership in `elems`. *)
-Theorem ph_contains_after_insert_all_iff_MEM_elems:
-  !p ps s s'.
-    ph_invariant s /\
-    ph_insert_all ps s = (M_success (), s') ==>
-      (ph_contains_state p s' <=> MEM p s'.elems)
-Proof
-  rpt strip_tac
-  \\ `ph_ok s` by fs[ph_invariant_def]
-  \\ `ph_insert_all ps s = (M_success (), ph_build_state ps s)` by
-       metis_tac[ph_insert_all_refines_build_state]
-  \\ `s' = ph_build_state ps s` by metis_tac[pairTheory.PAIR_EQ]
-  \\ fs[]
-  \\ match_mp_tac ph_rep_ok_iff_MEM_elems
-  \\ metis_tac[ph_build_state_preserves_invariant]
+  Induct_on `ps`
+  >- (
+    rpt strip_tac
+    \\ simp[ph_all_present_def, ph_all_present_state_def, st_ex_return_def])
+  \\ rpt strip_tac
+  \\ simp[ph_all_present_def, st_ex_bind_def, st_ex_return_def]
+  \\ simp[ph_contains_refines_contains_state]
+  \\ Cases_on `ph_lookup_state h s`
+  \\ simp[ph_contains_state_def, ph_all_present_state_def]
 QED
 
 val _ = export_theory ();

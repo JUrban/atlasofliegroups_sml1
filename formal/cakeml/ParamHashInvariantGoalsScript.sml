@@ -14,46 +14,27 @@
   - The main “preserves invariant” theorem is currently recorded and `cheat`ed.
     The goal is to later replace it with a straightforward but somewhat
     tedious bucket/list reasoning proof.
+
+  Note
+  - Basic “pure build” definitions/lemmas live in `ParamHashBuildGoalsTheory`,
+    so that non-cheated theories can re-use them without importing this (currently
+    cheat-tainted) file.
 *)
 
 open HolKernel Parse boolLib bossLib;
 
 open listTheory;
-open pred_setTheory pred_setLib;
+	open pred_setTheory pred_setLib;
 
-open ParamHashProgTheory;
-open ParamHashSetGoalsTheory;
+	open ParamHashProgTheory;
+	open ParamHashBuildGoalsTheory;
+	open ParamHashSetGoalsTheory;
 
 val _ = new_theory "ParamHashInvariantGoals";
 
 (* ------------------------------------------------------------------------- *)
-(*  Small list/nthn helper lemmas                                             *)
+(*  Invariant preservation goals                                              *)
 (* ------------------------------------------------------------------------- *)
-
-Theorem nthn_append_lt:
-  !xs ys n.
-    n < LENGTH xs ==> nthn n (xs ++ ys) = nthn n xs
-Proof
-  Induct_on `xs`
-  \\ rw[]
-  \\ Cases_on `n`
-  \\ simp[nthn_def]
-  \\ first_x_assum match_mp_tac
-  \\ simp[]
-QED
-
-Theorem nthn_append_sing_len:
-  !xs x. nthn (LENGTH xs) (xs ++ [x]) = x
-Proof
-  Induct_on `xs`
-  \\ simp[nthn_def]
-QED
-
-(* Build a state by inserting/matching every element of `ps` in order. *)
-Definition ph_build_state_def:
-  (ph_build_state ([]:num list) (s:ph_state) = s) /\
-  (ph_build_state (p::ps) s = ph_build_state ps (SND (ph_match_state p s)))
-End
 
 (* Invariant preservation across a single `match_state` step. *)
 Theorem ph_match_state_preserves_invariant:

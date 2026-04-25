@@ -930,6 +930,16 @@ Collects the ParamHash correctness obligations we ultimately want:
 These are currently `cheat`ed on purpose; the goal is to “freeze” the intended
 interfaces/claims before investing in proofs.
 
+#### `ParamHashBuildGoalsTheory` (pure build base)
+
+File: `formal/cakeml/ParamHashBuildGoalsScript.sml`
+
+Provides a small, non-cheated base layer that both refinement and invariant
+theories can share without importing cheat-tainted dependencies:
+
+- list/nthn helper lemmas about append (`nthn_append_lt`, `nthn_append_sing_len`)
+- the pure-state “build-by-repeated-match” function `ph_build_state`
+
 #### `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state model)
 
 File: `formal/cakeml/ParamHashRefinementGoalsScript.sml`
@@ -940,8 +950,12 @@ operations (`ph_lookup`, `ph_match`, `ph_insert_all`, `ph_all_present`) behave
 exactly like the pure-state functions (`ph_lookup_state`, `ph_match_state`,
 `ph_build_state`, `ph_all_present_state`) under `ph_ok`/`ph_invariant`.
 
-These are currently `cheat`ed, but the statements are meant to be the stable
-interface between:
+These are proved largely by unfolding the monadic definitions and applying the
+array/list bounds consequences of `ph_ok`. However, the theory is currently
+**CHEAT-tainted**: `ph_match_state_preserves_ok` is recorded with `cheat` as a
+placeholder to justify the iterative `insert_all` refinement, and should be
+discharged later. The intent is for this layer to remain **OK** (no `cheat`) as
+a stable interface between:
 
 - translator evaluation proofs (CakeML semantics), and
 - the already-proved extensional lemmas in `ParamHashSetGoalsTheory`.
@@ -1045,6 +1059,7 @@ The CakeML side models this as:
 
 - `ParamHashProgTheory` (monadic translator model),
 - `ParamHashGoalsTheory` (lookup/all-present completeness goals), and
+- `ParamHashBuildGoalsTheory` (pure build base: `ph_build_state`, nthn lemmas),
 - `ParamHashCreateGoalsTheory` (create/init refinement + initial invariants),
 - `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state refinement goals),
 - `ParamHashEndToEndGoalsTheory` (composed create+build refinement goal),
