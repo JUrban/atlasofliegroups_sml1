@@ -448,6 +448,24 @@ structure Combinatorics = struct
       | _ => false
     end
 
+  (* Type-D related parity predicates (ported from `combinatorics.at`). *)
+  fun is_very_even (p0: partition) : bool =
+    List.all (fn x => x mod 2 = 0) (strip_to_partition p0)
+
+  (* Even parts only, and every part (hence every even part) occurs with even
+     multiplicity. *)
+  fun is_doubly_even (p0: partition) : bool =
+    let
+      val p = strip_to_partition p0
+      val freq = partition_frequencies p
+      val n = length freq
+      fun freqAt i = if i < 0 orelse i >= n then 0 else List.nth (freq, i)
+      fun ok i =
+        if i mod 2 = 1 then freqAt i = 0 else freqAt i mod 2 = 0
+    in
+      List.all ok (List.tabulate (n, fn i => i))
+    end
+
   (* Partitions with even multiplicity of parts of one parity (odd or even),
      port of `parity_restricted_partitions` from `combinatorics.at`. *)
   fun parity_restricted_partitions (restrict_odd_parts: bool) : int -> partition list =
