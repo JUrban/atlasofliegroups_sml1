@@ -18,9 +18,11 @@
 
 open HolKernel Parse boolLib bossLib;
 
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoals";
 
@@ -82,6 +84,38 @@ Proof
   \\ metis_tac
       [ fast_compute_program_succeeds_imp_fast_param_set_is_paramhash
       , fast_compute_program_succeeds_imp_paramhash_state_ok
+      , fast_compute_program_succeeds_imp_paramhash_stores_U_fast_atlas_eq
+      ]
+QED
+
+(* ------------------------------------------------------------------------- *)
+(*  Build-witness variants (more specified attachment points)                  *)
+(* ------------------------------------------------------------------------- *)
+
+Theorem atlas_hash_range_and_fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_via_build_witness:
+  !g.
+    atlas_hash_range /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_state_factored g
+Proof
+  rpt strip_tac
+  \\ rw[paramhash_obligations_state_factored_def]
+  \\ metis_tac
+      [ fast_compute_program_succeeds_imp_fast_param_set_is_paramhash
+      , atlas_hash_range_and_fast_compute_program_succeeds_imp_paramhash_state_ok_via_build_witness
+      , fast_compute_program_succeeds_imp_paramhash_stores_U_fast
+      ]
+QED
+
+Theorem atlas_hash_range_and_fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq_via_build_witness:
+  !g.
+    atlas_hash_range /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_state_factored_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ rw[paramhash_obligations_state_factored_atlas_eq_def]
+  \\ metis_tac
+      [ fast_compute_program_succeeds_imp_fast_param_set_is_paramhash
+      , atlas_hash_range_and_fast_compute_program_succeeds_imp_paramhash_state_ok_via_build_witness
       , fast_compute_program_succeeds_imp_paramhash_stores_U_fast_atlas_eq
       ]
 QED

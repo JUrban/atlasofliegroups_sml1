@@ -155,6 +155,19 @@ Useful refinement split (for proof engineering):
   invariant (“data-structure reasoning”).
   - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsScript.sml`
 
+Newer, more specified refinement split (build-witness based):
+
+- `paramhash_build_witness g`: the ParamHash observations are explained by a
+  *purely constructed* reference state `ph_build_from_create_state m ps`.
+  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildGoalsScript.sml`
+  - derived OK lemma:
+    `atlas_hash_range /\ paramhash_build_witness g ==> paramhash_state_ok g`
+  - attachment-point cheat:
+    `fast_compute_program_succeeds g ==> paramhash_build_witness g`
+    - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildCheatsGoalsScript.sml`
+  - convenience derived bridges (explicit `atlas_hash_range`):
+    - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
+
 ### C. ParamHash state representation lemma (data-structure core)
 
 To reduce the “cheat surface” we want the state-level lemma:
