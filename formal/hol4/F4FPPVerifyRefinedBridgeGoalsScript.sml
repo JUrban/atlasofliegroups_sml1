@@ -17,9 +17,8 @@
       - `bottom_layer_total_ok g dirac (U_fast g)` (post-check invariants)
 
   Status
-  - The bridge theorems here are intentionally **top-down** and therefore
-    use `cheat` for now; they are a place to attach the eventual CakeML proofs
-    and Atlas/C++ FFI specifications.
+  - The bridge theorems are intentionally **top-down**; they live in the
+    isolated `F4FPPVerifyRefinedBridgeCheatsGoalsTheory` (currently `cheat`ed).
   - The final theorem in this file is an “OK” logical composition *given* the
     bridge obligations.
 *)
@@ -37,65 +36,14 @@ open F4FPPVerifyFastRefineAtlasEqGoalsTheory;
 open F4FPPBottomLayerGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyRefinedMainAtlasEqGoalsTheory;
-	open F4FPPVerifyAtlasFFIContractsGoalsTheory;
-	open F4FPPVerifyAtlasEqSetGoalsTheory;
-	open F4FPPBottomLayerGoalsAtlasEqTheory;
-	open F4FPPVerifySMLBridgeGoalsTheory;
-	open F4FPPVerifySlowBridgeDetailedGoalsTheory;
+open F4FPPVerifyAtlasFFIContractsGoalsTheory;
+open F4FPPVerifyAtlasEqSetGoalsTheory;
+open F4FPPBottomLayerGoalsAtlasEqTheory;
+open F4FPPVerifySMLBridgeGoalsTheory;
+open F4FPPVerifySlowBridgeDetailedGoalsTheory;
+open F4FPPVerifyRefinedBridgeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyRefinedBridgeGoals";
-
-(* --- Refined bridge obligations (currently CHEATED) --- *)
-
-Theorem fast_program_succeeds_imp_refined_fast_obligations:
-  !g dirac.
-    fast_program_succeeds g dirac ==>
-      fast_semantic_ok g /\
-      bottom_layer_total_ok g dirac (U_fast g)
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - a proof/spec that `F4_FPP_points_compute.computeAllIntoParamHash`
-      constructs a set `U_fast g` satisfying `fast_witnessed g` and
-      `fast_domain_subset g` (hence `fast_semantic_ok g`),
-    - a proof/spec that `FPP_globalDirac.FPP_unitary_hash_bottom_layer_param_hash`
-      enforces `bottom_layer_total_ok g dirac (U_fast g)` for the resulting set.
-  *)
-  cheat
-QED
-
-Theorem fast_program_succeeds_imp_refined_fast_obligations_atlas_eq:
-  !g dirac.
-    fast_program_succeeds g dirac ==>
-      fast_semantic_ok_atlas_eq g /\
-      bottom_layer_total_ok g dirac (U_fast g)
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - as for `fast_program_succeeds_imp_refined_fast_obligations`, but with the
-      weaker witness property `fast_witnessed_atlas_eq`, allowing the fast set
-      to contain different representatives of the same semantic Atlas param.
-  *)
-  cheat
-QED
-
-Theorem slow_program_succeeds_imp_refined_slow_obligations:
-  !g.
-    slow_program_succeeds g ==>
-      slow_refinement_ok g /\
-      slow_ok_components g
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - a proof/spec that the `SimplerVerifyF4FPP` domain iteration matches the
-      component-product enumeration (`dom_list_is_components` + component-list
-      correctness),
-    - a proof/spec that the counterexample counter computed by the slow program
-      is exactly `check_domain_fun` over the same enumeration, so “0 misses” is
-      `slow_ok_components g`.
-  *)
-  cheat
-QED
 
 Theorem slow_program_succeeds_imp_refined_slow_obligations_atlas_eq:
   !g.

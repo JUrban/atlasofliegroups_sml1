@@ -24,6 +24,11 @@
   - Ultimately we want to replace the `cheat`s in this theory by:
       (a) a CakeML proof of the algorithmic/data-structure core, and
       (b) a set of FFI specifications (possibly axiomatized) for Atlas calls.
+
+  Status
+  - This theory only introduces the abstract “program success” predicates.
+  - The (currently `cheat`ed) bridge theorems are isolated in
+    `F4FPPVerifySMLBridgeCheatsGoalsTheory`.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -42,80 +47,5 @@ val _ = new_theory "F4FPPVerifySMLBridgeGoals";
    return values, and flag settings. *)
 val _ = new_constant ("fast_program_succeeds", ``:group -> bool -> bool``);
 val _ = new_constant ("slow_program_succeeds", ``:group -> bool``);
-
-(* Refinement obligations: success implies the abstract goal predicates. *)
-Theorem fast_program_succeeds_imp_fast_ok:
-  !g dirac. fast_program_succeeds g dirac ==> fast_ok g dirac
-Proof
-  (* Top-down obligation: proved later by linking `VerifyF4FPP.sml` to:
-       - `fast_sound g` (semantic soundness of `U_fast`)
-       - `bottom_layer_total_ok g dirac (U_fast g)` (checked invariants)
-     potentially under explicit FFI specs. *)
-  cheat
-QED
-
-Theorem slow_program_succeeds_imp_dom_and_slow_ok:
-  !g. slow_program_succeeds g ==> dom_list_correct g /\ slow_ok g
-Proof
-  (* Top-down obligation: proved later by linking `SimplerVerifyF4FPP.sml` to:
-       - correctness of its enumeration vs `D_slow`
-       - correctness of its missing-witness check vs `check_domain_fun` *)
-  cheat
-QED
-
-Theorem slow_program_succeeds_imp_dom_list_correct:
-  !g. slow_program_succeeds g ==> dom_list_correct g
-Proof
-  (* Convenience projection for later goal statements. *)
-  cheat
-QED
-
-Theorem slow_program_succeeds_imp_slow_ok:
-  !g. slow_program_succeeds g ==> slow_ok g
-Proof
-  (* Convenience projection for later goal statements. *)
-  cheat
-QED
-
-Theorem fast_and_slow_programs_succeed_imp_full_ok:
-  !g dirac.
-    fast_program_succeeds g dirac /\ slow_program_succeeds g ==> full_ok g dirac
-Proof
-  rpt strip_tac
-  \\ pop_assum strip_assume_tac
-  \\ simp[full_ok_def]
-  \\ rpt conj_tac
-  \\ metis_tac
-      [ slow_program_succeeds_imp_dom_list_correct
-      , slow_program_succeeds_imp_slow_ok
-      , fast_program_succeeds_imp_fast_ok
-      ]
-  \\ metis_tac
-      [ slow_program_succeeds_imp_dom_list_correct
-      , slow_program_succeeds_imp_slow_ok
-      , fast_program_succeeds_imp_fast_ok
-      ]
-  \\ metis_tac
-      [ slow_program_succeeds_imp_dom_list_correct
-      , slow_program_succeeds_imp_slow_ok
-      , fast_program_succeeds_imp_fast_ok
-      ]
-QED
-
-(* Once the bridge obligations hold, we can derive the main consequences
-   without any further cheating: `full_ok` gives equality and invariants. *)
-Theorem fast_and_slow_programs_succeed_gives_equivalence:
-  !g dirac.
-    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
-      U_slow g (D_slow g) = U_fast g /\
-      bottom_layer_total_ok g dirac (U_fast g)
-Proof
-  (*
-    Intended proof sketch (once the bridge lemmas are proved without `cheat`):
-    - derive `full_ok g dirac` from slow/fast program success
-    - apply `full_ok_implies_set_equality` and `full_ok_implies_bottom_layer_total_ok`
-  *)
-  cheat
-QED
 
 val _ = export_theory ();

@@ -33,7 +33,9 @@ Planned discharge options:
 These `cheat`s isolate the connection between the actual Poly/ML programs in
 `atlas-scripts-sml/` and the abstract HOL obligations.
 
-- File: `formal/hol4/F4FPPVerifySMLBridgeGoalsScript.sml`
+- Files:
+  - `formal/hol4/F4FPPVerifySMLBridgeGoalsScript.sml` (introduces the abstract success predicates)
+  - `formal/hol4/F4FPPVerifySMLBridgeCheatsGoalsScript.sml` (records the `cheat`ed bridge theorems)
 - Role: `fast_program_succeeds` / `slow_program_succeeds` are abstract
   predicates; success should imply the abstract obligations.
 - Status: all program-success implications are placeholders (`cheat`).
@@ -45,7 +47,9 @@ Planned discharge:
 
 ## C. Refined-main route bridges (program success ⇒ refined obligations)
 
-- File: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
+- Files:
+  - `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml` (OK composition)
+  - `formal/hol4/F4FPPVerifyRefinedBridgeCheatsGoalsScript.sml` (records the `cheat`ed bridge theorems)
 - Placeholders:
   - `fast_program_succeeds_imp_refined_fast_obligations`
   - `fast_program_succeeds_imp_refined_fast_obligations_atlas_eq`
@@ -58,7 +62,9 @@ Role:
 
 ## D. Fast program phase split
 
-- File: `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml`
+- Files:
+  - `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml` (OK composition)
+  - `formal/hol4/F4FPPVerifyFastProgramSplitBridgeCheatsGoalsScript.sml` (split lemma)
 - Placeholder:
   - `fast_program_succeeds_imp_phase_success`
 
@@ -78,7 +84,9 @@ Role:
   - `formal/hol4/F4FPPVerifyParamHashBridgeDecomposeGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
 
 Role:
 - these are the “compute succeeded ⇒ the abstract fast-domain/ParamHash
@@ -88,12 +96,12 @@ Role:
   Atlas/FFI contracts for the semantic primitives.
 
 Additional split (still `cheat`ed):
-- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_observation_witness`
   - `fast_compute_program_succeeds_imp_paramhash_invariant_on_observation`
 
 Modulo-`atlas_eq` bridge (still `cheat`ed):
-- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
 
 Modulo-`atlas_eq` compute bundle (still `cheat`ed):
@@ -152,26 +160,30 @@ Planned discharge:
   predicates, plus FFI contracts for those predicates.
 
 Modulo-`atlas_eq` additions:
-- `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml` now also records a
+- `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsScript.sml` records a
   cheated bridge `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq`,
   intended to cover both the compact rho-seeding branch and the non-compact
   check branch.
 - `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml` adds a
-  compact-specific cheated predicate `bl_rho_seeded_ok` and uses it to derive
+  compact-specific predicate `bl_rho_seeded_ok` and uses it to derive
   the modulo-`atlas_eq` total postcondition `bottom_layer_total_ok_atlas_eq`.
 
 ## H. Slow checker bridge
 
 - Files:
   - `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifySlowBridgeDetailedCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeCheatsGoalsScript.sml`
 
 Role:
 - connect `slow_program_succeeds` to the refined slow obligations
   (`slow_refinement_ok` and `slow_ok_components`).
 
 Status:
-- currently placeholders (`cheat`).
+- bridge implications from `slow_program_succeeds` live in the isolated
+  `*Cheats*` theories and are placeholders (`cheat`); the decomposition lemmas
+  are OK.
 
 Modulo-`atlas_eq` detail:
 - `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeGoalsScript.sml` also adds a

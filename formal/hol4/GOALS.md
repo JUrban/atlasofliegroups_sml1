@@ -80,7 +80,7 @@ At a high level:
 
 1. `fast_program_succeeds`
    - splits into a compute-phase success and a bottom-layer-phase success:
-     `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml`
+     `formal/hol4/F4FPPVerifyFastProgramSplitBridgeCheatsGoalsScript.sml`
 2. Compute-phase success implies **compute obligations**
    - `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeGoalsScript.sml`
    - gives fast-side semantic obligations (`fast_semantic_ok`) and a
@@ -118,7 +118,7 @@ These state that “the program ran successfully” implies success of each phas
 and the abstract obligations of each phase.
 
 - `fast_program_succeeds_imp_phase_success`
-  - file: `formal/hol4/F4FPPVerifyFastProgramSplitBridgeGoalsScript.sml`
+  - file: `formal/hol4/F4FPPVerifyFastProgramSplitBridgeCheatsGoalsScript.sml`
   - ideal proof: relate `fast_program_succeeds` to the control-flow of
     `atlas-scripts-sml/VerifyF4FPP.sml` (exceptions, return values).
 
@@ -134,14 +134,14 @@ ParamHash obligations.
 
 - `fast_compute_program_succeeds_imp_fast_compute_domain_ok`
 - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored`
-  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - this is the ideal attachment point for a CakeML proof of the ParamHash
     algorithmic core, plus explicit Atlas hash/equality contracts.
 
 Modulo-`atlas_eq` variant (preferred long-term statement):
 
 - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
-  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeGoalsScript.sml`
+  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - same bridge shape, but the “stores-U-fast” clause is stated as
     `set_atlas_eq (U_fast g) (set (paramhash_list g))`.
 
@@ -151,7 +151,7 @@ Useful refinement split (for proof engineering):
   observed `list/contains` view (“plumbing”).
 - `paramhash_invariant_on_observation g`: any such observed state satisfies the
   invariant (“data-structure reasoning”).
-  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineGoalsScript.sml`
+  - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsScript.sml`
 
 ### C. ParamHash state representation lemma (data-structure core)
 
@@ -170,10 +170,10 @@ Progress note:
   - `formal/hol4/F4FPPVerifyAtlasEqListGoalsScript.sml` (`mem_atlas_eq`), and
   - `formal/hol4/F4FPPVerifyAtlasEqSetGoalsScript.sml` (`set_atlas_eq`,
     `atlas_eq_closure`).
-  The key state lemma `ph_contains_state_iff_mem_atlas_eq_elems` is stated in
-  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` and is still
-  `cheat`-tainted via the missing reverse direction (the forward direction is
-  proved).
+The key state lemma `ph_contains_state_iff_mem_atlas_eq_elems` is stated in
+  `formal/hol4/F4FPPVerifyParamHashStateGoalsScript.sml` and is now fully proved
+  (no `cheat`), using a `find_in_bucket` completeness lemma and the
+  `atlas_hash_respects_eq` plumbing.
 
 On the CakeML side, the analogous lemma is *proved* for the pure-state model:
 

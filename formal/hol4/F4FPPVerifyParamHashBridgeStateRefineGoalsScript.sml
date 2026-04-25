@@ -27,7 +27,7 @@
     depends on a fully proved state lemma `ph_contains_state_iff_MEM_elems`
     from `F4FPPVerifyParamHashStateGoalsTheory` (no `cheat`).
   - The bridge from program success to `paramhash_state_ok` is recorded and
-    `cheat`ed.
+    `cheat`ed in `F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsTheory`.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -95,81 +95,8 @@ Proof
   \\ simp[ph_contains_state_iff_mem_atlas_eq_elems]
 QED
 
-(* Bridge obligation: fast compute success implies the existence of such a
-   witness state.  This is where a future CakeML/translator proof will attach. *)
-Theorem fast_compute_program_succeeds_imp_paramhash_state_ok:
-  !g. fast_compute_program_succeeds g ==> paramhash_state_ok g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - identify a concrete ParamHash post-state after `computeAllIntoParamHash`,
-    - establish `ph_invariant` for that state,
-    - show `ParamHash.list` and `ParamHash.contains` correspond to
-      `paramhash_list g` and `paramhash_contains g`.
-  *)
-  cheat
-QED
-
-(* Separate bridge obligations corresponding to the decomposed view above. *)
-Theorem fast_compute_program_succeeds_imp_paramhash_observation_witness:
-  !g. fast_compute_program_succeeds g ==> paramhash_observation_witness g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - connect the concrete ParamHash heap object to an abstract state `s`
-      satisfying `paramhash_observes_state`.
-  *)
-  cheat
-QED
-
-Theorem fast_compute_program_succeeds_imp_paramhash_invariant_on_observation:
-  !g. fast_compute_program_succeeds g ==> paramhash_invariant_on_observation g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - show that any abstract state consistent with the observed `list/contains`
-      view must satisfy the invariant; this is where CakeML/translator proofs
-      about the build process and invariant preservation can attach.
-  *)
-  cheat
-QED
-
-(* Recomposing the split bridge obligations to recover `paramhash_state_ok`. *)
-Theorem fast_compute_program_succeeds_imp_paramhash_state_ok_decomposed:
-  !g.
-    fast_compute_program_succeeds g ==>
-      paramhash_state_ok g
-Proof
-  rpt strip_tac
-  \\ match_mp_tac paramhash_observation_witness_and_invariant_imp_state_ok
-  \\ metis_tac
-      [ fast_compute_program_succeeds_imp_paramhash_observation_witness
-      , fast_compute_program_succeeds_imp_paramhash_invariant_on_observation
-      ]
-QED
-
-(* A refinement-friendly variant of the original bridge lemma in
-   `F4FPPVerifyParamHashBridgeDecomposeGoalsTheory`: if the compute phase
-   succeeds and we assume the simplifying hash/equality contracts, then
-   representation correctness follows once we discharge `paramhash_state_ok`. *)
-Theorem fast_compute_program_succeeds_imp_paramhash_rep_ok_via_state:
-  !g.
-    atlas_eq_is_hol_eq /\ atlas_hash_range /\ fast_compute_program_succeeds g ==>
-      paramhash_rep_ok g
-Proof
-  rpt strip_tac
-  \\ match_mp_tac paramhash_state_ok_imp_paramhash_rep_ok
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_state_ok]
-QED
-
-Theorem fast_compute_program_succeeds_imp_paramhash_rep_ok_atlas_eq_via_state:
-  !g.
-    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
-      paramhash_rep_ok_atlas_eq g
-Proof
-  rpt strip_tac
-  \\ match_mp_tac paramhash_state_ok_imp_paramhash_rep_ok_atlas_eq
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_state_ok]
-QED
+(* Bridge lemmas connecting `fast_compute_program_succeeds` to these
+   state-level obligations are isolated in:
+     `F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsTheory`. *)
 
 val _ = export_theory ();

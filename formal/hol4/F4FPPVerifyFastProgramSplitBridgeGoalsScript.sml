@@ -19,7 +19,9 @@
     lemma with a real connection to the SML control-flow.
 
   Status
-  - The split lemma is `cheat`ed for now; composition lemmas are OK.
+  - The split lemma is isolated in
+    `F4FPPVerifyFastProgramSplitBridgeCheatsGoalsTheory` (currently `cheat`ed).
+  - This theory is “OK” composition once the split lemma is available.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -33,24 +35,11 @@ open F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsTheory;
+open F4FPPVerifyFastProgramSplitBridgeCheatsGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyTargetGroupGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastProgramSplitBridgeGoals";
-
-(* Split bridge: success of the fast program implies success of each phase. *)
-Theorem fast_program_succeeds_imp_phase_success:
-  !g dirac.
-    fast_program_succeeds g dirac ==>
-      fast_compute_program_succeeds g /\ bottom_layer_program_succeeds g dirac
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - unfold `VerifyF4FPP.compute` and show it calls the two phases in sequence,
-      and “overall success” implies each returns without raising.
-  *)
-  cheat
-QED
 
 (* Composition: for the target group `F4s`, phase success implies the refined
    fast obligations used by `F4FPPVerifyRefinedMainGoalsTheory`. *)

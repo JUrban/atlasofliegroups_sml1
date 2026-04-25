@@ -27,7 +27,7 @@
   Status
   - The logical implication lemmas are OK.
   - The bridge from execution to the state-level bundle is recorded and
-    `cheat`ed.
+    `cheat`ed in `F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsTheory`.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -92,31 +92,8 @@ Proof
   \\ metis_tac[paramhash_state_ok_imp_paramhash_rep_ok_atlas_eq]
 QED
 
-(* --- Bridge from compute-phase success (currently CHEATED) --- *)
-
-Theorem fast_compute_program_succeeds_imp_paramhash_obligations_state_factored:
-  !g. fast_compute_program_succeeds g ==> paramhash_obligations_state_factored g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - wiring: `fast_param_set_is_paramhash g` follows from how the program
-      constructs the `param_set` view of ParamHash,
-    - state_ok: discharged by a CakeML/translator proof of `ph_invariant`,
-    - stores_U_fast: algorithmic argument about what the compute phase inserts.
-  *)
-  cheat
-QED
-
-Theorem fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq:
-  !g. fast_compute_program_succeeds g ==> paramhash_obligations_state_factored_atlas_eq g
-Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - wiring + state_ok are identical to the non-modulo bundle,
-    - `paramhash_stores_U_fast_atlas_eq` is the “right” extensional statement
-      for the stored list, modulo `atlas_eq`.
-  *)
-  cheat
-QED
+(* Bridge lemmas from `fast_compute_program_succeeds` to these state-level
+   bundles are isolated in:
+     `F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsTheory`. *)
 
 val _ = export_theory ();

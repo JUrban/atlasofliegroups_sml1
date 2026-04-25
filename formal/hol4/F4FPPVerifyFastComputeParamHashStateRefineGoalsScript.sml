@@ -31,6 +31,7 @@ open F4FPPVerifyAtlasFFIContractsGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeParamHashStateRefineGoals";
 

@@ -25,8 +25,10 @@
   - “0 misses” obligation stated directly as `slow_ok_components g`.
 
   Status
-  - The bridge theorems are currently `cheat`ed; the goal is to have the
-    *right statements* early.
+  - This theory is “OK” composition-only.
+  - The remaining bridge lemma connecting `slow_program_succeeds` to
+    `slow_refinement_ok` is isolated in
+    `F4FPPVerifySlowBridgeDetailedCheatsGoalsTheory` (currently `cheat`ed).
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -38,31 +40,11 @@ open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifySlowRefineGoalsTheory;
 open F4FPPVerifySlowRefineAtlasEqGoalsTheory;
 open F4FPPVerifySlowProgramDecomposeBridgeGoalsTheory;
+open F4FPPVerifySlowProgramDecomposeBridgeCheatsGoalsTheory;
 open F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory;
+open F4FPPVerifySlowBridgeDetailedCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifySlowBridgeDetailedGoals";
-
-(* Domain enumeration bridge: success of the slow program implies the domain
-   refinement bundle `slow_refinement_ok`. *)
-Theorem slow_program_succeeds_imp_slow_refinement_ok:
-  !g. slow_program_succeeds g ==> slow_refinement_ok g
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - show `loadBarycenters` enumerates `AllBarycenters g` correctly
-    - show `loadLambdasByX` enumerates `FPP_lambdas g x` correctly for each x
-    - show the nested `for_domain` loop corresponds to `dom_list_from_components`
-      (hence `dom_list_is_components` with an appropriate choice of `dom_list`)
-  *)
-  (*
-    For now we keep this as a top-down bridge, but note it can be factored via
-    `F4FPPVerifySlowRefinementBridgeDecomposeGoalsTheory` by proving:
-      - `slow_component_lists_ok g`
-      - `slow_dom_list_agrees_components g`
-    from `slow_program_succeeds g`.
-  *)
-  cheat
-QED
 
 (* Miss-counter bridge: success of the slow program implies “0 misses” in the
    formal list model, i.e. `slow_ok_components`. *)

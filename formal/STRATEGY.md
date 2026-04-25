@@ -443,23 +443,13 @@ how the list and contains obligations combine to yield `fast_param_set_ok g`.
 
 File: `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
 
-Introduces a dedicated (currently `cheat`ed) bridge predicate
+Introduces the abstract success predicate
 `bottom_layer_program_succeeds g dirac` representing successful execution of
-the `FPP_globalDirac` pipeline. It records the intended bridge theorem:
+the `FPP_globalDirac` pipeline.
 
-- success implies `bottom_layer_ok_param_set g dirac (fast_param_set g)`
-
-and then derives (without further cheating) the set-level consequences under
-`fast_param_set_ok`, including `bottom_layer_total_ok` for non-compact groups.
-
-Modulo-`atlas_eq` variants:
-- records a separate (currently `cheat`ed) bridge obligation
-  `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq ...`,
-  which covers both compact (rho-seeding) and non-compact (checks) branches.
-- derives the more realistic postcondition
-  `bottom_layer_total_ok_atlas_eq g dirac (U_fast g)` under
-  `fast_param_set_ok_atlas_eq` and the explicit congruence contract
-  `atlas_eq_congruent_bottom_layer`.
+The detailed “execution success ⇒ obligations” bridge lemmas (including the
+modulo-`atlas_eq` total-postcondition) are isolated in:
+- `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsScript.sml`
 
 #### `F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory` (bottom-layer bridge, per-check)
 
@@ -644,14 +634,15 @@ Introduces a named intermediate bridge obligation:
 
 It proves (modulo the state lemma) that this implies `paramhash_rep_ok g` under
 `atlas_eq_is_hol_eq` + `atlas_hash_range`, and records the cheated bridge
-`fast_compute_program_succeeds ⇒ paramhash_state_ok`.
+`fast_compute_program_succeeds ⇒ paramhash_state_ok` in:
+
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateRefineCheatsGoalsScript.sml`
 
 More realistic equality:
 
 - It also proves a modulo-`atlas_eq` variant:
   `atlas_hash_eq_ok ∧ paramhash_state_ok g ⇒ paramhash_rep_ok_atlas_eq g`,
-  using the (currently cheat-tainted) state lemma
-  `ph_contains_state_iff_mem_atlas_eq_elems`.
+  using the (now fully proved) state lemma `ph_contains_state_iff_mem_atlas_eq_elems`.
 
 #### `F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory` (compute success ⇒ state-level ParamHash bundle)
 
@@ -664,9 +655,10 @@ Introduces a “state-factored” ParamHash bundle:
 
 Then proves (OK) that under `atlas_eq_is_hol_eq` + `atlas_hash_range` this
 implies the earlier extensional bundle `paramhash_obligations_factored g`, and
-records the cheated bridge:
+records the cheated bridge in:
 
-- `fast_compute_program_succeeds g ⇒ paramhash_obligations_state_factored g`.
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
+  (`fast_compute_program_succeeds g ⇒ paramhash_obligations_state_factored g`).
 
 Modulo-`atlas_eq` variant:
 
@@ -681,12 +673,16 @@ Modulo-`atlas_eq` variant:
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`
 
-Splits the slow bridge into two explicit (currently `cheat`ed) obligations:
+Splits the slow bridge into two obligations:
 
 - `slow_program_succeeds g` implies `slow_refinement_ok g` (domain refinement),
 - `slow_program_succeeds g` implies `slow_ok_components g` (0 misses),
 
 and provides an “OK” convenience lemma bundling them together.
+
+The remaining `cheat`ed bridge for the refinement part lives in:
+
+- `formal/hol4/F4FPPVerifySlowBridgeDetailedCheatsGoalsScript.sml`
 
 #### `F4FPPVerifySlowProgramDecomposeBridgeGoalsTheory` (slow bridge, finer split)
 
@@ -707,7 +703,10 @@ and defines three small bridge obligations:
 - `slow_ok_sml g`: `LENGTH (FILTER (slow_missing g) (slow_domain_list g)) = 0`
 
 From these it proves (OK) that `slow_ok_components g` holds, and then records
-cheated lemmas stating that `slow_program_succeeds g` implies each obligation.
+cheated lemmas (in an isolated theory) stating that `slow_program_succeeds g`
+implies each obligation:
+
+- `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeCheatsGoalsScript.sml`
 
 Modulo-`atlas_eq` variant:
 
@@ -748,6 +747,9 @@ Records the split of `fast_program_succeeds` into:
 
 and composes the phase-level bridge theorems to derive refined fast obligations
 for the concrete target group `F4s`.
+
+The split lemma itself is isolated (currently `cheat`ed) in:
+- `formal/hol4/F4FPPVerifyFastProgramSplitBridgeCheatsGoalsScript.sml`
 
 #### `F4FPPVerifyEndToEndF4sGoalsTheory` (end-to-end theorem for `F4s`)
 
@@ -843,14 +845,18 @@ Introduces abstract “program success” predicates:
 - `fast_program_succeeds g dirac`
 - `slow_program_succeeds g`
 
-and records the key bridge theorems we ultimately want:
+The (currently `cheat`ed) bridge theorems live in:
+
+- `formal/hol4/F4FPPVerifySMLBridgeCheatsGoalsScript.sml`
+
+They include the key bridge theorems we ultimately want:
 
 - `fast_program_succeeds_imp_fast_ok` (**currently `cheat`ed**)
 - `slow_program_succeeds_imp_dom_and_slow_ok` (**currently `cheat`ed**)
 - `slow_program_succeeds_imp_dom_list_correct` (**currently `cheat`ed**)
 - `slow_program_succeeds_imp_slow_ok` (**currently `cheat`ed**)
 - `fast_and_slow_programs_succeed_imp_full_ok` (**CHEAT-tainted**, depends on cheated bridge lemmas)
-- `fast_and_slow_programs_succeed_gives_equivalence` (**currently `cheat`ed**)
+- `fast_and_slow_programs_succeed_gives_equivalence` (**CHEAT-tainted**, derived by composition)
 
 From these, we get a clean end-user theorem statement (intended to be derivable
 once the bridge lemmas are proved without `cheat`):
@@ -864,7 +870,9 @@ once the bridge lemmas are proved without `cheat`):
 File: `formal/hol4/F4FPPVerifyRefinedBridgeGoalsScript.sml`
 
 Refines the bridge interface further: instead of “program success implies
-`full_ok`”, it states (currently `cheat`ed) that:
+`full_ok`”, it states (currently `cheat`ed, in an isolated theory) that:
+
+- `formal/hol4/F4FPPVerifyRefinedBridgeCheatsGoalsScript.sml`
 
 - `fast_program_succeeds g dirac` implies
   `fast_semantic_ok g` and `bottom_layer_total_ok g dirac (U_fast g)`.
