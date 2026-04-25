@@ -32,18 +32,22 @@ open HolKernel Parse boolLib bossLib;
 
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildCheatsGoals";
 
 Theorem fast_compute_program_succeeds_imp_paramhash_build_witness:
   !g. fast_compute_program_succeeds g ==> paramhash_build_witness g
 Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - relate the concrete imperative ParamHash heap state after the compute
-      phase to the pure build-state `ph_build_from_create_state m ps`.
-  *)
-  cheat
+  (* Prefer routing via the trace-based canonical model:
+       `fast_compute_program_succeeds ==> paramhash_build_state_ok`
+     (CHEATED, translator target) and then discharge the existential witness
+     with the OK lemma `paramhash_build_state_ok_imp_paramhash_build_witness`. *)
+  metis_tac
+    [ fast_compute_program_succeeds_imp_paramhash_build_state_ok
+    , paramhash_build_state_ok_imp_paramhash_build_witness
+    ]
 QED
 
 (* A convenient derived bridge, using only the single concrete obligation. *)
@@ -56,4 +60,3 @@ Proof
 QED
 
 val _ = export_theory ();
-
