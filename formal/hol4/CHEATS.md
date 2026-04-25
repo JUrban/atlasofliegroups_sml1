@@ -166,6 +166,8 @@ Trace-level stores upgrade (optional target):
   - `fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq`
   - derived (OK) recombination under `atlas_hash_eq_ok`:
     `atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq`
+  - derived (OK) state-bundle route under `atlas_hash_eq_ok`:
+    `atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq_via_build_state_trace_stores`
   - `fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq`
     (intended translator target: relate compute success to `U_fast ~ set(trace)` directly)
 - file: `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`

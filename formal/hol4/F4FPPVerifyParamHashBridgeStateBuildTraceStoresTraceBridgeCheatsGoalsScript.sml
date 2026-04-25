@@ -30,6 +30,7 @@ open F4FPPVerifyParamHashBridgeStateBuildTraceCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceStoreDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceToStateGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoals";
 
@@ -126,6 +127,16 @@ Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligat
 Proof
   rpt strip_tac
   \\ match_mp_tac atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
+  \\ metis_tac[atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_build_state_trace_stores_factored_atlas_eq]
+QED
+
+Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq_via_build_state_trace_stores:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_state_factored_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_state_factored_atlas_eq
   \\ metis_tac[atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_build_state_trace_stores_factored_atlas_eq]
 QED
 
