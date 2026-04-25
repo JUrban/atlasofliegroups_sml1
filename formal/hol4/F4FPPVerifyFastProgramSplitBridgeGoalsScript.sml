@@ -29,6 +29,7 @@ open pred_setTheory pred_setLib;
 open F4FPPVerifySMLBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
+open F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;

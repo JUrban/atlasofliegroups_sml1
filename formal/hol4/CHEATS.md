@@ -72,6 +72,7 @@ Role:
   - `formal/hol4/F4FPPVerifyFastComputeBridgeGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyParamHashBridgeDecomposeGoalsScript.sml`

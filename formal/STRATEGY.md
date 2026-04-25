@@ -515,9 +515,10 @@ Factors the compute-phase bridge into two explicit bundles:
 
 and proves (OK) that these together imply `fast_compute_obligations g`.
 
-It then records cheated lemmas stating that `fast_compute_program_succeeds g`
-implies each bundle, and derives a factored “success ⇒ obligations” theorem
-from those.
+The “compute success ⇒ factored obligations” bridge lemmas are recorded (for
+now, `cheat`ed) in the isolated theory:
+
+- `formal/hol4/F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsScript.sml`
 
 #### `F4FPPVerifyFastComputeParamHashStateRefineGoalsTheory` (compute ParamHash via state bundle)
 

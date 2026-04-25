@@ -19,10 +19,11 @@
   - Everything else is pure logical composition and should remain “OK”.
 
   Status
-  - The bridge from `fast_compute_program_succeeds` to the two bundles is
-    stated here; the ParamHash part can re-use the already-stated cheated lemma
-    `fast_compute_program_succeeds_imp_paramhash_obligations_factored` (from the
-    isolated `*Cheats*` theory `F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory`).
+  - This theory is entirely “OK”: it introduces the two factored bundles and
+    proves recombination lemmas.
+  - The (currently `cheat`ed) bridge theorems from
+    `fast_compute_program_succeeds` to these bundles are isolated in
+    `F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory`.
   - The recombination lemmas are all OK.
 *)
 
@@ -36,7 +37,6 @@ open F4FPPVerifyAtlasEqSetGoalsTheory;
 
 open F4FPPVerifyFastPruneGoalsTheory;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
-open F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeGoalsTheory;
 open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
@@ -143,21 +143,6 @@ Proof
   )
 QED
 
-(* --- Bridge obligations from compute-phase success (currently CHEATED) --- *)
-
-Theorem fast_compute_program_succeeds_imp_fast_compute_domain_ok:
-  !g. fast_compute_program_succeeds g ==> fast_compute_domain_ok g
-Proof
-  (*
-    Intended proof ingredients (later, without `cheat`):
-    - identify the exact pruning predicate (`fast_considers`) implemented by
-      `F4_FPP_points_compute` (bucket/key matching + additional filters),
-    - show `D_fast g = { t ∈ D_slow g | fast_considers g t }`,
-    - show every stored element of `U_fast g` is witnessed by such a triple.
-  *)
-  cheat
-QED
-
 Theorem fast_compute_domain_ok_imp_fast_compute_domain_ok_atlas_eq:
   !g.
     atlas_eq_equiv /\ fast_compute_domain_ok g ==> fast_compute_domain_ok_atlas_eq g
@@ -166,24 +151,8 @@ Proof
   \\ metis_tac[fast_witnessed_pruned_imp_fast_witnessed_pruned_atlas_eq]
 QED
 
-Theorem fast_compute_program_succeeds_imp_fast_compute_paramhash_ok:
-  !g. fast_compute_program_succeeds g ==> fast_compute_paramhash_ok g
-Proof
-  rw[fast_compute_paramhash_ok_def]
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_factored]
-QED
-
-(* Derived (cheat-tainted) bridge: the compute phase implies the original
-   `fast_compute_obligations`. This reduces the remaining proof work to the two
-   explicit bundles above. *)
-Theorem fast_compute_program_succeeds_imp_fast_compute_obligations_factored:
-  !g. fast_compute_program_succeeds g ==> fast_compute_obligations g
-Proof
-  rpt strip_tac
-  \\ match_mp_tac fast_compute_domain_and_paramhash_ok_imp_fast_compute_obligations
-  \\ conj_tac
-  >- metis_tac[fast_compute_program_succeeds_imp_fast_compute_domain_ok]
-  \\ metis_tac[fast_compute_program_succeeds_imp_fast_compute_paramhash_ok]
-QED
+(* Bridge theorems from `fast_compute_program_succeeds` to these factored
+   bundles are isolated in:
+     `F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory`. *)
 
 val _ = export_theory ();
