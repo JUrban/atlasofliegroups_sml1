@@ -174,6 +174,10 @@ Newer, more specified refinement split (build-witness based):
   - build-factored bundles (wiring + build witness + stores-U-fast):
     - OK implications: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildDecomposeGoalsScript.sml`
     - cheated bridge from compute success: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildDecomposeCheatsGoalsScript.sml`
+  - trace-based canonical build model (translator-friendly witnesses):
+    - `paramhash_build_state_ok g` with named `paramhash_build_m g` and `paramhash_build_ps g`
+      - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceGoalsScript.sml`
+      - CHEATED bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceCheatsGoalsScript.sml`
 
 ### C. ParamHash state representation lemma (data-structure core)
 
