@@ -88,6 +88,11 @@ At a high level:
    - modulo-`atlas_eq` variants now exist for the compute obligations bundle:
      `fast_compute_obligations_atlas_eq`, yielding `fast_semantic_ok_atlas_eq`
      and `fast_param_set_ok_atlas_eq` without `atlas_eq_is_hol_eq`.
+
+ParamHash modulo-`atlas_eq` state direction (more detailed decomposition):
+- `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml`
+  - breaks the key missing lemma `mem_atlas_eq p s.elems ==> ph_contains_state p s`
+    into explicit “plumbing” steps plus one pure `find_in_bucket` completeness lemma.
 3. Bottom-layer success implies **bottom-layer obligations**
    - decomposed per check in:
      `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml`

@@ -610,6 +610,17 @@ More realistic equality:
   - `formal/hol4/F4FPPVerifyAtlasEqSetGoalsScript.sml` (`set_atlas_eq`,
     `atlas_eq_closure`) for stating end-to-end correctness modulo `atlas_eq`.
 
+To make the `mem_atlas_eq ⇒ contains` direction more explicit (and to support
+gradual proof strengthening), we also introduce a dedicated decomposition layer:
+
+- `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml`
+
+This file isolates the main hinge points:
+
+- `ph_covered`/`ph_ok`/`ph_bucketed` “plumbing” facts (all OK), and
+- a single pure list lemma about `find_in_bucket` completeness modulo `atlas_eq`
+  (currently the only remaining `cheat` in that chain).
+
 At the spec level (independent of ParamHash), the intended end-to-end equality
 modulo `atlas_eq` is spelled out via two directional obligations in:
 

@@ -116,6 +116,12 @@ Progress notes:
   from these two directions, but still `cheat`-tainted via the missing reverse
   lemma above.
 
+Decomposition helper:
+- `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml` provides a
+  more explicit decomposition of the missing reverse direction, isolating the
+  one remaining pure list lemma:
+  - `bucket_has_atlas_eq_imp_find_in_bucket_SOME` (currently `cheat`ed).
+
 Rationale:
 - this is “pure data-structure reasoning” and should eventually be eliminated
   (either directly in HOL4, or by importing the analogous CakeML proof and
