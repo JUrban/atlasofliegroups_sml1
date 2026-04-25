@@ -12,8 +12,8 @@
 
   Status
   - The main “preserves invariant” theorem is currently recorded and `cheat`ed.
-    The goal is to later replace it with a straightforward but somewhat
-    tedious bucket/list reasoning proof.
+    The goal is to replace it with a straightforward bucket/list reasoning
+    proof (see the comment inside the theorem).
 
   Note
   - Basic “pure build” definitions/lemmas live in `ParamHashBuildGoalsTheory`,
@@ -41,16 +41,14 @@ Theorem ph_match_state_preserves_invariant:
   !p s. ph_invariant s ==> ph_invariant (SND (ph_match_state p s))
 Proof
   (*
-    Planned proof (later, without `cheat`):
+    Planned proof (without `cheat`):
     - split `ph_invariant` into `ph_ok`/`ph_bucketed`/`ph_covered`,
     - do a case split on `ph_lookup_state p s`,
     - in the NONE case, show:
-        - `ph_ok` is preserved by the `LUPDATE`/append construction
-          (using `nthn_append_lt` and `nthn_append_sing_len`),
-        - `ph_bucketed` is preserved because only bucket `i` changes and the
-          new head pair has `bucket_index p m = i`,
-        - `ph_covered` is preserved for old indices (old pairs remain in `FLAT`)
-          and extended for the new index by the inserted head pair.
+        - `ph_ok` is preserved (use `ph_match_state_preserves_ok`),
+        - `ph_bucketed` is preserved by `EL_LUPDATE` + `ph_bucketed` on the tail,
+        - `ph_covered` is preserved using `MEM_FLAT` witnesses and `EL_LUPDATE`
+          (old indices remain; the new last index is covered by the inserted head).
   *)
   cheat
 QED

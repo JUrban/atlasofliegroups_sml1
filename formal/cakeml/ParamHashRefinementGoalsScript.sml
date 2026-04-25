@@ -24,9 +24,9 @@
 
   Status
   - Most refinement theorems in this file are proved by unfolding definitions.
-  - `ph_match_state_preserves_ok` is proved (no `cheat`): `ph_match_state`
-    preserves the well-formedness invariant `ph_ok`, which is needed to justify
-    the `insert_all`/`build_state` iteration step.
+  - `ph_match_state_preserves_ok` is proved (no `cheat`) in the shared pure
+    base theory `ParamHashBuildGoalsTheory`; it is used here to justify the
+    `insert_all`/`build_state` iteration step.
   - “End-to-end” consequences that rely on invariant-preservation (which is
     still cheat-tainted) are stated in `ParamHashEndToEndGoalsTheory` instead.
 
@@ -118,62 +118,6 @@ Proof
     \\ `bucket_index p s.bucket_count < LENGTH s.buckets` by fs[]
     \\ simp[Msub_eq, Mupdate_eq, LET_THM, ph_state_component_equality])
   \\ simp[ph_match_state_def]
-QED
-
-Theorem ph_match_state_preserves_ok:
-  !p s. ph_ok s ==> ph_ok (SND (ph_match_state p s))
-Proof
-  rpt strip_tac
-  \\ Cases_on `ph_lookup_state p s`
-  >- (
-    simp[ph_match_state_def, LET_THM]
-    \\ qabbrev_tac `m = s.bucket_count`
-    \\ qabbrev_tac `i = bucket_index p m`
-    \\ qabbrev_tac `j = s.count`
-    \\ qabbrev_tac `b = EL i s.buckets`
-    \\ `i < LENGTH s.buckets` by
-         (fs[ph_ok_def, Abbr`i`, Abbr`m`] \\ metis_tac[bucket_index_lt])
-    \\ simp[ph_ok_def]
-    \\ rpt conj_tac
-    >- fs[ph_ok_def, Abbr`m`]
-    >- (fs[ph_ok_def, Abbr`m`] \\ simp[listTheory.LENGTH_LUPDATE])
-    >- (fs[ph_ok_def, Abbr`j`] \\ simp[listTheory.LENGTH_APPEND] \\ decide_tac)
-    \\ rpt strip_tac
-    \\ rename1 `MEM (q,idx) (FLAT _)`
-    \\ fs[listTheory.MEM_FLAT]
-    \\ rename1 `MEM l (LUPDATE ((p,j)::b) i s.buckets)`
-    \\ rename1 `MEM (q,idx) l`
-    \\ `l = ((p,j)::b) \/ MEM l s.buckets` by
-         metis_tac[listTheory.MEM_LUPDATE_E]
-    \\ (Cases_on `l = ((p,j)::b)` THENL
-        [fs[]
-         \\ fs[listTheory.MEM]
-         >- (
-           fs[ph_ok_def, Abbr`j`]
-           \\ simp[listTheory.LENGTH_APPEND, nthn_append_sing_len]
-           \\ decide_tac)
-         \\ `MEM (q,idx) b` by metis_tac[listTheory.MEM]
-         \\ `MEM (q,idx) (FLAT s.buckets)` by
-              (simp[listTheory.MEM_FLAT]
-               \\ qexists_tac `EL i s.buckets`
-               \\ (conj_tac THENL
-                    [metis_tac[listTheory.EL_MEM], fs[Abbr`b`]]))
-         \\ `idx < LENGTH s.elems /\ nthn idx s.elems = q` by
-              metis_tac[ph_ok_def]
-         \\ simp[listTheory.LENGTH_APPEND, nthn_append_lt]
-         \\ decide_tac,
-         fs[]
-         \\ `MEM l s.buckets` by metis_tac[listTheory.MEM_LUPDATE_E]
-         \\ `MEM (q,idx) (FLAT s.buckets)` by
-              (simp[listTheory.MEM_FLAT]
-               \\ qexists_tac `l`
-               \\ fs[])
-         \\ `idx < LENGTH s.elems /\ nthn idx s.elems = q` by
-              metis_tac[ph_ok_def]
-         \\ simp[listTheory.LENGTH_APPEND, nthn_append_lt]
-         \\ decide_tac])
-    )
-  \\ fs[ph_match_state_def]
 QED
 
 Theorem ph_insert_all_refines_build_state:

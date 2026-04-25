@@ -28,11 +28,12 @@ $HOLDIR/bin/Holmake
 - `ParamHashGoalsScript.sml`: “top-down” correctness goals for the pure-state
   model (`ph_lookup_state_complete`, `ph_all_present_state_iff_subset`, ...).
 - `ParamHashBuildGoalsScript.sml`: a small non-cheated base theory:
-  `ph_build_state` + list/nthn helper lemmas used across multiple layers.
+  `ph_build_state`, list/nthn helper lemmas, and the pure well-formedness
+  preservation lemma `ph_match_state_preserves_ok`.
 - `ParamHashRefinementGoalsScript.sml`: refinement lemmas connecting the monadic
   operations (`ph_lookup`, `ph_match`, `ph_insert_all`, `ph_all_present`) to the
   pure-state model (`ph_*_state`) under `ph_ok`. Most are proved; currently
-  **OK** (no `cheat`): `ph_match_state_preserves_ok` is now proved.
+  **OK** (no `cheat`).
 - `ParamHashCreateGoalsScript.sml`: initialization goals for the monadic model:
   defines the pure initial state `ph_create_state` and records the refinement
   lemma `ph_create_refines_create_state` (now proved, no `cheat`).
@@ -44,4 +45,4 @@ $HOLDIR/bin/Holmake
   (derives `contains`-style predicates from `ph_lookup_state` and proves
   `ph_contains_state p s <=> p IN ph_set s` under `ph_invariant`).
 - `ParamHashInvariantGoalsScript.sml`: invariant-preservation goals for the
-  build process (define `ph_build_state` and record “match preserves invariant”).
+  build process (records “match preserves invariant”; currently `cheat`ed).

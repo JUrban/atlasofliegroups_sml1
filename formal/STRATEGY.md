@@ -938,6 +938,7 @@ Provides a small, non-cheated base layer that both refinement and invariant
 theories can share without importing cheat-tainted dependencies:
 
 - list/nthn helper lemmas about append (`nthn_append_lt`, `nthn_append_sing_len`)
+- `ph_match_state_preserves_ok`: a single pure `match_state` step preserves `ph_ok`
 - the pure-state “build-by-repeated-match” function `ph_build_state`
 
 #### `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state model)
@@ -952,9 +953,10 @@ exactly like the pure-state functions (`ph_lookup_state`, `ph_match_state`,
 
 These are proved largely by unfolding the monadic definitions and applying the
 array/list bounds consequences of `ph_ok`. However, the theory is currently
-**OK**: `ph_match_state_preserves_ok` is proved (no `cheat`) and justifies the
-iterative `insert_all` refinement. The intent is for this layer to remain
-**OK** (no `cheat`) as a stable interface between:
+**OK**: it relies on the base lemma `ph_match_state_preserves_ok` (proved, no
+`cheat`, in `ParamHashBuildGoalsTheory`) to justify the iterative `insert_all`
+refinement. The intent is for this layer to remain **OK** (no `cheat`) as a
+stable interface between:
 
 - translator evaluation proofs (CakeML semantics), and
 - the already-proved extensional lemmas in `ParamHashSetGoalsTheory`.
