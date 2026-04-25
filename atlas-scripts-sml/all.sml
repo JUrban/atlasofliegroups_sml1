@@ -166,17 +166,22 @@ val () = tryUse "atlas-scripts-sml/print_K_types.sml"
 val () = tryUse "atlas-scripts-sml/paramChamber.sml"
 val () = tryUse "atlas-scripts-sml/springer_tables_reductive.sml"
 val () = tryUse "atlas-scripts-sml/springer_table_F.sml"
+val () = tryUse "atlas-scripts-sml/springer_table_D.sml"
 val () = tryUse "atlas-scripts-sml/nilpotent_orbits_exceptional.sml"
 val () = tryUse "atlas-scripts-sml/nilpotent_orbit_partitions.sml"
 val () = tryUse "atlas-scripts-sml/finite_unipotents.sml"
 val () = tryUse "atlas-scripts-sml/weak_packet_reports.sml"
+val () = tryUse "atlas-scripts-sml/L_packet.sml"
 val () = tryUse "atlas-scripts-sml/ext_deform.sml"
+val () = tryUse "atlas-scripts-sml/hodge_deform.sml"
 val () = tryUse "atlas-scripts-sml/twisted_conjugacy.sml"
 val () = tryUse "atlas-scripts-sml/smallQ.sml"
 val () = tryUse "atlas-scripts-sml/ellipticExceptional.sml"
 val () = tryUse "atlas-scripts-sml/test_non_distinguished.sml"
 val () = tryUse "atlas-scripts-sml/exceptionalData.sml"
 val () = tryUse "atlas-scripts-sml/hodge_test.sml"
+val () = tryUse "atlas-scripts-sml/hodgeParamPol.sml"
+val () = tryUse "atlas-scripts-sml/hodgeParamLaurentPol.sml"
 val () = tryUse "atlas-scripts-sml/hodge_tensor.sml"
 val () = tryUse "atlas-scripts-sml/new_conjugacy.sml"
 val () = tryUse "atlas-scripts-sml/red_count.sml"
@@ -184,9 +189,12 @@ val () = tryUse "atlas-scripts-sml/real_component_groups.sml"
 val () = tryUse "atlas-scripts-sml/up_mu.sml"
 val () = tryUse "atlas-scripts-sml/central.sml"
 val () = tryUse "atlas-scripts-sml/good_W_representatives.sml"
+val () = tryUse "atlas-scripts-sml/W_reps.sml"
 val () = tryUse "atlas-scripts-sml/tensor_product.sml"
 val () = tryUse "atlas-scripts-sml/conjugate.sml"
 val () = tryUse "atlas-scripts-sml/hodge_normalize.sml"
+val () = tryUse "atlas-scripts-sml/cyclotomic.sml"
+val () = tryUse "atlas-scripts-sml/cyclotomicMat.sml"
 val () = tryUse "atlas-scripts-sml/cyclotomic_Gaussian_elim.sml"
 val () = tryUse "atlas-scripts-sml/galois.sml"
 val () = tryUse "atlas-scripts-sml/smallGamma.sml"
@@ -211,21 +219,19 @@ val () = tryUse "atlas-scripts-sml/red_points.sml"
 val () = tryUse "atlas-scripts-sml/projectors_using_character_tables.sml"
 val () = tryUse "atlas-scripts-sml/goodroots.sml"
 val () = tryUse "atlas-scripts-sml/jantzen.sml"
+val () = tryUse "atlas-scripts-sml/sub_cells.sml"
+val () = tryUse "atlas-scripts-sml/nilpotent_posets.sml"
 val () = tryUse "atlas-scripts-sml/lusztig_cells_new.sml"
+val () = tryUse "atlas-scripts-sml/nonintegral.sml"
+val () = tryUse "atlas-scripts-sml/alcove.sml"
+val () = tryUse "atlas-scripts-sml/aql.sml"
+val () = tryUse "atlas-scripts-sml/more_bottom_test.sml"
+val () = tryUse "atlas-scripts-sml/writeFiles.sml"
 
-(* Not yet ported from `all.at` (as of this checkpoint)
-   - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
-     `jantzen.at`, `finite_dimensional_signature.at`, `W_reps.at`,
-     `hodge_K_type_formula.at`, `all_finite_order.at`, `hodge_test.at`,
-     `hodge_tensor.at`, `K_Nilpotent.at`, `exceptionalNilpotentData.at`,
-     `good_W_representatives.at`, `finite_unipotents.at`, `weyltosemisimple.at`,
-     `cyclotomic_field_bracket.at`, `tits_centralizer.at`, `stable.at`,
-     `GK_dimension.at`, `restricted_roots.at`, `nilpotent_centralizer.at`,
-      `weak_packets_precomputed_cell_traces.at`, `arthur_parameters.at`,
-     `coherent_irreducible.at`, `truncated_induction.at`, `dirac_index.at`,
-     `sub_cells.at`, `associated_variety_annihilator.at`, `sommers.at`,
-     `projectors_using_character_tables.at`, `new_conjugacy.at`, `test_braid.at`,
-     `geck_generic.at`, `lusztig_cells.at`, `four.at`, `special_rep.at`,
-     `families.at`, `FPP_globalDirac.at`, `L_packet.at`, `adams_johnson.at`,
-     ...
+(* Note
+   - Many `.at` scripts are still missing from `atlas-scripts-sml/`, and many
+     of the translated `.sml` files are still “scaffolds” (they compile and
+     provide types/names, but raise `Fail` in unimplemented paths).
+   - To see current translation coverage, compare basenames in
+     `atlas-scripts/*.at` vs `atlas-scripts-sml/*.sml`.
 *)
