@@ -707,6 +707,12 @@ Adds two ways to state “the build result stores exactly `U_fast` (modulo
 
 These let the translator/CakeML path pick the most convenient proof target.
 
+Directional decomposition (OK):
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceStoreDecomposeGoalsScript.sml`
+  factors the trace-based predicate into two “inclusion” obligations
+  (`U_fast -> trace` and `trace -> U_fast`) under `atlas_eq_equiv`, and proves
+  recombination lemmas.
+
 #### `F4FPPVerifyParamHashStateBuildSetGoalsTheory` (pure build-set lemma)
 
 File: `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
