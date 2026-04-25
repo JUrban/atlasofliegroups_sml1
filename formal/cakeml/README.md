@@ -27,6 +27,10 @@ $HOLDIR/bin/Holmake
   ParamHash-like bucketed set, translated with the monadic translator.
 - `ParamHashGoalsScript.sml`: “top-down” correctness goals for the pure-state
   model (`ph_lookup_state_complete`, `ph_all_present_state_iff_subset`, ...).
+- `ParamHashRefinementGoalsScript.sml`: refinement goals connecting the monadic
+  operations (`ph_match`, `ph_insert_all`, ...) to the pure-state model
+  (`ph_match_state`, `ph_build_state`, ...); these are the intended glue
+  statements for later CakeML evaluation proofs.
 - `ParamHashSetGoalsScript.sml`: a set-interface view of the pure-state model
   (derives `contains`-style predicates from `ph_lookup_state` and proves
   `ph_contains_state p s <=> p IN ph_set s` under `ph_invariant`).

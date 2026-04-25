@@ -930,6 +930,22 @@ Collects the ParamHash correctness obligations we ultimately want:
 These are currently `cheat`ed on purpose; the goal is to “freeze” the intended
 interfaces/claims before investing in proofs.
 
+#### `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state model)
+
+File: `formal/cakeml/ParamHashRefinementGoalsScript.sml`
+
+Records the next “glue” layer needed for a CakeML discharge of the HOL4
+ParamHash bridges: refinement goals stating that the translated monadic
+operations (`ph_lookup`, `ph_match`, `ph_insert_all`, `ph_all_present`) behave
+exactly like the pure-state functions (`ph_lookup_state`, `ph_match_state`,
+`ph_build_state`, `ph_all_present_state`) under `ph_ok`/`ph_invariant`.
+
+These are currently `cheat`ed, but the statements are meant to be the stable
+interface between:
+
+- translator evaluation proofs (CakeML semantics), and
+- the already-proved extensional lemmas in `ParamHashSetGoalsTheory`.
+
 ## How the overall proof will be staged
 
 This matches the intent of `VERIFY_ESTIMATE.md`, but with the current theory
@@ -997,6 +1013,7 @@ The CakeML side models this as:
 
 - `ParamHashProgTheory` (monadic translator model),
 - `ParamHashGoalsTheory` (lookup/all-present completeness goals), and
+- `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state refinement goals),
 - `ParamHashSetGoalsTheory` (set-interface view: `contains` ↔ membership).
 
 ### Stage 3: attach Atlas/C++ FFI semantics
