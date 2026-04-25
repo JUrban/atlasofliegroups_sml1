@@ -604,7 +604,8 @@ More realistic equality:
   equality and should not be assumed equal to HOL `=`.
 - The corresponding state lemma is therefore stated in the same file as
   `ph_contains_state_iff_mem_atlas_eq_elems`, using `mem_atlas_eq` (membership
-  modulo `atlas_eq`), but it is currently left as a `cheat`ed placeholder.
+  modulo `atlas_eq`), and is now proved (no `cheat`) under `atlas_hash_eq_ok`
+  (to get hash-respects-eq and range facts) and the state invariant.
 - The supporting vocabulary lives in:
   - `formal/hol4/F4FPPVerifyAtlasEqListGoalsScript.sml` (`mem_atlas_eq`), and
   - `formal/hol4/F4FPPVerifyAtlasEqSetGoalsScript.sml` (`set_atlas_eq`,
@@ -615,11 +616,9 @@ gradual proof strengthening), we also introduce a dedicated decomposition layer:
 
 - `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml`
 
-This file isolates the main hinge points:
-
-- `ph_covered`/`ph_ok`/`ph_bucketed` “plumbing” facts (all OK), and
-- a single pure list lemma about `find_in_bucket` completeness modulo `atlas_eq`
-  (currently the only remaining `cheat` in that chain).
+This file isolates the main hinge points (and now discharges them as ordinary
+proofs): `ph_covered`/`ph_ok`/`ph_bucketed` “plumbing” facts, plus a pure list
+lemma about `find_in_bucket` completeness modulo `atlas_eq`.
 
 At the spec level (independent of ParamHash), the intended end-to-end equality
 modulo `atlas_eq` is spelled out via two directional obligations in:

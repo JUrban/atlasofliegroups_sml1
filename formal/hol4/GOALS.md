@@ -91,8 +91,9 @@ At a high level:
 
 ParamHash modulo-`atlas_eq` state direction (more detailed decomposition):
 - `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml`
-  - breaks the key missing lemma `mem_atlas_eq p s.elems ==> ph_contains_state p s`
-    into explicit “plumbing” steps plus one pure `find_in_bucket` completeness lemma.
+  - decomposes the key lemma `mem_atlas_eq p s.elems ==> ph_contains_state p s`
+    into explicit “plumbing” steps plus one pure `find_in_bucket` completeness lemma
+    (all now proved, no `cheat`).
 3. Bottom-layer success implies **bottom-layer obligations**
    - decomposed per check in:
      `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml`

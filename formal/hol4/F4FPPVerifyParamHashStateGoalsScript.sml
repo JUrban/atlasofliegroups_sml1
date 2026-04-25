@@ -179,9 +179,15 @@ Theorem find_in_bucket_mem_atlas_eq_imp_SOME:
   !p b.
     (?q idx. MEM (q,idx) b /\ atlas_eq p q) ==> ?idx'. find_in_bucket p b = SOME idx'
 Proof
-  (* TODO (pure): can be proved from `find_in_bucket_NONE_imp_all_not_eq` by a
-     simple case split on `find_in_bucket p b`. *)
-  cheat
+  rpt gen_tac
+  \\ disch_then (qx_choose_then `q` (qx_choose_then `j` strip_assume_tac))
+  \\ Cases_on `find_in_bucket p b`
+  >- (
+    `~atlas_eq p q` by metis_tac[find_in_bucket_NONE_imp_all_not_eq]
+    \\ fs[]
+    )
+  \\ qexists_tac `x`
+  \\ simp[]
 QED
 
 (* ------------------------------------------------------------------------- *)
@@ -325,14 +331,35 @@ Theorem mem_atlas_eq_elems_imp_ph_contains_state:
     atlas_hash_eq_ok /\ ph_invariant s /\ mem_atlas_eq p s.elems ==>
       ph_contains_state p s
 Proof
-  (* Intended proof:
-     - pick `q` such that `MEM q s.elems` and `atlas_eq p q`,
-     - use `ph_covered` to locate `(q,j)` in `FLAT s.buckets`,
-     - use `ph_bucketed` + `atlas_hash_respects_eq` to show `p` hashes to the
-       same bucket index as `q`,
-     - use a pure `find_in_bucket` lemma (currently `find_in_bucket_mem_atlas_eq_imp_SOME`)
-       to show lookup in that bucket succeeds for `p`. *)
-  cheat
+  rpt gen_tac
+  \\ strip_tac
+  \\ qpat_x_assum `mem_atlas_eq p s.elems`
+       (qx_choose_then `q` strip_assume_tac o REWRITE_RULE[mem_atlas_eq_def])
+  \\ fs[ph_invariant_def]
+  \\ `s.bucket_count <> 0` by fs[ph_ok_def]
+  \\ qpat_x_assum `MEM q s.elems` (mp_tac o MATCH_MP (iffLR MEM_EL))
+  \\ disch_then (qx_choose_then `j` strip_assume_tac)
+  \\ `MEM (EL j s.elems, j) (FLAT s.buckets)` by fs[ph_covered_def]
+  \\ `MEM (q,j) (FLAT s.buckets)` by simp[]
+  \\ qpat_x_assum `MEM (q,j) (FLAT s.buckets)` (mp_tac o MATCH_MP (iffLR MEM_FLAT))
+  \\ disch_then (qx_choose_then `b` strip_assume_tac)
+  \\ qpat_x_assum `MEM b s.buckets` (mp_tac o MATCH_MP (iffLR MEM_EL))
+  \\ disch_then (qx_choose_then `i` strip_assume_tac)
+  \\ `MEM (q,j) (EL i s.buckets)` by metis_tac[]
+  \\ `bucket_index q s.bucket_count = i` by
+       (fs[ph_bucketed_def] \\ metis_tac[])
+  \\ `bucket_index p s.bucket_count = i` by
+       (fs[atlas_hash_eq_ok_def, atlas_hash_respects_eq_def, bucket_index_def]
+        \\ metis_tac[])
+  \\ `?idx. find_in_bucket p (EL i s.buckets) = SOME idx` by
+       (irule find_in_bucket_mem_atlas_eq_imp_SOME
+        \\ qexists_tac `q`
+        \\ qexists_tac `j`
+        \\ simp[])
+  \\ fs[ph_contains_state_def]
+  \\ qexists_tac `idx`
+  \\ fs[ph_lookup_state_def, LET_THM]
+  \\ simp[]
 QED
 
 (* A representation theorem that does not require the simplifying assumption

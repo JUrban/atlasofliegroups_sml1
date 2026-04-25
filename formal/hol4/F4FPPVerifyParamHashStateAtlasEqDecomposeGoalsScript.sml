@@ -58,13 +58,18 @@ End
 Theorem bucket_has_atlas_eq_imp_find_in_bucket_SOME:
   !p b. bucket_has_atlas_eq p b ==> ?idx. find_in_bucket p b = SOME idx
 Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - case split on `find_in_bucket p b`;
-    - `NONE` contradicts `bucket_has_atlas_eq` using
-      `find_in_bucket_NONE_imp_all_not_eq` from `F4FPPVerifyParamHashStateGoalsTheory`.
-  *)
-  cheat
+  rpt gen_tac
+  \\ strip_tac
+  \\ Cases_on `find_in_bucket p b`
+  >- (
+    qpat_x_assum `bucket_has_atlas_eq p b`
+         (qx_choose_then `q` (qx_choose_then `j` strip_assume_tac) o
+          REWRITE_RULE[bucket_has_atlas_eq_def])
+    \\ `~atlas_eq p q` by metis_tac[find_in_bucket_NONE_imp_all_not_eq]
+    \\ fs[]
+    )
+  \\ qexists_tac `x`
+  \\ simp[]
 QED
 
 (* ------------------------------------------------------------------------- *)

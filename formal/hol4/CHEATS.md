@@ -103,24 +103,23 @@ Modulo-`atlas_eq` compute bundle (still `cheat`ed):
 Status:
 - The core representation lemma `ph_contains_state_iff_MEM_elems` is now proved
   (no `cheat`) under the invariant and `atlas_eq_is_hol_eq`.
-- Two follow-on generalisations are present but currently placeholders:
-  - `find_in_bucket_mem_atlas_eq_imp_SOME` (pure list reasoning about
-    `find_in_bucket` when membership is modulo `atlas_eq`).
-  - `mem_atlas_eq_elems_imp_ph_contains_state` (the hard direction for the
-    modulo-`atlas_eq` representation lemma; uses bucketing + hash-respects-eq).
+- The more realistic modulo-`atlas_eq` representation lemma is now also proved
+  (no `cheat`) under `atlas_hash_eq_ok` + `ph_invariant`:
+  - `ph_contains_state_iff_mem_atlas_eq_elems`.
 
 Progress notes:
 - The forward direction `ph_contains_state_imp_mem_atlas_eq_elems` is proved
   (no `cheat`).
-- The combined statement `ph_contains_state_iff_mem_atlas_eq_elems` is derived
-  from these two directions, but still `cheat`-tainted via the missing reverse
-  lemma above.
+- The reverse direction `mem_atlas_eq_elems_imp_ph_contains_state` is now proved
+  (no `cheat`), using:
+  - a pure completeness lemma for `find_in_bucket` modulo `atlas_eq`
+    (`find_in_bucket_mem_atlas_eq_imp_SOME`), and
+  - the `ph_covered`/`ph_bucketed` plumbing plus `atlas_hash_respects_eq`.
 
 Decomposition helper:
 - `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml` provides a
-  more explicit decomposition of the missing reverse direction, isolating the
-  one remaining pure list lemma:
-  - `bucket_has_atlas_eq_imp_find_in_bucket_SOME` (currently `cheat`ed).
+  more explicit decomposition of the reverse direction; it is now entirely OK
+  (no `cheat`) and can be used as a readable guide for the proof structure.
 
 Rationale:
 - this is “pure data-structure reasoning” and should eventually be eliminated
