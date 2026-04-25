@@ -26,6 +26,29 @@ open ParamHashSetGoalsTheory;
 
 val _ = new_theory "ParamHashInvariantGoals";
 
+(* ------------------------------------------------------------------------- *)
+(*  Small list/nthn helper lemmas                                             *)
+(* ------------------------------------------------------------------------- *)
+
+Theorem nthn_append_lt:
+  !xs ys n.
+    n < LENGTH xs ==> nthn n (xs ++ ys) = nthn n xs
+Proof
+  Induct_on `xs`
+  \\ rw[]
+  \\ Cases_on `n`
+  \\ simp[nthn_def]
+  \\ first_x_assum match_mp_tac
+  \\ simp[]
+QED
+
+Theorem nthn_append_sing_len:
+  !xs x. nthn (LENGTH xs) (xs ++ [x]) = x
+Proof
+  Induct_on `xs`
+  \\ simp[nthn_def]
+QED
+
 (* Build a state by inserting/matching every element of `ps` in order. *)
 Definition ph_build_state_def:
   (ph_build_state ([]:num list) (s:ph_state) = s) /\
@@ -37,14 +60,16 @@ Theorem ph_match_state_preserves_invariant:
   !p s. ph_invariant s ==> ph_invariant (SND (ph_match_state p s))
 Proof
   (*
-    Intended proof (later, without `cheat`):
+    Planned proof (later, without `cheat`):
     - split `ph_invariant` into `ph_ok`/`ph_bucketed`/`ph_covered`,
     - do a case split on `ph_lookup_state p s`,
     - in the NONE case, show:
-        - buckets update stays bucketed,
-        - coverage extends by one new element,
-        - indices remain correct for existing entries,
-      using standard `LUPDATE` and `++` reasoning.
+        - `ph_ok` is preserved by the `LUPDATE`/append construction
+          (using `nthn_append_lt` and `nthn_append_sing_len`),
+        - `ph_bucketed` is preserved because only bucket `i` changes and the
+          new head pair has `bucket_index p m = i`,
+        - `ph_covered` is preserved for old indices (old pairs remain in `FLAT`)
+          and extended for the new index by the inserted head pair.
   *)
   cheat
 QED
@@ -71,4 +96,3 @@ Proof
 QED
 
 val _ = export_theory ();
-
