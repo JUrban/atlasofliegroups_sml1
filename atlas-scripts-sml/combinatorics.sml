@@ -381,6 +381,156 @@ structure Combinatorics = struct
   fun strip_to_partition (parts: int list) : partition =
     Basic.sort (fn (a, b) => a >= b) (List.filter (fn x => x > 0) parts)
 
+  (* Histogram-style frequencies:
+       freq[i] = multiplicity of part size i in the partition/list. *)
+  fun value_frequencies (xs: int list) : int list =
+    let
+      val maxVal = List.foldl (fn (x, acc) => Int.max (x, acc)) 0 xs
+      val () =
+        if List.exists (fn x => x < 0) xs then
+          raise Fail "Combinatorics.value_frequencies: negative value"
+        else
+          ()
+      val a = Array.array (maxVal + 1, 0)
+      val () = List.app (fn x => Array.update (a, x, Array.sub (a, x) + 1)) xs
+    in
+      Array.foldr (op ::) [] a
+    end
+
+  fun partition_frequencies (p: partition) : int list =
+    value_frequencies (strip_to_partition p)
+
+  (* Dominance order on partitions of equal sum:
+       v <= w  iff  sum_{i<k} v_i <= sum_{i<k} w_i for all k (0-extension).
+     This is the closure order for nilpotent orbits in GL(n). *)
+  fun dominance_leq_partitions (v0: partition, w0: partition) : bool =
+    let
+      val v = strip_to_partition v0
+      val w = strip_to_partition w0
+      val sv = sumInts v
+      val sw = sumInts w
+      val () = if sv = sw then () else raise Fail "Combinatorics.dominance_leq_partitions: unequal sums"
+      val nv = length v
+      val nw = length w
+      val n = Int.max (nv, nw)
+      fun at (xs, n, i) = if i < n then List.nth (xs, i) else 0
+      fun loop (i, accV, accW) =
+        if i >= n then
+          true
+        else
+          let
+            val accV' = accV + at (v, nv, i)
+            val accW' = accW + at (w, nw, i)
+          in
+            accV' <= accW' andalso loop (i + 1, accV', accW')
+          end
+    in
+      loop (0, 0, 0)
+    end
+
+  (* Port of `is_valid(type,P)` from `combinatorics.at` for classical types. *)
+  fun is_valid (typeLetter: char, p0: partition) : bool =
+    let
+      val p = strip_to_partition p0
+      val freq = partition_frequencies p
+      val n = length freq
+      fun freqAt i = if i < 0 orelse i >= n then 0 else List.nth (freq, i)
+      fun allEvenMultiplicityOnParity parity =
+        List.all
+          (fn i => if i mod 2 = parity then freqAt i mod 2 = 0 else true)
+          (List.tabulate (n, fn i => i))
+    in
+      case typeLetter of
+        #"A" => true
+      | #"B" => (sumInts p) mod 2 = 1 andalso allEvenMultiplicityOnParity 0
+      | #"C" => (sumInts p) mod 2 = 0 andalso allEvenMultiplicityOnParity 1
+      | #"D" => (sumInts p) mod 2 = 0 andalso allEvenMultiplicityOnParity 0
+      | _ => false
+    end
+
+  (* Partitions with even multiplicity of parts of one parity (odd or even),
+     port of `parity_restricted_partitions` from `combinatorics.at`. *)
+  fun parity_restricted_partitions (restrict_odd_parts: bool) : int -> partition list =
+    fn n =>
+      if n < 0 orelse (restrict_odd_parts andalso n mod 2 = 1) then
+        []
+      else
+        let
+          fun is_restricted k =
+            if restrict_odd_parts then k mod 2 = 1 else k mod 2 = 0
+
+          val table : (partition list array) Array.array =
+            Array.array (n + 1, Array.array (0, ([]: partition list)))
+
+          fun concat_upto (row: partition list array, lim0: int) : partition list =
+            if Array.length row = 0 then
+              []
+            else
+              let
+                val lim = Int.min (lim0, Array.length row - 1)
+              in
+                List.concat (List.tabulate (lim + 1, fn k => Array.sub (row, k)))
+              end
+
+          val row0 = Array.array (n + 1, ([]: partition list))
+          val () = Array.update (row0, 0, [[]])
+          val () = Array.update (table, 0, row0)
+
+          fun build_row m =
+            let
+              val kMax = if m = n then n else Int.min (m, n - m)
+              val row = Array.array (kMax + 1, ([]: partition list))
+              fun fill k =
+                if k > kMax then
+                  ()
+                else
+                  let
+                    val parts =
+                      if is_restricted k then
+                        let
+                          val rem = m - k - k
+                        in
+                          if rem < 0 then
+                            []
+                          else
+                            let
+                              val rowRem = Array.sub (table, rem)
+                              val lim = Int.min (k, rem)
+                              val tails = concat_upto (rowRem, lim)
+                            in
+                              List.map (fn lam => k :: k :: lam) tails
+                            end
+                        end
+                      else
+                        let
+                          val rem = m - k
+                        in
+                          if rem < 0 then
+                            []
+                          else
+                            let
+                              val rowRem = Array.sub (table, rem)
+                              val lim = Int.min (k, rem)
+                              val tails = concat_upto (rowRem, lim)
+                            in
+                              List.map (fn lam => k :: lam) tails
+                            end
+                        end
+                    val () = Array.update (row, k, parts)
+                  in
+                    fill (k + 1)
+                  end
+              val () = fill 1
+            in
+              Array.update (table, m, row)
+            end
+
+          val () = List.app build_row (List.tabulate (n, fn i => i + 1))
+          val finalRow = Array.sub (table, n)
+        in
+          concat_upto (finalRow, Array.length finalRow - 1)
+        end
+
   (* Lexicographic comparison restricted to partitions of the same sum, with
      implicit 0-extension (ported from `rlex_leq_partitions` in `.at`). *)
   fun rlex_leq_partitions (lambda: partition, mu: partition) : bool =
