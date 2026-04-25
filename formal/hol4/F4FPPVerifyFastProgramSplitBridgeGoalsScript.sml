@@ -32,6 +32,7 @@ open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory;
+open F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifyRefinedMainGoalsTheory;
 open F4FPPVerifyTargetGroupGoalsTheory;
 

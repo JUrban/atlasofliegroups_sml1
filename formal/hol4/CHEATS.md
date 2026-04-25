@@ -135,6 +135,7 @@ Rationale:
 - Files:
   - `formal/hol4/F4FPPVerifyGlobalDiracBridgeGoalsScript.sml`
   - `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsScript.sml`
 
 Role:
 - state that successful execution of each bottom-layer check implies the
@@ -142,8 +143,9 @@ Role:
   twist equivalence, dual closure, etc.).
 
 Status:
-- per-check success⇒obligation theorems are placeholders (`cheat`) but the
-  recombination lemmas are OK.
+- per-check success⇒obligation theorems live in the isolated `*Cheats*` theory
+  and are placeholders (`cheat`), but the decomposition/recombination lemmas
+  are OK.
 
 Planned discharge:
 - shallow proofs that the SML code traverses the right set and calls the right

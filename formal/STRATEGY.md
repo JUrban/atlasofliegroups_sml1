@@ -476,19 +476,13 @@ structure of `atlas-scripts-sml/FPP_globalDirac.sml`:
 - `bl_dual_closed_ok g`
 - `bl_rho_seeded_ok g` (compact groups: `rho_set g` is present via `contains`)
 
-It records cheated lemmas “`bottom_layer_program_succeeds ⇒ bl_*_ok`” for each
-check, and then recombines them (OK) into a single lemma
-`bottom_layer_program_succeeds ⇒ bottom_layer_ok_param_set`.
+It provides the pure recombination lemma:
+- `bl_checks_imp_bottom_layer_ok_param_set`
 
-It also derives the usual downstream consequences (OK), routed through the
-decomposition:
-
-- `bottom_layer_program_succeeds ∧ fast_param_set_ok ⇒ bottom_layer_ok ...`
-- `... ∧ ~group_is_compact ⇒ bottom_layer_total_ok ...`
-
-It additionally provides the modulo-`atlas_eq` total-postcondition route:
-- `bottom_layer_program_succeeds ⇒ bottom_layer_total_ok_param_set_atlas_eq ...`
-- `... ∧ fast_param_set_ok_atlas_eq ⇒ bottom_layer_total_ok_atlas_eq ...`
+The per-check “execution success ⇒ obligation” bridge lemmas and their derived
+downstream consequences (including the modulo-`atlas_eq` variants) are
+isolated in:
+- `formal/hol4/F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsScript.sml`
 
 #### `F4FPPVerifyFastComputeBridgeGoalsTheory` (fast compute-phase bridge)
 
