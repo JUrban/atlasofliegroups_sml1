@@ -136,6 +136,14 @@ Fast witness trace targets (new translator-friendly layer; `cheat`ed):
   - `fast_compute_program_succeeds_imp_fast_insert_trace_covers_U_fast`
   - `fast_compute_program_succeeds_imp_fast_insert_trace_unitary`
 
+Insert-trace ↔ ParamHash trace link (projection layer; currently `cheat`ed):
+- file: `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkGoalsScript.sml`
+  - `atlas_eq_equiv_and_insert_trace_params_ok_and_covers_imp_build_ps_complete_U_fast_atlas_eq`
+  - `insert_trace_params_ok_and_params_sound_imp_build_ps_sound_U_fast_atlas_eq`
+- file: `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkCheatsGoalsScript.sml`
+  - `fast_compute_program_succeeds_imp_fast_insert_trace_params_ok`
+  - `fast_compute_program_succeeds_imp_fast_insert_trace_params_sound_U_fast_atlas_eq`
+
 Decomposition helper (OK):
 - `formal/hol4/F4FPPVerifyFastPruneDecomposeGoalsScript.sml` introduces the
   inclusion-direction obligations (`fast_domain_sound`, `fast_domain_complete`)

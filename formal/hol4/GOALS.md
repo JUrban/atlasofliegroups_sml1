@@ -211,6 +211,12 @@ Newer, more specified refinement split (build-witness based):
             - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceToStateGoalsScript.sml`
           - bridge from compute success to the trace-level stores predicate (intended translator target; CHEAT for now):
             - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoalsScript.sml`
+          - optional linking layer: connect the richer fast insert-event trace
+            `fast_insert_trace g : (triple # param) list` to the ParamHash build
+            trace `paramhash_build_ps g : param list` (projection agreement +
+            param soundness), then derive `paramhash_build_ps_*` obligations:
+            - `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkGoalsScript.sml`
+            - `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkCheatsGoalsScript.sml`
         - strongest derived bundle (build_state_ok + state-based stores + wiring):
           - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`
           - derived bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`

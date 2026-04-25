@@ -31,6 +31,10 @@ open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceStoreDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceToStateGoalsTheory;
+open F4FPPVerifyFastWitnessTraceGoalsTheory;
+open F4FPPVerifyFastWitnessTraceCheatsGoalsTheory;
+open F4FPPVerifyFastWitnessTraceParamHashLinkGoalsTheory;
+open F4FPPVerifyFastWitnessTraceParamHashLinkCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoals";
 
@@ -61,18 +65,45 @@ Proof
   cheat
 QED
 
+Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_complete_U_fast_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_build_ps_complete_U_fast_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ fs[atlas_hash_eq_ok_def]
+  \\ match_mp_tac atlas_eq_equiv_and_insert_trace_params_ok_and_covers_imp_build_ps_complete_U_fast_atlas_eq
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_fast_insert_trace_params_ok
+       , fast_compute_program_succeeds_imp_fast_insert_trace_covers_U_fast
+       ]
+QED
+
+Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_build_ps_sound_U_fast_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac insert_trace_params_ok_and_params_sound_imp_build_ps_sound_U_fast_atlas_eq
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_fast_insert_trace_params_ok
+       , fast_compute_program_succeeds_imp_fast_insert_trace_params_sound_U_fast_atlas_eq
+       ]
+QED
+
 Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq:
   !g.
     atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
       paramhash_build_ps_stores_U_fast_atlas_eq g
 Proof
   rpt strip_tac
-  \\ fs[atlas_hash_eq_ok_def]
   \\ match_mp_tac build_ps_sound_and_complete_imp_build_ps_stores_U_fast_atlas_eq
-  \\ metis_tac
-       [ fast_compute_program_succeeds_imp_paramhash_build_ps_complete_U_fast_atlas_eq
-       , fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq
-       ]
+  \\ conj_tac
+  >- fs[atlas_hash_eq_ok_def]
+  \\ conj_tac
+  >- metis_tac[atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_complete_U_fast_atlas_eq]
+  \\ metis_tac[atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq]
 QED
 
 Theorem fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq:

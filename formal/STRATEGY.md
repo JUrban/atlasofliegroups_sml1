@@ -156,6 +156,36 @@ Bridge placeholders from compute success are recorded (currently `cheat`ed) in:
 
 - `formal/hol4/F4FPPVerifyFastWitnessTraceCheatsGoalsScript.sml`
 
+#### `F4FPPVerifyFastWitnessTraceParamHashLinkGoalsTheory` (insert trace ↔ ParamHash build trace)
+
+File: `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkGoalsScript.sml`
+
+Connects the richer compute-phase event trace `fast_insert_trace g` to the
+ParamHash build trace witness `paramhash_build_ps g`. The intent is to let a
+CakeML/translator proof talk about *one* concrete trace (`fast_insert_trace`)
+and then derive the ParamHash trace obligations needed by the modulo-`atlas_eq`
+route.
+
+It introduces two small linking predicates:
+
+- `fast_insert_trace_params_ok g`:
+  `MAP SND (fast_insert_trace g) = paramhash_build_ps g`.
+- `fast_insert_trace_params_sound_U_fast_atlas_eq g`:
+  every traced param is represented (modulo `atlas_eq`) in `U_fast g`.
+
+and (intended) consequence lemmas:
+
+- `atlas_eq_equiv_and_insert_trace_params_ok_and_covers_imp_build_ps_complete_U_fast_atlas_eq`
+- `insert_trace_params_ok_and_params_sound_imp_build_ps_sound_U_fast_atlas_eq`
+
+Status: the lemmas are currently `cheat`ed placeholders (definitions are OK);
+they should be discharged by routine list/set reasoning once the `MEM`/`set`
+view is pinned down for this development.
+
+Compute-success bridge placeholders for the linking predicates are recorded in:
+
+- `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkCheatsGoalsScript.sml`
+
 #### `F4FPPVerifyGoalsTheory` (top-level goal layer)
 
 File: `formal/hol4/F4FPPVerifyGoalsScript.sml`
