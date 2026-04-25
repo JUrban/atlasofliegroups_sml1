@@ -45,3 +45,17 @@ $HOLDIR/bin/Holmake
   `ph_contains_state p s <=> p IN ph_set s` under `ph_invariant`).
 - `ParamHashInvariantGoalsScript.sml`: invariant-preservation goals for the
   build process (proves “match preserves invariant”; **OK**).
+
+### Intended handoff into the main HOL4 development
+
+The main HOL4 proof stack (`formal/hol4/`) is increasingly phrased in terms of a
+canonical “trace-based build-state” model of ParamHash plus a *state-based*
+stores predicate. The corresponding fast-side translator/CakeML target bundle is:
+
+- `paramhash_obligations_build_state_stores_factored_atlas_eq`
+  (`formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`)
+
+The intent is that future CakeML translator proofs in this directory discharge
+the `paramhash_build_state_ok` and `paramhash_build_stores_U_fast_atlas_eq`
+subgoals directly about the translated ParamHash state, then reuse the “OK”
+HOL4 composition lemmas to recover the older list-/contains-based obligations.
