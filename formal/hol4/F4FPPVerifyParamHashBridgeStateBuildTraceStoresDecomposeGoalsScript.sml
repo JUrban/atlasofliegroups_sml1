@@ -36,6 +36,31 @@ Definition paramhash_obligations_build_state_stores_factored_atlas_eq_def:
     paramhash_build_stores_U_fast_atlas_eq g
 End
 
+(* Small eliminators: keep the bundle easy to use in later compositions. *)
+Theorem build_state_stores_factored_atlas_eq_imp_fast_param_set_is_paramhash:
+  !g.
+    paramhash_obligations_build_state_stores_factored_atlas_eq g ==>
+      fast_param_set_is_paramhash g
+Proof
+  simp[paramhash_obligations_build_state_stores_factored_atlas_eq_def]
+QED
+
+Theorem build_state_stores_factored_atlas_eq_imp_paramhash_build_state_ok:
+  !g.
+    paramhash_obligations_build_state_stores_factored_atlas_eq g ==>
+      paramhash_build_state_ok g
+Proof
+  simp[paramhash_obligations_build_state_stores_factored_atlas_eq_def]
+QED
+
+Theorem build_state_stores_factored_atlas_eq_imp_paramhash_build_stores_U_fast_atlas_eq:
+  !g.
+    paramhash_obligations_build_state_stores_factored_atlas_eq g ==>
+      paramhash_build_stores_U_fast_atlas_eq g
+Proof
+  simp[paramhash_obligations_build_state_stores_factored_atlas_eq_def]
+QED
+
 Theorem build_state_stores_factored_atlas_eq_imp_build_state_factored_atlas_eq:
   !g.
     paramhash_obligations_build_state_stores_factored_atlas_eq g ==>

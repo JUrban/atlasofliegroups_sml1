@@ -24,6 +24,22 @@ open F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoals";
 
+(* Derived bridge for the state-based stores predicate.
+
+   This is an intended CakeML/translator target: show that the canonical
+   build-state model stores exactly `U_fast` (modulo `atlas_eq`). *)
+Theorem fast_compute_program_succeeds_imp_paramhash_build_stores_U_fast_atlas_eq:
+  !g.
+    fast_compute_program_succeeds g ==>
+      paramhash_build_stores_U_fast_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ match_mp_tac paramhash_build_state_ok_and_paramhash_stores_U_fast_atlas_eq_imp_build_stores
+  \\ conj_tac
+  >- metis_tac[fast_compute_program_succeeds_imp_paramhash_build_state_ok]
+  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_stores_U_fast_atlas_eq]
+QED
+
 Theorem fast_compute_program_succeeds_imp_paramhash_obligations_build_state_stores_factored_atlas_eq:
   !g.
     fast_compute_program_succeeds g ==>
@@ -35,11 +51,7 @@ Proof
   >- metis_tac[fast_compute_program_succeeds_imp_fast_param_set_is_paramhash]
   \\ conj_tac
   >- metis_tac[fast_compute_program_succeeds_imp_paramhash_build_state_ok]
-  \\ (* derive the state-based stores predicate from the list-based one *)
-     match_mp_tac paramhash_build_state_ok_and_paramhash_stores_U_fast_atlas_eq_imp_build_stores
-  \\ conj_tac
-  >- metis_tac[fast_compute_program_succeeds_imp_paramhash_build_state_ok]
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_stores_U_fast_atlas_eq]
+  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_build_stores_U_fast_atlas_eq]
 QED
 
 val _ = export_theory ();

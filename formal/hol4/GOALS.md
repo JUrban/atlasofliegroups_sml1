@@ -191,6 +191,7 @@ Newer, more specified refinement split (build-witness based):
         - strongest derived bundle (build_state_ok + state-based stores + wiring):
           - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`
           - derived bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`
+            - key translator target subgoal: `fast_compute_program_succeeds_imp_paramhash_build_stores_U_fast_atlas_eq`
     - build-state factored bundles (wiring + build_state_ok + stores-U-fast):
       - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeGoalsScript.sml`
       - CHEATED bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeCheatsGoalsScript.sml`

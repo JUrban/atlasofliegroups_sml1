@@ -141,6 +141,13 @@ Modulo-`atlas_eq` bridge (still `cheat`ed):
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
   - (now derived from smaller cheated obligations for wiring/state/stores)
 
+Canonical build-state + state-based stores bundle:
+- file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`
+  - `fast_compute_program_succeeds_imp_paramhash_build_stores_U_fast_atlas_eq`
+    (intended translator target for “stores-U-fast” stated against `ph_set`)
+  - `fast_compute_program_succeeds_imp_paramhash_obligations_build_state_stores_factored_atlas_eq`
+    (packages wiring + `paramhash_build_state_ok` + state-based stores)
+
 Modulo-`atlas_eq` compute bundle (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_obligations_atlas_eq`
