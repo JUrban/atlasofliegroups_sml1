@@ -28,8 +28,35 @@ open F4FPPVerifyParamHashBridgeDecomposeGoalsTheory;
 open F4FPPVerifyParamHashStateGoalsTheory;
 open F4FPPVerifyParamHashStateBuildGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceRefineGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateRefineGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildTraceConsequencesGoals";
+
+(* A more incremental consequence: we can derive `paramhash_rep_ok_atlas_eq`
+   directly from the component observation obligations (plus the non-zero
+   bucket count), without first packaging them as `paramhash_build_state_ok`. *)
+Theorem atlas_hash_eq_ok_and_build_trace_observations_imp_paramhash_rep_ok_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\
+    paramhash_build_m_ok g /\
+    paramhash_build_list_observes g /\
+    paramhash_build_contains_observes g ==>
+      paramhash_rep_ok_atlas_eq g
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[paramhash_build_m_ok_def]
+  \\ fs[paramhash_build_list_observes_def, paramhash_build_contains_observes_def]
+  \\ fs[paramhash_rep_ok_atlas_eq_def]
+  \\ gen_tac
+  \\ (* Invariant of the pure build-state model. *)
+     `ph_invariant (paramhash_build_state g)` by
+       (fs[paramhash_build_state_def]
+        \\ match_mp_tac ph_build_from_create_state_invariant
+        \\ fs[atlas_hash_eq_ok_def])
+  \\ metis_tac[ph_contains_state_iff_mem_atlas_eq_elems]
+QED
 
 Theorem atlas_hash_eq_ok_and_paramhash_build_state_ok_imp_paramhash_rep_ok_atlas_eq:
   !g.
@@ -50,6 +77,27 @@ Proof
         \\ match_mp_tac ph_build_from_create_state_invariant
         \\ fs[atlas_hash_eq_ok_def])
   \\ metis_tac[ph_contains_state_iff_mem_atlas_eq_elems]
+QED
+
+(* Another useful OK consequence: the canonical build-state model can always be
+   turned into a `paramhash_state_ok` witness under `atlas_hash_eq_ok` (since it
+   includes `atlas_hash_range`). *)
+Theorem atlas_hash_eq_ok_and_paramhash_build_state_ok_imp_paramhash_state_ok:
+  !g.
+    atlas_hash_eq_ok /\ paramhash_build_state_ok g ==> paramhash_state_ok g
+Proof
+  rpt gen_tac
+  \\ strip_tac
+  \\ fs[paramhash_state_ok_def]
+  \\ qexists_tac `paramhash_build_state g`
+  \\ conj_tac
+  >- (
+    fs[paramhash_build_state_ok_def]
+    \\ fs[paramhash_build_state_def]
+    \\ match_mp_tac ph_build_from_create_state_invariant
+    \\ fs[atlas_hash_eq_ok_def]
+  )
+  \\ fs[paramhash_build_state_ok_def]
 QED
 
 val _ = export_theory ();
