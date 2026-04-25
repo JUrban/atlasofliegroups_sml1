@@ -180,6 +180,18 @@ val () = tryUse "atlas-scripts-sml/hodge_test.sml"
 val () = tryUse "atlas-scripts-sml/hodge_tensor.sml"
 val () = tryUse "atlas-scripts-sml/new_conjugacy.sml"
 val () = tryUse "atlas-scripts-sml/red_count.sml"
+val () = tryUse "atlas-scripts-sml/real_component_groups.sml"
+val () = tryUse "atlas-scripts-sml/up_mu.sml"
+val () = tryUse "atlas-scripts-sml/central.sml"
+val () = tryUse "atlas-scripts-sml/good_W_representatives.sml"
+val () = tryUse "atlas-scripts-sml/tensor_product.sml"
+val () = tryUse "atlas-scripts-sml/conjugate.sml"
+val () = tryUse "atlas-scripts-sml/hodge_normalize.sml"
+val () = tryUse "atlas-scripts-sml/cyclotomic_Gaussian_elim.sml"
+val () = tryUse "atlas-scripts-sml/galois.sml"
+val () = tryUse "atlas-scripts-sml/smallGamma.sml"
+val () = tryUse "atlas-scripts-sml/derived_cover.sml"
+val () = tryUse "atlas-scripts-sml/exceptional.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
    - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
