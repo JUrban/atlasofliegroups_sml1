@@ -1135,4 +1135,102 @@ structure Combinatorics = struct
          in
            if p0 = p1 then D_split_irr (p0, false) else D_unsplit_irr (p0, p1)
          end)
+
+  (* ---------------- 2-core / 2-quotient (ported from `combinatorics.at`) ---------------- *)
+
+  (* Size (number of parts) of the 2-core staircase corresponding to an
+     unbalance number `n`. This is the `.at` `core_length`. *)
+  fun core_length (n: int) : int =
+    if n <= 0 then 2 * (~n) else 2 * n - 1
+
+  (* Inverse of `core_length` on nonnegative integers (`core_number` in `.at`). *)
+  fun core_number (k: int) : int =
+    if k < 0 then
+      raise Fail "Combinatorics.core_number: k<0"
+    else if k mod 2 = 0 then
+      ~(k div 2)
+    else
+      (k + 1) div 2
+
+  (* Return (unbalance d, (even-positions partition, odd-positions partition)).
+     The bipartition ordering matches the `.at` convention: the partition coming
+     from the EVEN edge positions is first. *)
+  fun core_quotient_2 (lambda: partition) : int * bipartition =
+    let
+      fun powMinus1 i = if i mod 2 = 0 then 1 else ~1
+      fun mapi f xs =
+        let
+          fun loop ([], _, acc) = List.rev acc
+            | loop (x :: rest, i, acc) = loop (rest, i + 1, f (x, i) :: acc)
+        in
+          loop (xs, 0, [])
+        end
+
+      val d =
+        List.foldl
+          (fn ((l, i), acc) =>
+             acc + (if l mod 2 = 0 then 0 else powMinus1 i))
+          0
+          (mapi (fn (l, i) => (l, i)) lambda)
+
+      val positions = mapi (fn (l, i) => l - i - 1) lambda
+
+      fun split ([], es, os) = (List.rev es, List.rev os)
+        | split (p :: ps, es, os) =
+            if p mod 2 = 0 then split (ps, (p div 2 - d) :: es, os)
+            else split (ps, es, (p div 2 + d) :: os)
+
+      val (evenHalfPositions, oddHalfPositions) = split (positions, [], [])
+      val epParts = mapi (fn (x, i) => x + i + 1) evenHalfPositions
+      val opParts = mapi (fn (x, i) => x + i + 1) oddHalfPositions
+    in
+      (d, (strip_to_partition epParts, strip_to_partition opParts))
+    end
+
+  (* Splice a bipartition back into a partition, given a 2-core unbalance `d`
+     (`from_core_quotient_2` in `.at`). *)
+  fun from_core_quotient_2 (d: int, (lambda0, mu0): bipartition) : partition =
+    let
+      val lambda = strip_to_partition lambda0
+      val mu = strip_to_partition mu0
+
+      fun mapi f xs =
+        let
+          fun loop ([], _, acc) = List.rev acc
+            | loop (x :: rest, i, acc) = loop (rest, i + 1, f (x, i) :: acc)
+        in
+          loop (xs, 0, [])
+        end
+
+      (* Space out and reverse to increasing order, as in the `.at` `~od`. *)
+      val evens =
+        List.rev (mapi (fn (l, i) => 2 * (l - i - 1 + d)) lambda)
+      val odds =
+        List.rev (mapi (fn (m, i) => 2 * (m - i - 1 - d) + 1) mu)
+
+      val k = 2 * (~(length lambda) - 1 + d)
+      val l = 2 * (~(length mu) - 1 - d) + 1
+
+      fun prependRangeEven (count: int, start: int, xs: int list) : int list =
+        if count <= 0 then xs else List.tabulate (count, fn t => 2 * (start + t)) @ xs
+
+      fun prependRangeOdd (count: int, start: int, xs: int list) : int list =
+        if count <= 0 then xs else List.tabulate (count, fn t => 2 * (start + t) + 1) @ xs
+
+      val (evens', odds') =
+        if k > l then
+          ( prependRangeEven ((k - l) div 2, (l div 2) + 2, evens)
+          , odds
+          )
+        else
+          ( evens
+          , prependRangeOdd ((l - k) div 2, (k div 2) + 1, odds)
+          )
+
+      val mergedInc = Basic.merge (fn (a, b) => a <= b) (evens', odds')
+      val positionsDesc = List.rev mergedInc
+      val parts = mapi (fn (v, i) => v + i + 1) positionsDesc
+    in
+      strip_to_partition parts
+    end
 end
