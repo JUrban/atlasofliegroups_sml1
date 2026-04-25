@@ -48,6 +48,14 @@ structure W_reps_type_BC = struct
 
   fun sumInts (xs: int list) : int = List.foldl (op +) 0 xs
 
+  fun mapi f xs =
+    let
+      fun loop ([], _, acc) = List.rev acc
+        | loop (x :: rest, i, acc) = loop (rest, i + 1, f (x, i) :: acc)
+    in
+      loop (xs, 0, [])
+    end
+
   (* Histogram-style frequencies:
        freq[i] = multiplicity of value i in the list. *)
   fun value_frequencies (xs: int list) : int list =
@@ -235,6 +243,40 @@ structure W_reps_type_BC = struct
 
   fun is_special_orbit_C (p: Orbit) : bool = is_special_rep (wrep_C p)
   fun is_special_orbit_B (p: Orbit) : bool = is_special_rep (wrep_B p)
+
+  fun special_star_symbol (s: Symbol) : string = if is_special_symbol s then "*" else ""
+  fun special_star_rep (pi: Hn_rep) : string = if is_special_rep pi then "*" else ""
+
+  fun symbols_equal ((f0, g0): Symbol, (f1, g1): Symbol) : bool = f0 = f1 andalso g0 = g1
+
+  (* Reorder a list of symbols so that a special one (if any) is first,
+     preserving the relative order of the remaining elements. *)
+  fun special_first (symbols: Symbol list) : Symbol list =
+    let
+      fun find (_, []) = NONE
+        | find (i, s :: ss) = if is_special_symbol s then SOME (i, s) else find (i + 1, ss)
+    in
+      case find (0, symbols) of
+        NONE => symbols
+      | SOME (i, _) => List.drop (symbols, i) @ List.take (symbols, i)
+    end
+
+  (* Hn_rep -> normalized symbol (Lusztig symbol) *)
+  fun symbol_of_rep (pair: Hn_rep) : Symbol =
+    Cb.symbol_of_bipartition pair
+
+  (* “Large”/“small” symbol transforms (pure list operations). *)
+  fun large_symbol_C ((f, g): Symbol) : Symbol =
+    (mapi (fn (x, i) => x + i) f, mapi (fn (x, j) => x + j + 1) g)
+
+  fun large_symbol_B ((f, g): Symbol) : Symbol =
+    (mapi (fn (x, i) => x + i) f, mapi (fn (x, j) => x + j) g)
+
+  fun small_symbol_C ((f, g): Symbol) : Symbol =
+    (mapi (fn (x, i) => x - i) f, mapi (fn (x, j) => x - (j + 1)) g)
+
+  fun small_symbol_B ((f, g): Symbol) : Symbol =
+    (mapi (fn (x, i) => x - i) f, mapi (fn (x, j) => x - j) g)
 
   (* Dimension for the hyperoctahedral irrep indexed by a bipartition. *)
   fun dimension_rep ((p, q): Hn_rep) : IntInf.int =
