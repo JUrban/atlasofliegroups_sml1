@@ -1,0 +1,116 @@
+(*
+  File: formal/cakeml/ParamHashEndToEndGoalsScript.sml
+
+  Purpose
+  - Provide an explicit “end-to-end” specification layer for the CakeML
+    ParamHash model: `create; insert_all; then query`.
+
+  Relation to the overall F4/FPP verification story
+  - On the HOL4 side we want to ultimately discharge obligations of the form:
+      - the concrete ParamHash `contains` observation is complete/sound, and
+      - the stored set corresponds to the intended semantic set `U_fast`.
+  - The CakeML plan is to prove that the algorithmic skeleton of ParamHash
+    (bucketing, insertion, lookup) refines a pure-state model.
+  - This theory packages the *composition* of the previously-stated goals:
+      - initialization (`ParamHashCreateGoalsTheory`),
+      - pure-state invariant preservation (`ParamHashInvariantGoalsTheory`),
+      - extensional set-view (`ParamHashSetGoalsTheory`),
+      - and monadic ⇔ pure-state refinement goals (`ParamHashRefinementGoalsTheory`).
+
+  Status
+  - Pure-state consequences are proved (OK).
+  - The theorem that a concrete monadic “create; insert_all” run refines the
+    pure-state `ph_build_from_create_state` is currently `cheat`ed, because it
+    depends on the not-yet-proved translator-facing refinement lemmas.
+*)
+
+open HolKernel Parse boolLib bossLib;
+
+open listTheory;
+open pairTheory;
+open pred_setTheory pred_setLib;
+
+open ml_monad_translatorTheory;  (* `M_success` / `M_failure` *)
+
+open ParamHashProgTheory;
+open ParamHashGoalsTheory;
+open ParamHashSetGoalsTheory;
+open ParamHashInvariantGoalsTheory;
+open ParamHashRefinementGoalsTheory;
+open ParamHashCreateGoalsTheory;
+
+val _ = new_theory "ParamHashEndToEndGoals";
+
+(* ------------------------------------------------------------------------- *)
+(*  Pure end-to-end reference model                                           *)
+(* ------------------------------------------------------------------------- *)
+
+Definition ph_build_from_create_state_def:
+  ph_build_from_create_state m ps =
+    ph_build_state ps (ph_create_state m)
+End
+
+Theorem ph_build_from_create_state_invariant:
+  !m ps. m <> 0n ==> ph_invariant (ph_build_from_create_state m ps)
+Proof
+  rpt strip_tac
+  \\ simp[ph_build_from_create_state_def]
+  \\ match_mp_tac ph_build_state_preserves_invariant
+  \\ match_mp_tac ph_create_state_invariant
+  \\ simp[]
+QED
+
+Theorem ph_contains_state_build_from_create_iff_MEM_elems:
+  !p m ps.
+    m <> 0n ==>
+      (ph_contains_state p (ph_build_from_create_state m ps) <=>
+       MEM p (ph_build_from_create_state m ps).elems)
+Proof
+  rpt strip_tac
+  \\ match_mp_tac ph_rep_ok_iff_MEM_elems
+  \\ match_mp_tac ph_build_from_create_state_invariant
+  \\ simp[]
+QED
+
+Theorem ph_all_present_state_build_from_create_iff_subset:
+  !qs m ps.
+    m <> 0n ==>
+      (ph_all_present_state qs (ph_build_from_create_state m ps) <=>
+        !p. MEM p qs ==> p IN ph_set (ph_build_from_create_state m ps))
+Proof
+  rpt strip_tac
+  \\ match_mp_tac ph_all_present_state_iff_subset
+  \\ match_mp_tac ph_build_from_create_state_invariant
+  \\ simp[]
+QED
+
+(* ------------------------------------------------------------------------- *)
+(*  Monadic “create; insert_all” program and its desired refinement theorem   *)
+(* ------------------------------------------------------------------------- *)
+
+Definition ph_build_into_new_def:
+  ph_build_into_new m ps =
+    do
+      () <- ph_create m;
+      ph_insert_all ps
+    od
+End
+
+Theorem ph_build_into_new_refines_build_from_create_state:
+  !m ps s.
+    m <> 0n ==>
+      ph_build_into_new m ps s = (M_success (), ph_build_from_create_state m ps)
+Proof
+  (*
+    Intended proof outline (later, without `cheat`):
+    - unfold `ph_build_into_new_def`,
+    - rewrite the first bind using `ph_create_refines_create_state`,
+    - rewrite the second using `ph_insert_all_refines_build_state` (with
+      `ph_ok (ph_create_state m)` from `ph_create_state_ok`),
+    - simplify the monadic bind/return plumbing to obtain the claimed pair.
+  *)
+  cheat
+QED
+
+val _ = export_theory ();
+

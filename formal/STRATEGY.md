@@ -961,6 +961,22 @@ This is the intended starting point for any end-to-end “create; insert_all”
 proof, and it complements `ParamHashRefinementGoalsTheory`, which assumes a
 well-formed starting state.
 
+#### `ParamHashEndToEndGoalsTheory` (create; insert_all; query)
+
+File: `formal/cakeml/ParamHashEndToEndGoalsScript.sml`
+
+Packages the “create then build” story as an explicit pure reference model:
+
+- `ph_build_from_create_state m ps = ph_build_state ps (ph_create_state m)`
+
+and records a single top-level refinement goal:
+
+- `ph_build_into_new_refines_build_from_create_state`
+
+This is the layer we eventually want to point at when discharging HOL4-side
+ParamHash state obligations from a CakeML evaluation proof: it avoids repeatedly
+recomposing `create`/`insert_all` facts at every callsite.
+
 ## How the overall proof will be staged
 
 This matches the intent of `VERIFY_ESTIMATE.md`, but with the current theory
@@ -1030,6 +1046,7 @@ The CakeML side models this as:
 - `ParamHashGoalsTheory` (lookup/all-present completeness goals), and
 - `ParamHashCreateGoalsTheory` (create/init refinement + initial invariants),
 - `ParamHashRefinementGoalsTheory` (monadic ops ⇔ pure-state refinement goals),
+- `ParamHashEndToEndGoalsTheory` (composed create+build refinement goal),
 - `ParamHashSetGoalsTheory` (set-interface view: `contains` ↔ membership).
 
 ### Stage 3: attach Atlas/C++ FFI semantics

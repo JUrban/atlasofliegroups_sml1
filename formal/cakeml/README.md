@@ -34,6 +34,9 @@ $HOLDIR/bin/Holmake
 - `ParamHashCreateGoalsScript.sml`: initialization goals for the monadic model:
   defines the pure initial state `ph_create_state` and records the refinement
   lemma `ph_create_refines_create_state` (currently `cheat`ed).
+- `ParamHashEndToEndGoalsScript.sml`: composes `create` + `insert_all` into a
+  single end-to-end reference model (`ph_build_from_create_state`) and records
+  the corresponding monadic refinement goal.
 - `ParamHashSetGoalsScript.sml`: a set-interface view of the pure-state model
   (derives `contains`-style predicates from `ph_lookup_state` and proves
   `ph_contains_state p s <=> p IN ph_set s` under `ph_invariant`).
