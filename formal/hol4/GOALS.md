@@ -70,6 +70,9 @@ There are two main “end-to-end” routes in HOL4:
        (obligations ⇒ modulo set equality + modulo bottom-layer postcondition)
      - `program_success_implies_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq_via_obligation_stack`
        (program success ⇒ obligations ⇒ the same modulo conclusion)
+   - also includes a ParamHash route that targets the canonical build-state model
+     with a state-based “stores `U_fast`” obligation:
+     - `program_success_implies_equivalence_via_obligation_stack_paramhash_atlas_eq_via_build_state_stores`
 
 Both routes are consistent: they express the same end consequence but expose
 different proof boundaries.
