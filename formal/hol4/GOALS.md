@@ -146,6 +146,10 @@ Modulo-`atlas_eq` variant (preferred long-term statement):
   - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - same bridge shape, but the “stores-U-fast” clause is stated as
     `set_atlas_eq (U_fast g) (set (paramhash_list g))`.
+  - more specified alternative bundles:
+    - `fast_compute_program_succeeds_imp_paramhash_obligations_build_factored`
+    - `fast_compute_program_succeeds_imp_paramhash_obligations_build_factored_atlas_eq`
+    - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildDecomposeCheatsGoalsScript.sml`
 
 Useful refinement split (for proof engineering):
 

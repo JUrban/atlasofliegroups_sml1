@@ -28,6 +28,8 @@ open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildDecomposeGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildDecomposeCheatsGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeGoalsTheory;
 open F4FPPVerifyGlobalDiracBridgeDecomposeCheatsGoalsTheory;
 open F4FPPVerifySlowBridgeDetailedGoalsTheory;
@@ -62,6 +64,67 @@ Proof
        metis_tac[slow_program_succeeds_imp_refined_slow_obligations_detailed]
 
   \\ metis_tac[obligations_stack_imply_equivalence]
+QED
+
+(* Variant that routes the ParamHash part via the more specified build witness. *)
+Theorem program_success_implies_equivalence_via_obligation_stack_via_build:
+  !g dirac.
+    atlas_eq_is_hol_eq /\ atlas_hash_range /\ ~group_is_compact g /\
+    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
+      U_slow g (D_slow g) = U_fast g /\
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rpt gen_tac
+  \\ rpt strip_tac
+
+  \\ drule fast_program_succeeds_imp_phase_success
+  \\ disch_then strip_assume_tac
+
+  \\ `fast_compute_domain_ok g` by
+       metis_tac[fast_compute_program_succeeds_imp_fast_compute_domain_ok]
+
+  \\ `paramhash_obligations_build_factored g` by
+       metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_factored]
+  \\ `paramhash_obligations_state_factored g` by
+       metis_tac[atlas_hash_range_and_build_factored_imp_state_factored]
+
+  \\ `bottom_layer_ok_param_set g dirac (fast_param_set g)` by
+       metis_tac[bottom_layer_program_succeeds_imp_bottom_layer_ok_param_set_decomposed]
+
+  \\ `slow_refinement_ok g /\ slow_ok_components g` by
+       metis_tac[slow_program_succeeds_imp_refined_slow_obligations_detailed]
+
+  \\ metis_tac[obligations_stack_imply_equivalence]
+QED
+
+Theorem program_success_implies_equivalence_via_obligation_stack_paramhash_atlas_eq_via_build:
+  !g dirac.
+    atlas_eq_is_hol_eq /\ atlas_hash_range /\ atlas_hash_eq_ok /\ ~group_is_compact g /\
+    fast_program_succeeds g dirac /\ slow_program_succeeds g ==>
+      U_slow g (D_slow g) = U_fast g /\
+      bottom_layer_total_ok g dirac (U_fast g)
+Proof
+  rpt gen_tac
+  \\ rpt strip_tac
+
+  \\ drule fast_program_succeeds_imp_phase_success
+  \\ disch_then strip_assume_tac
+
+  \\ `fast_compute_domain_ok g` by
+       metis_tac[fast_compute_program_succeeds_imp_fast_compute_domain_ok]
+
+  \\ `paramhash_obligations_build_factored_atlas_eq g` by
+       metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_factored_atlas_eq]
+  \\ `paramhash_obligations_state_factored_atlas_eq g` by
+       metis_tac[atlas_hash_range_and_build_factored_atlas_eq_imp_state_factored_atlas_eq]
+
+  \\ `bottom_layer_ok_param_set g dirac (fast_param_set g)` by
+       metis_tac[bottom_layer_program_succeeds_imp_bottom_layer_ok_param_set_decomposed]
+
+  \\ `slow_refinement_ok g /\ slow_ok_components g` by
+       metis_tac[slow_program_succeeds_imp_refined_slow_obligations_detailed]
+
+  \\ metis_tac[obligations_stack_imply_equivalence_paramhash_atlas_eq]
 QED
 
 Theorem program_success_implies_equivalence_via_obligation_stack_paramhash_atlas_eq:
