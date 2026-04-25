@@ -669,6 +669,76 @@ Modulo-`atlas_eq` variant:
   and a separate lemma shows that under `atlas_eq_is_hol_eq` this implies the
   plain `paramhash_obligations_factored g`.
 
+#### `F4FPPVerifyParamHashBridgeStateBuildTraceGoalsTheory` (canonical build-state witness)
+
+File: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceGoalsScript.sml`
+
+Introduces an explicit *canonical* witness state for the compute-phase
+ParamHash, parameterized by two abstract execution observations:
+
+- `paramhash_build_m g` : bucket count used during allocation,
+- `paramhash_build_ps g` : the trace of attempted `match`/insert calls.
+
+It defines the pure witness state:
+
+- `paramhash_build_state g = ph_build_from_create_state (paramhash_build_m g) (paramhash_build_ps g)`
+
+and a compact obligation `paramhash_build_state_ok g` stating that `m ≠ 0` and
+the observable `(paramhash_list g, paramhash_contains g)` view agrees with this
+pure model via `paramhash_observes_state`.
+
+Related decomposition (OK):
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceRefineGoalsScript.sml`
+  splits `paramhash_build_state_ok` into smaller “translator-friendly” facts:
+  `paramhash_build_m_ok`, `paramhash_build_ps_ok` (currently weak), plus
+  separate list/contains observation clauses.
+
+#### `F4FPPVerifyParamHashBridgeStateBuildTraceStoresGoalsTheory` (stores-U-fast predicates)
+
+File: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresGoalsScript.sml`
+
+Adds two ways to state “the build result stores exactly `U_fast` (modulo
+`atlas_eq`)”:
+
+- state-based: `paramhash_build_stores_U_fast_atlas_eq g` phrased against
+  `ph_set (paramhash_build_state g)`, and
+- trace-based: `paramhash_build_ps_stores_U_fast_atlas_eq g` phrased against
+  `set (paramhash_build_ps g)`.
+
+These let the translator/CakeML path pick the most convenient proof target.
+
+#### `F4FPPVerifyParamHashStateBuildSetGoalsTheory` (pure build-set lemma)
+
+File: `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
+
+Proves (OK, no `cheat`) the key pure lemma connecting the two store views:
+
+- `ph_build_from_create_state_set_atlas_eq_set_ps`:
+  `set_atlas_eq (set ps) (ph_set (ph_build_from_create_state m ps))`
+  under `atlas_hash_range` + `atlas_eq_equiv` + `m ≠ 0`.
+
+This is the main tool for upgrading/downgrading between the trace-level stores
+predicate and the state-based one.
+
+#### `F4FPPVerifyParamHashBridgeStateBuildTraceStores*` (bundles and bridge targets)
+
+Files:
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeGoalsScript.sml`
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresDecomposeCheatsGoalsScript.sml`
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeGoalsScript.sml`
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsScript.sml`
+- `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoalsScript.sml`
+
+These theories package the wiring (`fast_param_set_is_paramhash`) together with
+`paramhash_build_state_ok` and either store predicate into named bundles, and
+record the intended translator targets as explicit (currently `cheat`ed) bridge
+lemmas, most notably:
+
+- `fast_compute_program_succeeds g ==> paramhash_build_ps_stores_U_fast_atlas_eq g`
+  (direct trace-based target), and/or
+- `fast_compute_program_succeeds g ==> paramhash_build_stores_U_fast_atlas_eq g`
+  (state-based target phrased against `ph_set`).
+
 #### `F4FPPVerifySlowBridgeDetailedGoalsTheory` (slow bridge, split obligations)
 
 File: `formal/hol4/F4FPPVerifySlowBridgeDetailedGoalsScript.sml`

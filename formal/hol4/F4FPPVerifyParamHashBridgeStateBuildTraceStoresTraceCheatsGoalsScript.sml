@@ -15,8 +15,8 @@
     under the hash/equality contracts needed by the pure build model.
 
   Status
-  - No new `cheat` is introduced in this file, but the result is CHEAT-tainted
-    because it depends on the (currently CHEAT) build-set lemma in
+  - OK (no `cheat`): the only dependency on the pure build model is
+    `ph_build_from_create_state_set_atlas_eq_set_ps`, which is now proved in
     `F4FPPVerifyParamHashStateBuildSetGoalsTheory`.
 *)
 

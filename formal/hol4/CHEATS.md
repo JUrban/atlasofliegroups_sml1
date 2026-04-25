@@ -161,7 +161,7 @@ Trace-level stores upgrade (optional target):
   - `fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq`
     (intended translator target: relate compute success to `U_fast ~ set(trace)` directly)
 - file: `formal/hol4/F4FPPVerifyParamHashStateBuildSetGoalsScript.sml`
-  - provides the pure build-set lemma `ph_build_from_create_state_set_atlas_eq_set_ps` (currently CHEAT)
+  - provides the pure build-set lemma `ph_build_from_create_state_set_atlas_eq_set_ps` (OK, no `cheat`)
 
 Modulo-`atlas_eq` compute bundle (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`

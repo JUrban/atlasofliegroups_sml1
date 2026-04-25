@@ -106,7 +106,25 @@ Theorem MEM_build_state_imp_mem_atlas_eq_elems:
     atlas_hash_range /\ atlas_eq_equiv /\ ph_invariant s /\ MEM p ps ==>
       mem_atlas_eq p ( (ph_build_state ps s).elems )
 Proof
-  cheat
+  Induct_on `ps`
+  >- simp[ph_build_state_def]
+  \\ rpt gen_tac
+  \\ rpt strip_tac
+  \\ rename1 `h::ps`
+  \\ fs[ph_build_state_def]
+  \\ Cases_on `p = h`
+  >- (
+    (* Head case. *)
+    fs[]
+    \\ match_mp_tac mem_atlas_eq_elems_imp_mem_atlas_eq_build_elems
+    \\ match_mp_tac ph_match_state_mem_atlas_eq_self
+    \\ rpt conj_tac
+    \\ fs[])
+  \\ (* Tail case: `MEM p ps`. Preserve invariant and appeal to IH. *)
+  `MEM p ps` by fs[MEM]
+  \\ `ph_invariant (SND (ph_match_state h s))` by
+       metis_tac[ph_match_state_preserves_invariant]
+  \\ metis_tac[]
 QED
 
 Theorem MEM_elems_match_state_imp_MEM_self_or_old:
@@ -160,7 +178,32 @@ Theorem ph_build_from_create_state_set_atlas_eq_set_ps:
     atlas_hash_range /\ atlas_eq_equiv /\ m <> 0 ==>
       set_atlas_eq (set ps) (ph_set (ph_build_from_create_state m ps))
 Proof
-  cheat
+  rpt strip_tac
+  \\ rw[set_atlas_eq_def, ph_set_def]
+  \\ simp[GSYM mem_atlas_eq_iff_mem_set_atlas_eq_set]
+  \\ eq_tac
+  >- (
+    rw[mem_atlas_eq_def]
+    \\ rename1 `MEM q ps`
+    \\ `ph_invariant (ph_create_state m)` by
+         metis_tac[ph_create_state_invariant]
+    \\ `mem_atlas_eq q ((ph_build_from_create_state m ps).elems)` by
+         (simp[ph_build_from_create_state_def]
+          \\ match_mp_tac MEM_build_state_imp_mem_atlas_eq_elems
+          \\ rpt conj_tac
+          >- fs[]
+          >- fs[]
+          >- fs[]
+          \\ fs[])
+    \\ fs[mem_atlas_eq_def]
+    \\ qexists_tac `q'`
+    \\ simp[]
+    \\ fs[atlas_eq_equiv_def]
+    \\ metis_tac[])
+  \\ rw[mem_atlas_eq_def]
+  \\ rename1 `MEM q ((ph_build_from_create_state m ps).elems)`
+  \\ `MEM q ps` by metis_tac[MEM_elems_build_from_create_imp_MEM_ps]
+  \\ metis_tac[mem_atlas_eq_def]
 QED
 
 val _ = export_theory ();
