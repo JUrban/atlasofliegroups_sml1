@@ -191,6 +191,7 @@ Newer, more specified refinement split (build-witness based):
         - optional trace-level target: `paramhash_build_ps_stores_U_fast_atlas_eq`
           - trace-level stores decomposition into two inclusions (OK, no `cheat`):
             - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceStoreDecomposeGoalsScript.sml`
+              (also provides a “mod-`atlas_eq`” decomposition that avoids needing `atlas_eq_equiv`)
           - upgrade/downgrade lemmas between trace- and state-based stores (OK, no `cheat`):
             - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceCheatsGoalsScript.sml`
               (`*_imp_build_stores` and `*_imp_build_ps_stores`)

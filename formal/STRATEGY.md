@@ -711,7 +711,9 @@ Directional decomposition (OK):
 - `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceStoreDecomposeGoalsScript.sml`
   factors the trace-based predicate into two “inclusion” obligations
   (`U_fast -> trace` and `trace -> U_fast`) under `atlas_eq_equiv`, and proves
-  recombination lemmas.
+  recombination lemmas. It also provides a second decomposition phrased
+  directly in terms of `mem_set_atlas_eq`, which avoids needing any assumptions
+  about `atlas_eq` when merely unfolding `set_atlas_eq`.
 
 #### `F4FPPVerifyParamHashStateBuildSetGoalsTheory` (pure build-set lemma)
 

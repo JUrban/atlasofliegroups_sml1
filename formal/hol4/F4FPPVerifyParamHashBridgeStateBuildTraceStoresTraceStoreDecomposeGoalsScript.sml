@@ -43,6 +43,19 @@ Definition paramhash_build_ps_sound_U_fast_atlas_eq_def:
     !p. p IN set (paramhash_build_ps g) ==> mem_set_atlas_eq p (U_fast g)
 End
 
+(* Alternative, “already-closed” form: these are exactly the two directions of
+   `set_atlas_eq (U_fast g) (set trace)` unfolded. These do not require
+   assumptions about `atlas_eq`. *)
+Definition paramhash_build_ps_complete_U_fast_mod_atlas_eq_def:
+  paramhash_build_ps_complete_U_fast_mod_atlas_eq g <=>
+    !p. mem_set_atlas_eq p (U_fast g) ==> mem_set_atlas_eq p (set (paramhash_build_ps g))
+End
+
+Definition paramhash_build_ps_sound_U_fast_mod_atlas_eq_def:
+  paramhash_build_ps_sound_U_fast_mod_atlas_eq g <=>
+    !p. mem_set_atlas_eq p (set (paramhash_build_ps g)) ==> mem_set_atlas_eq p (U_fast g)
+End
+
 Theorem build_ps_sound_and_complete_imp_build_ps_stores_U_fast_atlas_eq:
   !g.
     atlas_eq_equiv /\
@@ -55,6 +68,28 @@ Proof
   \\ match_mp_tac sound_and_complete_mod_atlas_eq_gives_set_atlas_eq
   \\ fs[paramhash_build_ps_complete_U_fast_atlas_eq_def,
         paramhash_build_ps_sound_U_fast_atlas_eq_def]
+QED
+
+Theorem build_ps_stores_U_fast_atlas_eq_iff_mod_sound_and_complete:
+  !g.
+    paramhash_build_ps_stores_U_fast_atlas_eq g <=>
+      paramhash_build_ps_complete_U_fast_mod_atlas_eq g /\
+      paramhash_build_ps_sound_U_fast_mod_atlas_eq g
+Proof
+  rw[paramhash_build_ps_stores_U_fast_atlas_eq_def, set_atlas_eq_def,
+     paramhash_build_ps_complete_U_fast_mod_atlas_eq_def,
+     paramhash_build_ps_sound_U_fast_mod_atlas_eq_def]
+  \\ EQ_TAC
+  >- (
+    strip_tac
+    \\ conj_tac
+    \\ rpt strip_tac
+    \\ first_x_assum (qspec_then `p` mp_tac)
+    \\ metis_tac[])
+  \\ strip_tac
+  \\ gen_tac
+  \\ EQ_TAC
+  \\ metis_tac[]
 QED
 
 Theorem build_ps_stores_U_fast_atlas_eq_imp_sound_and_complete:
@@ -82,4 +117,3 @@ Proof
 QED
 
 val _ = export_theory ();
-

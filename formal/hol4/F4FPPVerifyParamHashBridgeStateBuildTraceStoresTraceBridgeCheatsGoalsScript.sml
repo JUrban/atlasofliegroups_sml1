@@ -29,8 +29,50 @@ open F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceDecomposeCheatsGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceStoreDecomposeGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildTraceStoresTraceBridgeCheatsGoals";
+
+Theorem fast_compute_program_succeeds_imp_paramhash_build_ps_complete_U_fast_atlas_eq:
+  !g.
+    fast_compute_program_succeeds g ==>
+      paramhash_build_ps_complete_U_fast_atlas_eq g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - show every element inserted into the abstract fast set `U_fast g`
+      appears (up to `atlas_eq`) in the concrete insertion trace
+      `paramhash_build_ps g`.
+  *)
+  cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq:
+  !g.
+    fast_compute_program_succeeds g ==>
+      paramhash_build_ps_sound_U_fast_atlas_eq g
+Proof
+  (*
+    Intended proof (later, without `cheat`):
+    - show every element recorded in `paramhash_build_ps g` is indeed an
+      element of the abstract fast set `U_fast g` (up to `atlas_eq`).
+  *)
+  cheat
+QED
+
+Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_build_ps_stores_U_fast_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ fs[atlas_hash_eq_ok_def]
+  \\ match_mp_tac build_ps_sound_and_complete_imp_build_ps_stores_U_fast_atlas_eq
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_paramhash_build_ps_complete_U_fast_atlas_eq
+       , fast_compute_program_succeeds_imp_paramhash_build_ps_sound_U_fast_atlas_eq
+       ]
+QED
 
 Theorem fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq:
   !g.
@@ -63,6 +105,20 @@ Proof
       ]
 QED
 
+Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_build_state_trace_stores_factored_atlas_eq:
+  !g.
+    atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
+      paramhash_obligations_build_state_trace_stores_factored_atlas_eq g
+Proof
+  rpt strip_tac
+  \\ rw[paramhash_obligations_build_state_trace_stores_factored_atlas_eq_def]
+  \\ metis_tac
+      [ fast_compute_program_succeeds_imp_fast_param_set_is_paramhash
+      , fast_compute_program_succeeds_imp_paramhash_build_state_ok
+      , atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_build_ps_stores_U_fast_atlas_eq
+      ]
+QED
+
 Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_factored_atlas_eq_via_build_state_trace_stores:
   !g.
     atlas_hash_eq_ok /\ fast_compute_program_succeeds g ==>
@@ -70,8 +126,7 @@ Theorem atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligat
 Proof
   rpt strip_tac
   \\ match_mp_tac atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_factored_atlas_eq
-  \\ metis_tac[fast_compute_program_succeeds_imp_paramhash_obligations_build_state_trace_stores_factored_atlas_eq]
+  \\ metis_tac[atlas_hash_eq_ok_and_fast_compute_program_succeeds_imp_paramhash_obligations_build_state_trace_stores_factored_atlas_eq]
 QED
 
 val _ = export_theory ();
-
