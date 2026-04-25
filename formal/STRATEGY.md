@@ -952,10 +952,9 @@ exactly like the pure-state functions (`ph_lookup_state`, `ph_match_state`,
 
 These are proved largely by unfolding the monadic definitions and applying the
 array/list bounds consequences of `ph_ok`. However, the theory is currently
-**CHEAT-tainted**: `ph_match_state_preserves_ok` is recorded with `cheat` as a
-placeholder to justify the iterative `insert_all` refinement, and should be
-discharged later. The intent is for this layer to remain **OK** (no `cheat`) as
-a stable interface between:
+**OK**: `ph_match_state_preserves_ok` is proved (no `cheat`) and justifies the
+iterative `insert_all` refinement. The intent is for this layer to remain
+**OK** (no `cheat`) as a stable interface between:
 
 - translator evaluation proofs (CakeML semantics), and
 - the already-proved extensional lemmas in `ParamHashSetGoalsTheory`.
