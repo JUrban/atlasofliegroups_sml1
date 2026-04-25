@@ -134,7 +134,7 @@ structure Springer_table_D = struct
      we return both flip choices. *)
   fun partitions_D (n: int) : (partition * bool) list =
     let
-      val parts = parity_restricted_partitions_even_parts (2 * n)
+      val parts = Cb.parity_restricted_partitions false (2 * n)
       fun all_even p = List.all (fn x => x mod 2 = 0) p
       fun expand p = if all_even p then [(p, false), (p, true)] else [(p, false)]
     in

@@ -137,6 +137,16 @@ structure Springer_table_BC = struct
       List.all evenOk (List.tabulate (length freq, fn i => i)) andalso oddCount mod 2 = 1
     end
 
+  (* ---------------- generators for Jordan types (ported shape) ---------------- *)
+
+  (* Partitions of 2n with even multiplicity of odd parts (type C). *)
+  fun partitions_C (n: int) : partition list =
+    Cb.parity_restricted_partitions true (2 * n)
+
+  (* Partitions of 2n+1 with even multiplicity of even parts (type B). *)
+  fun partitions_B (n: int) : partition list =
+    Cb.parity_restricted_partitions false (2 * n + 1)
+
   (* ---------------- duality adjustments on partitions (ported from `.at`) ---------------- *)
 
   (* `.at` `C_adjust`: make multiplicities of odd parts even. *)
@@ -334,6 +344,22 @@ structure Springer_table_BC = struct
   fun springer_B_from_diagram (diagram: diagram) : bipartition =
     let
       val (_, pair) = Cb.core_quotient_2 (diagram_B_to_partition diagram)
+    in
+      pair
+    end
+
+  (* Partition-level analogues of the Springer maps (useful when working purely
+     with Jordan types, without nilpotent-orbit handles). *)
+  fun springer_C_partition (lambda: partition) : bipartition =
+    let
+      val (_, (mu, lam)) = Cb.core_quotient_2 lambda
+    in
+      (lam, mu)
+    end
+
+  fun springer_B_partition (lambda: partition) : bipartition =
+    let
+      val (_, pair) = Cb.core_quotient_2 lambda
     in
       pair
     end
