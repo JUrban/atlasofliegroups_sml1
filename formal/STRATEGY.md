@@ -898,6 +898,15 @@ Records a single theorem
 This is the most explicit “roadmap theorem” for the full argument: it shows
 exactly which bridge lemmas remain to be proved/justified.
 
+It also records an additional ParamHash route that makes the trace-level
+approach explicit:
+
+- `program_success_implies_equivalence_via_obligation_stack_paramhash_atlas_eq_via_build_state_trace_stores`
+
+This variant uses the trace-level stores bundle plus the adapter lemma
+`atlas_hash_eq_ok_and_build_state_trace_stores_factored_atlas_eq_imp_paramhash_obligations_state_factored_atlas_eq`
+to feed into the same obligation stack interface.
+
 It also records the fully modulo-`atlas_eq` program-success theorem:
 
 - `program_success_implies_set_atlas_eq_fast_atlas_eq_and_bottom_layer_total_ok_atlas_eq_via_obligation_stack`
