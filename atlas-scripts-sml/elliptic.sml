@@ -1,6 +1,8 @@
 use "atlas-scripts-sml/basic.sml";
 use "atlas-scripts-sml/combinatorics.sml";
 use "atlas-scripts-sml/partitions.sml";
+use "atlas-scripts-sml/RootDatum.sml";
+use "atlas-scripts-sml/WeylElt.sml";
 
 (*
   File: atlas-scripts-sml/elliptic.sml
@@ -214,13 +216,79 @@ structure Elliptic = struct
         | NONE => fail "elliptic_simple" ("unknown type " ^ typeName)
       end
 
-  (* Stubs for the `WeylElt`-level functions; left unported for now. *)
-  type weyl_elt = unit
-  type rootdatum = unit
+  type weyl_elt = WeylElt.t
+  type rootdatum = RootDatum.t
 
-  fun combine_W_lists (_: weyl_elt list list) : weyl_elt list =
-    fail "combine_W_lists" "not yet ported (needs WeylElt representation)"
+  (*
+    combine_W_lists(lists) : weyl_elt list
 
-  fun elliptic_conjugacy_class_reps (_: rootdatum) : weyl_elt list =
-    fail "elliptic_conjugacy_class_reps" "not yet ported (needs RootDatum/WeylElt API)"
+    Port of `combine_W_lists` from `elliptic.at`: given a non-empty list of
+    non-empty lists of Weyl elements (all in the same ambient W), return all
+    products choosing one element from each list, preserving left-to-right
+    multiplication order.
+  *)
+  fun combine_W_lists (lists: weyl_elt list list) : weyl_elt list =
+    (case lists of
+       [] => fail "combine_W_lists" "empty input (requires non-empty sequence)"
+     | _ =>
+         let
+           fun ensureNonEmpty xs =
+             if null xs then fail "combine_W_lists" "encountered empty factor list" else ()
+           val () = List.app ensureNonEmpty lists
+
+           (* Fold from right to left, multiplying new factors on the left. *)
+           fun step (factor: weyl_elt list, acc: weyl_elt list) : weyl_elt list =
+             List.concat (List.map (fn w => List.map (fn a => WeylElt.mul (w, a)) acc) factor)
+
+           val last = List.last lists
+           val init = last
+           val prefix = List.take (lists, length lists - 1)
+         in
+           List.foldr step init prefix
+         end)
+
+  (*
+    elliptic_conjugacy_class_reps(rd) : weyl_elt list
+
+    Port of `elliptic_conjugacy_class_reps` from `elliptic.at`.
+
+    Current status / limitation
+    - This implementation assumes the simple roots of `rd` are ordered by
+      simple factors without additional permutation (the common case for
+      standard root data). For exotic coordinate systems with permuted simple
+      roots, the returned words may not correspond to the intended classes.
+  *)
+  fun elliptic_conjugacy_class_reps (rd: rootdatum) : weyl_elt list =
+    let
+      val factors = RootDatum.lieType rd
+      val () = if RootDatum.semisimpleRank rd = 0 then () else ()
+    in
+      if null factors then
+        [WeylElt.id_W rd]
+      else
+        let
+          (* Build a list of Weyl-element lists, one per simple factor. *)
+          fun mkFactor ((ty, r): LieType.simple_factor, offset: int) : weyl_elt list * int =
+            let
+              val typeStr = str ty
+              val words = elliptic_simple (typeStr, r)
+              val shifted = List.map (fn w => List.map (fn s => offset + s) w) words
+              val elts = List.map (fn w => WeylElt.from_word (rd, w)) shifted
+            in
+              (elts, offset + r)
+            end
+
+          fun loop ([], _, acc) = List.rev acc
+            | loop (f :: fs, offset, acc) =
+                let
+                  val (elts, offset') = mkFactor (f, offset)
+                in
+                  loop (fs, offset', elts :: acc)
+                end
+
+          val lists = loop (factors, 0, [])
+        in
+          if null lists then [WeylElt.id_W rd] else combine_W_lists lists
+        end
+    end
 end

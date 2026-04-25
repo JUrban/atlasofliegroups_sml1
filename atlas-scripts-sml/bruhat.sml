@@ -1,5 +1,7 @@
 use "atlas-scripts-sml/ffi/AtlasFFI.sml";
 use "atlas-scripts-sml/tabulate.sml";
+use "atlas-scripts-sml/WeylElt.sml";
+use "atlas-scripts-sml/weylgroup_at.sml";
 
 (*
   File: atlas-scripts-sml/bruhat.sml
@@ -12,8 +14,8 @@ use "atlas-scripts-sml/tabulate.sml";
 
   Scope / current limitations
   - This file currently ports the KGB Bruhat order portion of `bruhat.at`.
-  - The Weyl-group Bruhat order portion (`bruhat_W_*`) is not yet ported; it
-    depends on a fuller Weyl group API than we currently expose in SML.
+  - It also ports the Weyl-group Bruhat order portion (`bruhat_W_*`) using the
+    minimal `WeylElt` representation in `atlas-scripts-sml/WeylElt.sml`.
 
   Atlas correspondence
   - In `.at`, `KGBElt` is a value with a `real_form` field. In this SML port we
@@ -41,6 +43,8 @@ use "atlas-scripts-sml/tabulate.sml";
 structure Bruhat = struct
   type group = AtlasFFI.group
   type kgb = int
+  type rootdatum = RootDatum.t
+  type weyl = WeylElt.t
 
   fun format_int_list (xs: int list) : string =
     "[" ^ String.concatWith "," (List.map Int.toString xs) ^ "]"
@@ -241,4 +245,61 @@ structure Bruhat = struct
   (* Defaults mirroring `.at`. *)
   val bruhat = bruhat_leq
   val show_bruhat = show_bruhat_leq
+
+  (* ---------------- Weyl-group Bruhat order (RootDatum-based) ---------------- *)
+
+  (* `.at`: lengthens(s,w) = is_positive_coroot(coroot(rd,s) * w) *)
+  fun lengthensW (s: int, w: weyl) : bool =
+    let
+      val rd = WeylElt.root_datum w
+    in
+      WeylgroupAT.lengthens_left (rd, s, WeylElt.matrix w)
+    end
+
+  fun shortensW (s: int, w: weyl) : bool = not (lengthensW (s, w))
+
+  (* `.at`: bruhat_W_leq(x,y) *)
+  fun bruhat_W_leq (x: weyl, y: weyl) : bool =
+    let
+      val rd = WeylElt.root_datum x
+      val () =
+        if rd = WeylElt.root_datum y then ()
+        else raise Fail "Bruhat.bruhat_W_leq: root data don't match"
+
+      fun firstDescent (w: weyl) : int option =
+        let
+          val ssr = RootDatum.semisimpleRank rd
+          fun loop s =
+            if s = ssr then NONE else if shortensW (s, w) then SOME s else loop (s + 1)
+        in
+          loop 0
+        end
+
+      fun leq (a: weyl, b: weyl) : bool =
+        if WeylElt.eq (a, b) then
+          true
+        else if WeylElt.length b <= WeylElt.length a then
+          false
+        else
+          (case firstDescent b of
+             NONE => raise Fail "Bruhat.bruhat_W_leq: y has no descent"
+           | SOME s =>
+               let
+                 val sElt = WeylElt.simple (rd, s)
+                 val b' = WeylElt.mul (sElt, b)
+               in
+                 if shortensW (s, a) then leq (WeylElt.mul (sElt, a), b') else leq (a, b')
+               end)
+    in
+      leq (x, y)
+    end
+
+  fun bruhat_W_geq (x: weyl, y: weyl) : bool = bruhat_W_leq (y, x)
+  fun bruhat_W (x: weyl, y: weyl) : bool = bruhat_W_leq (x, y)
+
+  fun sort_by_length (ws: weyl list) : weyl list =
+    Basic.sort_by (WeylElt.length, op <=) ws
+
+  fun sort_by_length_descending (ws: weyl list) : weyl list =
+    Basic.sort_by (WeylElt.length, op >=) ws
 end
