@@ -79,6 +79,40 @@ structure Springer_table_BC = struct
 
   fun partition_frequencies (p: partition) : int list = value_frequencies p
 
+  (* Like `partition_frequencies`, but pads with `slack` trailing zeros so
+     in-place frequency-vector algorithms (e.g. `B_adjust`, `C_adjust`) may
+     safely increment multiplicities at new maximal part sizes. *)
+  fun partition_frequencies_slack (slack: int) (p: partition) : int list =
+    if slack < 0 then fail "partition_frequencies_slack: slack<0"
+    else
+      let
+        val freq = partition_frequencies p
+      in
+        freq @ List.tabulate (slack, fn _ => 0)
+      end
+
+  fun sumInts (xs: int list) : int = List.foldl (op +) 0 xs
+
+  fun repeat_parts (freq: int list) : partition =
+    let
+      val n = length freq
+      fun rep (0, _, acc) = acc
+        | rep (k, i, acc) = rep (k - 1, i, i :: acc)
+      fun loop (i, acc) =
+        if i <= 0 then acc
+        else loop (i - 1, rep (List.nth (freq, i), i, acc))
+    in
+      loop (n - 1, [])
+    end
+
+  fun last_index (limit: int, pred: int -> bool) : int =
+    let
+      fun loop i =
+        if i < 0 then ~1 else if pred i then i else loop (i - 1)
+    in
+      loop (limit - 1)
+    end
+
   fun is_valid_C (lambda: partition) : bool =
     let
       val freq = partition_frequencies lambda
@@ -101,6 +135,120 @@ structure Springer_table_BC = struct
       val oddCount = oddSum 0 0
     in
       List.all evenOk (List.tabulate (length freq, fn i => i)) andalso oddCount mod 2 = 1
+    end
+
+  (* ---------------- duality adjustments on partitions (ported from `.at`) ---------------- *)
+
+  (* `.at` `C_adjust`: make multiplicities of odd parts even. *)
+  fun C_adjust (p0: partition) : partition =
+    let
+      val p = Cb.strip_to_partition p0
+      val () = if sumInts p mod 2 = 0 then () else fail "C_adjust: partition sum is not even"
+      val freq0 = partition_frequencies_slack 2 p
+      val freq = Array.fromList freq0
+
+      fun freqAt i = Array.sub (freq, i)
+      fun setAt (i, v) = Array.update (freq, i, v)
+      fun decAt i = setAt (i, freqAt i - 1)
+      fun incAt i = setAt (i, freqAt i + 1)
+
+      fun oddMultiplicity i = freqAt (2 * i + 1) mod 2 = 1
+      fun oddOccurs i = freqAt (2 * i + 1) > 0
+
+      val n = Array.length freq
+      val l0 = n div 2
+
+      fun loop (limit: int) : unit =
+        let
+          val l = last_index (limit, oddMultiplicity)
+        in
+          if l < 0 then
+            ()
+          else
+            let
+              val () = if l > 0 then () else fail "C_adjust: internal invariant violated (l=0)"
+              val k = last_index (l, oddOccurs)
+              val () = if k >= 0 then () else fail "C_adjust: no smaller odd part found"
+              val L = 2 * l
+              val K = 2 * k
+              val () = decAt (L + 1)
+              val () = incAt (L)
+              val () = incAt (K + 2)
+              val () = decAt (K + 1)
+            in
+              loop (k + 1)
+            end
+        end
+    in
+      loop l0;
+      repeat_parts (Array.foldr (op ::) [] freq)
+    end
+
+  (* `.at` `B_adjust`: make multiplicities of nonzero even parts even. *)
+  fun B_adjust (p0: partition) : partition =
+    let
+      val p = Cb.strip_to_partition p0
+      val () = if sumInts p mod 2 = 1 then () else fail "B_adjust: partition sum is not odd"
+      val freq0 = partition_frequencies_slack 2 p
+      val freq = Array.fromList freq0
+      val () = if Array.length freq = 0 then () else Array.update (freq, 0, 1) (* seed *)
+
+      fun freqAt i = Array.sub (freq, i)
+      fun setAt (i, v) = Array.update (freq, i, v)
+      fun decAt i = setAt (i, freqAt i - 1)
+      fun incAt i = setAt (i, freqAt i + 1)
+
+      val n = Array.length freq
+      val l0 = (n + 1) div 2
+
+      fun evenMultiplicity i = freqAt (2 * i) mod 2 = 1
+      fun evenOccurs i = freqAt (2 * i) > 0
+
+      fun loop (limit: int) : unit =
+        let
+          val l = last_index (limit, evenMultiplicity)
+        in
+          if l <= 0 then
+            ()
+          else
+            let
+              val k = last_index (l, evenOccurs)
+              val () = if k >= 0 then () else fail "B_adjust: no smaller even part found"
+              val L = 2 * l
+              val K = 2 * k
+              val () = decAt (L)
+              val () = incAt (L - 1)
+              val () = incAt (K + 1)
+              val () = decAt (K)
+            in
+              loop (k + 1)
+            end
+        end
+    in
+      loop l0;
+      repeat_parts (Array.foldr (op ::) [] freq)
+    end
+
+  (* `.at` `B_to_C_dual` and `C_to_B_dual`, at the partition level. *)
+  fun B_to_C_dual (lambda0: partition) : partition =
+    let
+      val lambda = Cb.strip_to_partition lambda0
+      val () = if null lambda then fail "B_to_C_dual: empty partition" else ()
+      val lastPart = List.last lambda
+      val lambda1 = update_last (lambda, lastPart - 1)
+    in
+      C_adjust (Partitions.transpose (C_adjust lambda1))
+    end
+
+  fun C_to_B_dual (lambda0: partition) : partition =
+    let
+      val lambda = Cb.strip_to_partition lambda0
+      val lambda1 =
+        (case lambda of
+           [] => [1]
+         | x :: xs => (x + 1) :: xs)
+    in
+      B_adjust (Partitions.transpose (B_adjust lambda1))
     end
 
   (* ---------------- diagram -> partition (ported from `.at`) ---------------- *)
@@ -208,6 +356,7 @@ structure Springer_table_BC = struct
     end
 
   (* TODO
-     - Port the duality adjustments (`C_adjust`, `B_adjust`, `B_to_C_dual`, ...)
-       and the `SpringerTable` packaging from `springer_table_BC.at`. *)
+     - Port the Atlas-facing `ComplexNilpotent` layer (`nilpotent_orbit_*`,
+       `partition_of_orbit_*`, `dual_map_{B,C}`, and `springer_table_{B,C}`),
+       then expose diagram/partition/bipartition mappings through that API. *)
 end
