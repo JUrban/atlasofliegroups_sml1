@@ -21,19 +21,14 @@ open HolKernel Parse boolLib bossLib;
 
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyParamHashBridgeStateBuildTraceGoalsTheory;
+open F4FPPVerifyParamHashBridgeStateBuildTraceRefineCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyParamHashBridgeStateBuildTraceCheatsGoals";
 
 Theorem fast_compute_program_succeeds_imp_paramhash_build_state_ok:
   !g. fast_compute_program_succeeds g ==> paramhash_build_state_ok g
 Proof
-  (*
-    Intended proof (later, without `cheat`):
-    - extract `paramhash_build_m g` and `paramhash_build_ps g` from the program’s
-      execution and show the resulting pure model matches the observations.
-  *)
-  cheat
+  metis_tac[fast_compute_program_succeeds_imp_paramhash_build_state_ok_decomposed]
 QED
 
 val _ = export_theory ();
-

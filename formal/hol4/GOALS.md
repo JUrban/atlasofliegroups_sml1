@@ -178,6 +178,9 @@ Newer, more specified refinement split (build-witness based):
     - `paramhash_build_state_ok g` with named `paramhash_build_m g` and `paramhash_build_ps g`
       - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceGoalsScript.sml`
       - CHEATED bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceCheatsGoalsScript.sml`
+      - decomposed component goals (m/ps/list/contains) for translator proofs:
+        - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceRefineGoalsScript.sml`
+        - CHEATED bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceRefineCheatsGoalsScript.sml`
     - build-state factored bundles (wiring + build_state_ok + stores-U-fast):
       - OK: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeGoalsScript.sml`
       - CHEATED bridge: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildTraceDecomposeCheatsGoalsScript.sml`
