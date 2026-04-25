@@ -54,6 +54,7 @@ val () = tryUse "atlas-scripts-sml/Gaussian_elim.sml"
 val () = tryUse "atlas-scripts-sml/Smith.sml"
 val () = tryUse "atlas-scripts-sml/lattice_aux.sml"
 val () = tryUse "atlas-scripts-sml/lattice.sml"
+val () = tryUse "atlas-scripts-sml/twist.sml"
 
 (* Polynomial utilities. *)
 val () = tryUse "atlas-scripts-sml/polynomial.sml"
