@@ -114,6 +114,28 @@ Then it provides glue lemmas showing that if the fast program’s abstract
 witnessed by some `t` satisfying `fast_considers`, then the original obligations
 `fast_domain_subset g` and `fast_witnessed g` hold.
 
+#### `F4FPPVerifyFastPruneTraceGoalsTheory` (fast prune via a list witness)
+
+File: `formal/hol4/F4FPPVerifyFastPruneTraceGoalsScript.sml`
+
+Introduces an abstract list witness `fast_domain_trace g` intended to represent
+the triples actually iterated by the fast compute phase, and defines its set
+view `D_fast_trace g = set (fast_domain_trace g)`.
+
+It then factors the pruning equality goal into more translator-friendly pieces:
+
+- `fast_domain_trace_ok g`: `D_fast g = D_fast_trace g`
+- `fast_domain_trace_sound g`: `D_fast_trace g ⊆ D_fast_pruned g`
+- `fast_domain_trace_complete g`: `D_fast_pruned g ⊆ D_fast_trace g`
+
+and proves (OK) that these imply the previously introduced pruning obligations
+(`fast_domain_sound`, `fast_domain_complete`, hence `fast_domain_is_pruned`).
+
+The corresponding execution bridges from `fast_compute_program_succeeds` are
+recorded (currently `cheat`ed) in:
+
+- `formal/hol4/F4FPPVerifyFastPruneTraceCheatsGoalsScript.sml`
+
 #### `F4FPPVerifyGoalsTheory` (top-level goal layer)
 
 File: `formal/hol4/F4FPPVerifyGoalsScript.sml`

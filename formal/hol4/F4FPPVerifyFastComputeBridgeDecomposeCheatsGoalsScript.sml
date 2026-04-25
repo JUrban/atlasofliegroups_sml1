@@ -22,6 +22,8 @@ open HolKernel Parse boolLib bossLib;
 open F4FPPVerifyFastComputeBridgeGoalsTheory;
 open F4FPPVerifyFastComputeBridgeDecomposeGoalsTheory;
 open F4FPPVerifyFastPruneDecomposeGoalsTheory;
+open F4FPPVerifyFastPruneTraceGoalsTheory;
+open F4FPPVerifyFastPruneTraceCheatsGoalsTheory;
 open F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeBridgeDecomposeCheatsGoals";
@@ -37,7 +39,12 @@ Proof
       `F4_FPP_points_compute` (bucket/key matching + additional filters),
     - show the fast enumeration never considers triples outside the pruned set.
   *)
-  cheat
+  rpt strip_tac
+  \\ match_mp_tac fast_domain_trace_ok_and_trace_sound_imp_fast_domain_sound
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_fast_domain_trace_ok
+       , fast_compute_program_succeeds_imp_fast_domain_trace_sound
+       ]
 QED
 
 Theorem fast_compute_program_succeeds_imp_fast_domain_complete:
@@ -48,7 +55,12 @@ Proof
     - show every triple passing the pruning predicate is covered by the
       enumeration logic (bucket/key matching completeness).
   *)
-  cheat
+  rpt strip_tac
+  \\ match_mp_tac fast_domain_trace_ok_and_trace_complete_imp_fast_domain_complete
+  \\ metis_tac
+       [ fast_compute_program_succeeds_imp_fast_domain_trace_ok
+       , fast_compute_program_succeeds_imp_fast_domain_trace_complete
+       ]
 QED
 
 Theorem fast_compute_program_succeeds_imp_fast_domain_is_pruned:

@@ -91,6 +91,10 @@ At a high level:
    - modulo-`atlas_eq` variants now exist for the compute obligations bundle:
      `fast_compute_obligations_atlas_eq`, yielding `fast_semantic_ok_atlas_eq`
      and `fast_param_set_ok_atlas_eq` without `atlas_eq_is_hol_eq`.
+   - fast pruning can be targeted either at the set level (`fast_domain_sound`,
+     `fast_domain_complete`) or via a list witness:
+     - OK trace vocabulary: `formal/hol4/F4FPPVerifyFastPruneTraceGoalsScript.sml`
+     - CHEATED bridge targets: `formal/hol4/F4FPPVerifyFastPruneTraceCheatsGoalsScript.sml`
 
 ParamHash modulo-`atlas_eq` state direction (more detailed decomposition):
 - `formal/hol4/F4FPPVerifyParamHashStateAtlasEqDecomposeGoalsScript.sml`
