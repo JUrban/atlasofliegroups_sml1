@@ -25,17 +25,40 @@ open F4FPPVerifyParamHashBridgeDecomposeCheatsGoalsTheory;
 
 val _ = new_theory "F4FPPVerifyFastComputeBridgeDecomposeCheatsGoals";
 
-Theorem fast_compute_program_succeeds_imp_fast_compute_domain_ok:
-  !g. fast_compute_program_succeeds g ==> fast_compute_domain_ok g
+(* Smaller bridge obligations for the domain/witness part. *)
+
+Theorem fast_compute_program_succeeds_imp_fast_domain_is_pruned:
+  !g. fast_compute_program_succeeds g ==> fast_domain_is_pruned g
 Proof
   (*
     Intended proof ingredients (later, without `cheat`):
     - identify the exact pruning predicate (`fast_considers`) implemented by
       `F4_FPP_points_compute` (bucket/key matching + additional filters),
-    - show `D_fast g = { t ∈ D_slow g | fast_considers g t }`,
-    - show every stored element of `U_fast g` is witnessed by such a triple.
+    - show `D_fast g = { t ∈ D_slow g | fast_considers g t }`.
   *)
   cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_fast_witnessed_pruned:
+  !g. fast_compute_program_succeeds g ==> fast_witnessed_pruned g
+Proof
+  (*
+    Intended proof ingredients (later, without `cheat`):
+    - show every stored element of `U_fast g` is witnessed by a triple in
+      `D_fast g`.
+  *)
+  cheat
+QED
+
+Theorem fast_compute_program_succeeds_imp_fast_compute_domain_ok:
+  !g. fast_compute_program_succeeds g ==> fast_compute_domain_ok g
+Proof
+  rpt strip_tac
+  \\ rw[fast_compute_domain_ok_def]
+  \\ metis_tac
+      [ fast_compute_program_succeeds_imp_fast_domain_is_pruned
+      , fast_compute_program_succeeds_imp_fast_witnessed_pruned
+      ]
 QED
 
 Theorem fast_compute_program_succeeds_imp_fast_compute_paramhash_ok:
@@ -56,4 +79,3 @@ Proof
 QED
 
 val _ = export_theory ();
-
