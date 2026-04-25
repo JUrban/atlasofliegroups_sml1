@@ -139,6 +139,14 @@ val () = tryUse "atlas-scripts-sml/wallace.sml"
 val () = tryUse "atlas-scripts-sml/weakly_unipotent.sml"
 val () = tryUse "atlas-scripts-sml/harmonic.sml"
 val () = tryUse "atlas-scripts-sml/induction_sp4.sml"
+val () = tryUse "atlas-scripts-sml/nilpotent_induction.sml"
+val () = tryUse "atlas-scripts-sml/paramRep.sml"
+val () = tryUse "atlas-scripts-sml/arthur_parameters.sml"
+val () = tryUse "atlas-scripts-sml/disconnected.sml"
+val () = tryUse "atlas-scripts-sml/verma.sml"
+val () = tryUse "atlas-scripts-sml/gl4H.sml"
+val () = tryUse "atlas-scripts-sml/LKT_form.sml"
+val () = tryUse "atlas-scripts-sml/nci_nilrad_roots.sml"
 
 (* Not yet ported from `all.at` (as of this checkpoint)
    - `extParamPol.at`, `modules.at`, `print_K_types.at`, `galois.at`,
