@@ -177,6 +177,7 @@ Modulo-`atlas_eq` additions:
   - `formal/hol4/F4FPPVerifySlowBridgeDetailedCheatsGoalsScript.sml`
   - `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeGoalsScript.sml`
   - `formal/hol4/F4FPPVerifySlowProgramDecomposeBridgeCheatsGoalsScript.sml`
+  - `formal/hol4/F4FPPVerifySlowRefinementBridgeDecomposeCheatsGoalsScript.sml`
 
 Role:
 - connect `slow_program_succeeds` to the refined slow obligations
