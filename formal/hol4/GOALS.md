@@ -167,6 +167,9 @@ Newer, more specified refinement split (build-witness based):
     - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildCheatsGoalsScript.sml`
   - convenience derived bridges (explicit `atlas_hash_range`):
     - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
+  - build-factored bundles (wiring + build witness + stores-U-fast):
+    - OK implications: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildDecomposeGoalsScript.sml`
+    - cheated bridge from compute success: `formal/hol4/F4FPPVerifyParamHashBridgeStateBuildDecomposeCheatsGoalsScript.sml`
 
 ### C. ParamHash state representation lemma (data-structure core)
 
