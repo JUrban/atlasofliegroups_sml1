@@ -19,9 +19,12 @@
 
   Status
   - Pure-state consequences are proved (OK).
-  - The theorem that a concrete monadic “create; insert_all” run refines the
-    pure-state `ph_build_from_create_state` is currently `cheat`ed, because it
-    depends on the not-yet-proved translator-facing refinement lemmas.
+  - The top-level theorem
+      `ph_build_into_new_refines_build_from_create_state`
+    is now proved by *composition* (no new `cheat`), but it is still
+    CHEAT-tainted because it depends on the translator-facing refinement goals
+    in `ParamHashCreateGoalsTheory` / `ParamHashRefinementGoalsTheory` that are
+    currently recorded as `cheat`.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -30,6 +33,7 @@ open listTheory;
 open pairTheory;
 open pred_setTheory pred_setLib;
 
+open ml_monadBaseTheory;
 open ml_monad_translatorTheory;  (* `M_success` / `M_failure` *)
 
 open ParamHashProgTheory;
@@ -90,10 +94,7 @@ QED
 
 Definition ph_build_into_new_def:
   ph_build_into_new m ps =
-    do
-      () <- ph_create m;
-      ph_insert_all ps
-    od
+    st_ex_ignore_bind (ph_create m) (ph_insert_all ps)
 End
 
 Theorem ph_build_into_new_refines_build_from_create_state:
@@ -101,16 +102,11 @@ Theorem ph_build_into_new_refines_build_from_create_state:
     m <> 0n ==>
       ph_build_into_new m ps s = (M_success (), ph_build_from_create_state m ps)
 Proof
-  (*
-    Intended proof outline (later, without `cheat`):
-    - unfold `ph_build_into_new_def`,
-    - rewrite the first bind using `ph_create_refines_create_state`,
-    - rewrite the second using `ph_insert_all_refines_build_state` (with
-      `ph_ok (ph_create_state m)` from `ph_create_state_ok`),
-    - simplify the monadic bind/return plumbing to obtain the claimed pair.
-  *)
-  cheat
+  rpt strip_tac
+  \\ `ph_ok (ph_create_state m)` by metis_tac[ph_create_state_ok]
+  \\ fs[ph_build_into_new_def, st_ex_ignore_bind_def]
+  \\ fs[ph_create_refines_create_state]
+  \\ fs[ph_insert_all_refines_build_state, ph_build_from_create_state_def]
 QED
 
 val _ = export_theory ();
-
