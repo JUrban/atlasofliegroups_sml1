@@ -13,7 +13,9 @@ The goal is not to eliminate all `cheat`s immediately, but to:
 
 ## A. Atlas/FFI contract assumptions
 
-- File: `formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml`
+- Files:
+  - `formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml` (definitions + internal consequences)
+  - `formal/hol4/F4FPPVerifyAtlasFFIContractsCheatsGoalsScript.sml` (the top-level “contracts hold” assumption)
 - Role: records the (currently axiomatic) laws expected of Atlas equality/hash
   and related primitives.
 - Note: the bottom-layer congruence contract `atlas_eq_congruent_bottom_layer`

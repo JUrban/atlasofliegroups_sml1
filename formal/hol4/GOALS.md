@@ -203,6 +203,7 @@ These are currently `cheat`ed and are intended to be discharged by:
 The “FFI contract inventory” is:
 
 - `formal/hol4/F4FPPVerifyAtlasFFIContractsGoalsScript.sml`
+- `formal/hol4/F4FPPVerifyAtlasFFIContractsCheatsGoalsScript.sml`
 
 It introduces:
 

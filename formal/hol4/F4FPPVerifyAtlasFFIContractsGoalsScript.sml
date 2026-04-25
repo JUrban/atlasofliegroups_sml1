@@ -144,12 +144,7 @@ Proof
 QED
 
 (* For now we record the intended assumption that the concrete Atlas FFI meets
-   these contracts.  Whether this is proved (via a verified FFI model) or kept
-   as an axiom is a project decision. *)
-Theorem atlas_ffi_contracts_hold:
-  atlas_ffi_contracts
-Proof
-  cheat
-QED
+   these contracts in the isolated `*Cheats*` theory:
+     `F4FPPVerifyAtlasFFIContractsCheatsGoalsTheory`. *)
 
 val _ = export_theory ();
