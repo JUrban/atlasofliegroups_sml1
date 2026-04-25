@@ -105,6 +105,7 @@ Additional split (still `cheat`ed):
 Modulo-`atlas_eq` bridge (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyParamHashBridgeStateDecomposeCheatsGoalsScript.sml`
   - `fast_compute_program_succeeds_imp_paramhash_obligations_state_factored_atlas_eq`
+  - (now derived from smaller cheated obligations for wiring/state/stores)
 
 Modulo-`atlas_eq` compute bundle (still `cheat`ed):
 - file: `formal/hol4/F4FPPVerifyFastComputeBridgeCheatsGoalsScript.sml`
