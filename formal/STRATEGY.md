@@ -178,13 +178,15 @@ and (intended) consequence lemmas:
 - `atlas_eq_equiv_and_insert_trace_params_ok_and_covers_imp_build_ps_complete_U_fast_atlas_eq`
 - `insert_trace_params_ok_and_params_sound_imp_build_ps_sound_U_fast_atlas_eq`
 
-Status: the lemmas are currently `cheat`ed placeholders (definitions are OK);
-they should be discharged by routine list/set reasoning once the `MEM`/`set`
-view is pinned down for this development.
+Status:
+- the linking predicate definitions are OK (in
+  `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkGoalsScript.sml`);
+- the consequence lemmas and compute-success bridges are currently `cheat`ed
+  placeholders (in
+  `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkCheatsGoalsScript.sml`).
 
-Compute-success bridge placeholders for the linking predicates are recorded in:
-
-- `formal/hol4/F4FPPVerifyFastWitnessTraceParamHashLinkCheatsGoalsScript.sml`
+These should be discharged by routine list/set reasoning (for the consequence
+lemmas) and by translator/CakeML work (for the compute-success bridges).
 
 #### `F4FPPVerifyGoalsTheory` (top-level goal layer)
 

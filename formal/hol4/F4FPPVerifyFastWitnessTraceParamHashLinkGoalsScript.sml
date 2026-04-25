@@ -17,10 +17,7 @@
     single “projection” agreement between the traces.
 
   Status
-  - Definitions are OK.
-  - The key logical bridge lemmas are currently `cheat`ed placeholders (they
-    should be discharged by routine list/set reasoning once the exact list/set
-    view of `MEM`/`set` is fixed in this development).
+  - OK (no `cheat`): definitions only.
 *)
 
 open HolKernel Parse boolLib bossLib;
@@ -50,39 +47,5 @@ Definition fast_insert_trace_params_sound_U_fast_atlas_eq_def:
   fast_insert_trace_params_sound_U_fast_atlas_eq g <=>
     !t pi. MEM (t,pi) (fast_insert_trace g) ==> mem_set_atlas_eq pi (U_fast g)
 End
-
-Theorem atlas_eq_equiv_and_insert_trace_params_ok_and_covers_imp_build_ps_complete_U_fast_atlas_eq:
-  !g.
-    atlas_eq_equiv /\
-    fast_insert_trace_params_ok g /\
-    fast_insert_trace_covers_U_fast g ==>
-      paramhash_build_ps_complete_U_fast_atlas_eq g
-Proof
-  (*
-    TODO (remove `cheat`):
-    - unfold `paramhash_build_ps_complete_U_fast_atlas_eq` and `mem_set_atlas_eq`;
-    - use `fast_insert_trace_covers_U_fast` to obtain an event `(t,p)`;
-    - use `fast_insert_trace_params_ok` to rewrite `paramhash_build_ps` as
-      `MAP SND (fast_insert_trace g)` and show `p` is in that projection;
-    - close with reflexivity from `atlas_eq_equiv`.
-  *)
-  cheat
-QED
-
-Theorem insert_trace_params_ok_and_params_sound_imp_build_ps_sound_U_fast_atlas_eq:
-  !g.
-    fast_insert_trace_params_ok g /\
-    fast_insert_trace_params_sound_U_fast_atlas_eq g ==>
-      paramhash_build_ps_sound_U_fast_atlas_eq g
-Proof
-  (*
-    TODO (remove `cheat`):
-    - unfold `paramhash_build_ps_sound_U_fast_atlas_eq`;
-    - rewrite `p IN set (paramhash_build_ps g)` using `fast_insert_trace_params_ok`;
-    - obtain an event `(t,p)` from membership in the projected set;
-    - discharge with `fast_insert_trace_params_sound_U_fast_atlas_eq`.
-  *)
-  cheat
-QED
 
 val _ = export_theory ();
